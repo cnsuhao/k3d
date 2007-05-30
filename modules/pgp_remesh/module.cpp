@@ -41,10 +41,10 @@ namespace detail {
 	typedef k3d::mesh::indices_t indices_t;
 
 	// TODO: Add desc
-	void calc_edge_face_adj(const k3d::mesh::polyhedra_t& Polyhedra, k3d::typed_array<indices_t>& adj) {
-		for(int i = 0; i < Polyhedra.face_first_loops->size(); ++i) {
-			int edge = Polyhedra.loop_first_edges->at(Polyhedra.face_first_loops->at(i));
-			int first = edge;
+	void calc_edge_face_adj(const k3d::mesh::polyhedra_t& Polyhedra, indices_t& adj) {
+		for(size_t i = 0; i < Polyhedra.face_first_loops->size(); ++i) {
+			size_t edge = Polyhedra.loop_first_edges->at(Polyhedra.face_first_loops->at(i));
+			size_t first = edge;
 			do {
 				adj[edge] = i;				
 				edge = Polyhedra.clockwise_edges->at(edge);
@@ -53,22 +53,34 @@ namespace detail {
 		// error checking?
 	}		
 
+	void calc_edge_ccw_adj(const k3d::mesh::polyhedra_t& Polyhedra, indices_t& adj) {
+		for(size_t i = 0; i < Polyhedra.loop_first_edges->size(); ++i) {
+			size_t edge = Polyhedra.loop_first_edges->at(i);
+			size_t first = edge;
+			do {
+				adj[Polyhedra.clockwise_edges->at(edge)] = edge;				
+				edge = Polyhedra.clockwise_edges->at(edge);
+			} while( edge != first );
+		}
+		// error checking?
+	}		
+
 	// TODO: Add desc
-	void calc_edge_companion_adj(const k3d::mesh::polyhedra_t& Polyhedra, k3d::typed_array<indices_t>& adj) {
-		std::map<std::pair<indices_t, indices_t>, indices_t> segments;
+	void calc_edge_companion_adj(const k3d::mesh::polyhedra_t& Polyhedra, indices_t& adj) {
+		std::map<std::pair<size_t, size_t>, size_t> segments;
 
-		for(int i = 0; i < Polyhedra.edge_points->size(); ++i) {
-			int v0 = Polyhedra.edge_points->at(i);
-			int v1 = Polyhedra.edge_points->at(Polyhedra.clockwise_edges(i));
+		for(size_t i = 0; i < Polyhedra.edge_points->size(); ++i) {
+			size_t v0 = Polyhedra.edge_points->at(i);
+			size_t v1 = Polyhedra.edge_points->at(Polyhedra.clockwise_edges->at(i));
 
-			segments[std::pair<v0,v1>] = i;
+			segments[std::pair<size_t, size_t>(v0,v1)] = i;
 		}
 
-		for(int i = 0; i < Polyhedra.edge_points->size(); ++i) {
-			int v0 = Polyhedra.edge_points->at(i);
-			int v1 = Polyhedra.edge_points->at(Polyhedra.clockwise_edges(i));
+		for(size_t i = 0; i < Polyhedra.edge_points->size(); ++i) {
+			size_t v0 = Polyhedra.edge_points->at(i);
+			size_t v1 = Polyhedra.edge_points->at(Polyhedra.clockwise_edges->at(i));
 
-			int comp = segments[std::pair<v1,v0>];
+			size_t comp = segments[std::pair<size_t, size_t>(v1,v0)];
 
 			adj[i] = comp;
 		}
@@ -76,31 +88,66 @@ namespace detail {
 	}
 
 	// TODO: Add desc	
-	void calc_vert_edge_adj(const k3d::mesh::polyhedra_t& Polyhedra, k3d::typed_array<indices_t>& adj) {
-		for(int i = 0; i < Polyhedra.edge_points->size(); ++i) {
-			int vert = Polyhedra.edge_points->at(i);
-			adj[vert] = i;				
+	void calc_vert_edge_adj(const k3d::mesh::polyhedra_t& Polyhedra, indices_t& adj) {
+		for(size_t i = 0; i < Polyhedra.edge_points->size(); ++i) {
+			size_t vert = Polyhedra.edge_points->at(i);
+			adj.at(vert) = i;
 		}
 	}
 
 	// TODO: Add desc
-	void calc_face_poly_adj(const k3d::mesh::polyhedra_t& Polyhedra, k3d::typed_array<indices_t>& adj) {
-		for(int i = 0; i < Polyhedra.face_first_loops->size(); ++i) {
-			
+	void calc_face_poly_adj(const k3d::mesh::polyhedra_t& Polyhedra, indices_t& adj) {
+		indices_t comp;
+		indices_t edge_face;
+		
+		calc_edge_companion_adj(Polyhedra, comp);
+		calc_edge_face_adj(Polyhedra, edge_face);
+
+		size_t empty = 0xFFFFFFFF;
+		
+		std::fill(adj.begin(), adj.end(), empty);
+		std::vector<size_t> stack;
+
+		// Depth first traversal of faces in polyhedra to label all the faces
+		for(size_t i = 0; i < Polyhedra.first_faces->size(); ++i) {
+			stack.push_back(Polyhedra.first_faces->at(i));
+			while(!stack.empty()) {
+				size_t f = stack.back();
+				stack.pop_back();
+				if(adj[f] != empty) {
+					adj[f] = i;
+					size_t edge = Polyhedra.loop_first_edges->at(Polyhedra.face_first_loops->at(f));
+					size_t first = edge;
+
+					do {
+						stack.push_back(edge_face[comp[edge]]);
+						edge = Polyhedra.clockwise_edges->at(edge);
+					} while( edge != first );
+				}
+			}
 		}
 	}
 
 	class mesh_info 
 	{
-		mesh_info(const k3d::mesh& Mesh) {
+		mesh_info(const k3d::mesh& Mesh) 
+			: mesh(Mesh)
+		{
+			calc_edge_face_adj(*mesh.polyhedra, edge_face);
+			calc_edge_ccw_adj(*mesh.polyhedra, edge_ccw);
+			calc_edge_companion_adj(*mesh.polyhedra, edge_comp);
+			calc_vert_edge_adj(*mesh.polyhedra, vert_edge);
+			calc_face_poly_adj(*mesh.polyhedra, face_poly);
 		}
-		
-		k3d::typed_array<indices_t> edge_comp;
-		k3d::typed_array<indices_t> edge_face;
-		k3d::typed_array<indices_t> vert_edge;
-		k3d::typed_array<indices_t> face_poly;
-		//k3d::typed_array<> gaussian_curv;
-		//k3d::typed_array<> mean_curv;
+		const k3d::mesh& mesh;
+		indices_t edge_comp;
+		indices_t edge_face;
+		indices_t vert_edge;
+		indices_t edge_ccw;
+		indices_t face_poly;
+		k3d::typed_array<double> gaussian_curv;
+		k3d::typed_array<k3d::vector3> mean_curv;
+		k3d::typed_array<k3d::vector3> curv_tens;
 	};
 };
 
