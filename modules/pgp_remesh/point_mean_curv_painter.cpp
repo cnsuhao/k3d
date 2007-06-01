@@ -122,7 +122,7 @@ public:
 	static k3d::iplugin_factory& get_factory()
 	{
 		static k3d::document_plugin_factory<point_mean_curv_painter, k3d::interface_list<k3d::gl::imesh_painter > > factory(
-			k3d::uuid(0x02d092ca, 0x84405ff6, 0x4fe806a9, 0xab886cb1),
+			k3d::uuid(0x23b2a6a7, 0x4a4c9f08, 0x8bc5e6a2, 0xcc06655a),
 			"OpenGLMeanCurvPainter",
 			_("Renders mean curvature normal vector at each vertex"),
 			"PGP",
