@@ -30,8 +30,6 @@
 #include <k3dsdk/mesh_modifier.h>
 #include <k3dsdk/node.h>
 #include <k3dsdk/persistent.h>
-#include <modules/qslim/MxMath.h>
-#include <modules/qslim/MxTriangle.h>
 #include <k3dsdk/utility.h>
 #include <iostream>
 #include <map>
@@ -48,6 +46,25 @@ namespace detail {
 	typedef size_t face_t;
 	typedef size_t poly_t;
 
+	Vec3 triangle_raw_normal(const Vec3& v1, const Vec3& v2, const Vec3& v3)
+	{
+		Vec3 a = v2 - v1;
+		Vec3 b = v3 - v1;
+		return a^b;
+	}
+
+	double triangle_area(const Vec3& v1, const Vec3& v2, const Vec3& v3)
+	{
+		return 0.5 * norm(triangle_raw_normal(v1, v2, v3));
+	}
+
+	Vec3 triangle_normal(const Vec3& v1, const Vec3& v2, const Vec3& v3)
+	{
+		Vec3 n = triangle_raw_normal(v1, v2, v3);
+		n.Normalize();
+
+		return n;
+	}
 	/// TODO
 	void calc_edge_face_adj(const k3d::mesh::polyhedra_t& Polyhedra, indices_t& adj) {
 		for(size_t i = 0; i < Polyhedra.face_first_loops->size(); ++i) {
@@ -168,36 +185,50 @@ namespace detail {
 		mesh_info(const k3d::mesh& Mesh) 
 			: mesh(Mesh)
 		{
-			edge_comp.resize(Mesh.polyhedra->edge_points->size());
-			edge_ccw.resize(Mesh.polyhedra->edge_points->size());
-			edge_face.resize(Mesh.polyhedra->edge_points->size());
+			num_edges = Mesh.polyhedra->edge_points->size();
+			num_faces = Mesh.polyhedra->face_first_loops->size();
+			num_verts = Mesh.points->size();
+			edge_comp.resize(num_edges);
+			edge_ccw.resize(num_edges);
+			edge_face.resize(num_edges);
 
-			face_poly.resize(Mesh.polyhedra->edge_points->size());
-			vert_edge.resize(Mesh.points->size());
+			face_poly.resize(num_faces);
+			vert_edge.resize(num_verts);
+			edge_vert.resize(num_verts);
 
-			mean_curv.resize(Mesh.points->size());
-			curv_tens.resize(Mesh.points->size());
-			gaus_curv.resize(Mesh.points->size());
+			mean_curv.resize(num_verts);
+			curv_tens.resize(num_verts);
+			gaus_curv.resize(num_verts);
+
+			edge_cot.resize(num_edges);
+			mean_curv.resize(num_verts);
+			gaus_curv.resize(num_verts);
 
 			calc_edge_face_adj(*mesh.polyhedra, edge_face);
 			calc_edge_ccw_adj(*mesh.polyhedra, edge_ccw);
 			calc_edge_companion_adj(*mesh.polyhedra, edge_comp);
 			calc_vert_edge_ccw_adj(*mesh.polyhedra, vert_edge);
-			calc_edge_vert_ccw_adj(*mesh.polyhedra, vert_edge);
+			calc_edge_vert_ccw_adj(*mesh.polyhedra, edge_vert);
 			calc_face_poly_adj(*mesh.polyhedra, face_poly);
 		}
 
 		void fill_diff_geom() {
+			k3d::log() << debug << "Start fill" << std::endl;
 			for(size_t i = 0; i < num_edges; ++i) {
 				edge_cot[i] = cotangent(i);
 			}
+			k3d::log() << debug << "Done cot" << std::endl;
 			for(size_t i = 0; i < num_verts; ++i) {
 				mean_curv[i] = mean_curvature(i);
 			}
+			k3d::log() << debug << "Done mean" << std::endl;
 			for(size_t i = 0; i < num_verts; ++i) {
 				gaus_curv[i] = gaussian_curvature(i);
 			}
+			k3d::log() << debug << "Done gaussian" << std::endl;
 		}
+
+		Vec3
 
 		double gaussian_curvature(vert_t vert) {
 			edge_t edge = vert_edge[vert];
@@ -337,6 +368,10 @@ namespace detail {
 
 		std::vector<double> edge_cot;
 		std::vector<double> gaus_curv;
+
+		std::vector<Vec3> face_i_basis;
+		std::vector<Vec3> face_j_basis;
+
 		std::vector<Vec3> mean_curv;
 		std::vector<Vec3> normal;
 		std::vector<Vec3> curv_tens; // represents a b c values of tensor
@@ -364,21 +399,53 @@ namespace detail {
 		void on_create_mesh(const k3d::mesh& InputMesh, k3d::mesh& OutputMesh) 
 		{
 			detail::mesh_info m(InputMesh); 
-			k3d::log() << debug << "PGP: create mesh: " << InputMesh.polyhedra->first_faces->size() << std::endl;
-			k3d::log() << debug << "PGP: create mesh: " << InputMesh.polyhedra->first_faces->size() << std::endl;
+			OutputMesh = InputMesh;
+			k3d::typed_array<k3d::vector3>* curv_p = new k3d::typed_array<k3d::vector3>;
+			boost::shared_ptr<k3d::typed_array<k3d::vector3> > curv(curv_p);
+			m.fill_diff_geom();
+			curv->resize(OutputMesh.points->size());
 
+			// Will do this more efficiently later
+			for(int i = 0; i < curv->size(); i++) {
+				curv->at(i).n[0] = m.mean_curv[i][0];
+				curv->at(i).n[1] = m.mean_curv[i][1];
+				curv->at(i).n[2] = m.mean_curv[i][2];
+			}
+
+			OutputMesh.vertex_data["PGPMeanCurv"] = curv;
+
+			k3d::log() << debug << "PGP: create mesh: " << curv.use_count() << " " << curv->size() << std::endl;
 		}
 		void on_update_mesh(const k3d::mesh& InputMesh, k3d::mesh& OutputMesh)		  
 		{
+			detail::mesh_info m(InputMesh); 
+			OutputMesh = InputMesh;
+			k3d::typed_array<k3d::vector3>* curv_p = new k3d::typed_array<k3d::vector3>;
+			boost::shared_ptr<k3d::typed_array<k3d::vector3> > curv(curv_p);
+			m.fill_diff_geom();
+
+			curv->resize(OutputMesh.points->size());
+
+			// Will do this more efficiently later
+			for(int i = 0; i < curv->size(); i++) {
+				curv->at(i).n[0] = m.mean_curv[i][0];
+				curv->at(i).n[1] = m.mean_curv[i][1];
+				curv->at(i).n[2] = m.mean_curv[i][2];
+			}
+
+			OutputMesh.vertex_data["PGPMeanCurv"] = curv;
+
 			k3d::log() << debug << "PGP: update mesh" << std::endl;
 		}
 
 		static k3d::iplugin_factory& get_factory()
 		{
-			static k3d::document_plugin_factory<pgp_remesh> factory(
+		static k3d::document_plugin_factory<pgp_remesh,
+			k3d::interface_list<k3d::imesh_source,
+			k3d::interface_list<k3d::imesh_sink > > > factory(
 			  k3d::uuid(0xc97aa4ce, 0x412c1ed2, 0x055044a4, 0xa151f085),
 			  "PGP Remesh",
-			  "Quad remeshing using the PGP algorithm",
+			  _("Quad remeshing using the PGP algorithm"),
 			  "PGP",
 			  k3d::iplugin_factory::EXPERIMENTAL);
 			
