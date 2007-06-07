@@ -59,14 +59,16 @@ public:
 		if(!k3d::validate_polyhedra(Mesh))
 			return;
 
-		if(Mesh.vertex_data.find("PGP") == Mesh.vertex_data.end())
+		if(Mesh.vertex_data.find("PGPMeanCurv") == Mesh.vertex_data.end())
 			return;
+		
+		k3d::log() << debug << "PGP MeanCurv" << std::endl;
 
 		const k3d::mesh::points_t& points = *Mesh.points;
 
 		const size_t vert_count = points.size();
 
-		const k3d::typed_array < k3d::normal3 > & norm = dynamic_cast<const k3d::typed_array < k3d::normal3 > & >(*((*(Mesh.vertex_data.find("PGP"))).second)); 
+		const k3d::typed_array < k3d::vector3 > & norm = dynamic_cast<const k3d::typed_array < k3d::vector3 > & >(*((*(Mesh.vertex_data.find("PGPMeanCurv"))).second)); 
 		k3d::gl::store_attributes attributes;
 		glDisable(GL_LIGHTING);
 
@@ -76,7 +78,7 @@ public:
 		for(size_t vert = 0; vert != vert_count; ++vert)
 		{
 			k3d::gl::vertex3d(points[vert]);
-			//k3d::gl::vertex3d(points[vert] + k3d::to_point(norm[vert]));
+			k3d::gl::vertex3d(points[vert] + k3d::to_point(norm[vert]));
 		}
 		glEnd();
 	}
