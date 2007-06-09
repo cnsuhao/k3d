@@ -66,7 +66,8 @@ namespace detail {
 		return n;
 	}
 	/// TODO
-	void calc_edge_face_adj(const k3d::mesh::polyhedra_t& Polyhedra, indices_t& adj) {
+	void calc_edge_face_adj(const k3d::mesh::polyhedra_t& Polyhedra, indices_t& adj) 
+	{
 		for(size_t i = 0; i < Polyhedra.face_first_loops->size(); ++i) {
 			size_t edge = Polyhedra.loop_first_edges->at(Polyhedra.face_first_loops->at(i));
 			size_t first = edge;
@@ -79,7 +80,8 @@ namespace detail {
 	}		
 
 	/// TODO: Add desc
-	void calc_edge_ccw_adj(const k3d::mesh::polyhedra_t& Polyhedra, indices_t& adj) {
+	void calc_edge_ccw_adj(const k3d::mesh::polyhedra_t& Polyhedra, indices_t& adj) 
+	{
 		for(size_t i = 0; i < Polyhedra.loop_first_edges->size(); ++i) {
 			size_t edge = Polyhedra.loop_first_edges->at(i);
 			size_t first = edge;
@@ -92,7 +94,8 @@ namespace detail {
 	}		
 
 	/// TODO: Add desc
-	void calc_edge_companion_adj(const k3d::mesh::polyhedra_t& Polyhedra, indices_t& adj) {
+	void calc_edge_companion_adj(const k3d::mesh::polyhedra_t& Polyhedra, indices_t& adj) 
+	{
 		std::map<std::pair<size_t, size_t>, size_t> segments;
 
 		for(size_t i = 0; i < Polyhedra.edge_points->size(); ++i) {
@@ -114,7 +117,8 @@ namespace detail {
 	}
 
 	/// TODO: Add desc	
-	void calc_vert_edge_adj(const k3d::mesh::polyhedra_t& Polyhedra, indices_t& adj) {
+	void calc_vert_edge_adj(const k3d::mesh::polyhedra_t& Polyhedra, indices_t& adj) 
+	{
 		for(size_t i = 0; i < Polyhedra.edge_points->size(); ++i) {
 			size_t vert = Polyhedra.edge_points->at(i);
 			adj.at(vert) = i;
@@ -122,7 +126,8 @@ namespace detail {
 	}
 
 	/// TODO: Add desc	
-	void calc_vert_edge_ccw_adj(const k3d::mesh::polyhedra_t& Polyhedra, indices_t& adj) {
+	void calc_vert_edge_ccw_adj(const k3d::mesh::polyhedra_t& Polyhedra, indices_t& adj) 
+	{
 		indices_t comp;
 		comp.resize(Polyhedra.edge_points->size());
 		calc_edge_companion_adj(Polyhedra, comp);
@@ -133,7 +138,8 @@ namespace detail {
 	}
 
 	/// TODO: Add desc	
-	void calc_edge_vert_ccw_adj(const k3d::mesh::polyhedra_t& Polyhedra, indices_t& adj) {
+	void calc_edge_vert_ccw_adj(const k3d::mesh::polyhedra_t& Polyhedra, indices_t& adj) 
+	{
 		adj.resize(Polyhedra.edge_points->size());
 		for(size_t i = 0; i < Polyhedra.edge_points->size(); ++i) {
 			adj[i] = Polyhedra.edge_points->at(Polyhedra.clockwise_edges->at(i));
@@ -141,7 +147,8 @@ namespace detail {
 	}
 
 	/// TODO: Add desc
-	void calc_face_poly_adj(const k3d::mesh::polyhedra_t& Polyhedra, indices_t& adj) {
+	void calc_face_poly_adj(const k3d::mesh::polyhedra_t& Polyhedra, indices_t& adj) 
+	{
 		adj.resize(Polyhedra.face_first_loops->size());
 		indices_t comp;
 		indices_t edge_face;
@@ -211,8 +218,150 @@ namespace detail {
 			calc_edge_vert_ccw_adj(*mesh.polyhedra, edge_vert);
 			calc_face_poly_adj(*mesh.polyhedra, face_poly);
 		}
+		
+		class Face;
+		class Edge;
+		class Vert;
 
-		void fill_diff_geom() {
+		class Vert 
+		{
+		public:
+			Vert(const mesh_info& _info, vert_t _vert = -1) :
+				info(_info), index(_vert) {}
+			
+			Vert& operator=(vert_t vert) 
+			{ 
+				index = vert; 
+				return *this; 
+			}
+
+			vert_t operator() () const
+			{
+				return index;
+			}
+
+			Vec3 pos() const
+			{
+				return Vec3(info.mesh.points->at(index).n);
+			}
+
+			const mesh_info& info;
+			vert_t index;
+		};
+
+		class Face 
+		{
+		public:
+			Face(const mesh_info& _info, face_t _face = -1) :
+				info(_info), index(_face) {}
+			
+			Face& operator=(face_t face) 
+			{ 
+				index = face; 
+				return *this; 
+			}
+
+			Edge operator[] (size_t e) const
+			{
+				edge_t edge = info.mesh.polyhedra->loop_first_edges->at(
+					info.mesh.polyhedra->face_first_loops->at(index));
+				
+				for(int i = 0; i < e; i++) {
+					edge = info.edge_ccw[edge]; 
+				}
+
+				return Edge(info, edge);
+			}
+			
+			face_t operator() () const
+			{
+				return index;
+			}
+
+			const mesh_info& info;
+			face_t index;
+		};
+
+		class Edge 
+		{
+		public:
+			Edge(const mesh_info& _info, edge_t _edge = -1) :
+				info(_info), index(_edge) {}
+			
+			Edge& operator=(edge_t edge) 
+			{ 
+				index = edge; 
+				return *this; 
+			}
+
+			// prefix counterclockwise traversal 
+			Edge& operator++ ()
+			{
+				index = info.edge_ccw[index];
+				return *this;
+			}
+			
+			// postfix counterclockwise traversal
+			Edge  operator++ (int) 
+			{
+				edge_t old = index;
+				index = info.edge_ccw[index];
+				return Edge(info, old);
+			}
+	
+			// prefix clockwise traversal
+			Edge& operator-- ()     
+			{
+				index = info.mesh.polyhedra->clockwise_edges->at(index);
+				return *this;
+			}
+			
+			// postfix clockwise traversal 
+			Edge  operator-- (int) 
+			{
+				edge_t old = index;
+				index = info.mesh.polyhedra->clockwise_edges->at(index);
+				return Edge(info, old);
+			}
+	
+			Edge next() const 
+			{
+				return Edge(info, info.edge_ccw[index]);
+			}
+
+			Edge prev() const 
+			{
+				return Edge(info, info.mesh.polyhedra->clockwise_edges->at(index));
+			}
+
+			edge_t operator() () const
+			{
+				return index;
+			}
+
+			Vec3 start() const
+			{
+				return  Vec3(info.mesh.points->at(info.edge_vert[index]).n);
+			}
+
+			Vec3 end() const
+			{
+				return  Vec3(info.mesh.points->at(info.edge_vert[info.edge_ccw[index]]).n);
+			}	
+
+			Vec3 dir() const
+			{
+				return end()-start();
+			}	
+
+			const mesh_info& info;
+			edge_t index;
+		};
+
+
+
+		void fill_diff_geom() 
+		{
 			k3d::log() << debug << "Start fill" << std::endl;
 			for(size_t i = 0; i < num_edges; ++i) {
 				edge_cot[i] = cotangent(i);
@@ -228,9 +377,42 @@ namespace detail {
 			k3d::log() << debug << "Done gaussian" << std::endl;
 		}
 
-		Vec3
 
-		double gaussian_curvature(vert_t vert) {
+		Vec3 principal_curve_tensor(vert_t vert) 
+		{
+			// Choose basis for plane
+			// For each edge adjacent to vert
+			//		project edge into plane basis
+			//		get mean curv for edge
+			//		accumulate a and b coefficients
+			//	Solve linear system to get a and b
+			//  c = 2 * Kh - a
+			//  check error = kg - (a*c - b*b)
+			//Vec3 ihat, jhat;
+			//
+			//edge_t edge = vert_edge[vert];
+
+			//Vec3 vi = Vec3(mesh.points->at(vert).n);
+			//Vec3 vj = Vec3(mesh.points->at(vert_edge[edge_comp[edge]]).n);
+			//
+
+			return Vec3();	
+		}
+		
+		Vec3 isotropic_tensor(Vec3 tensor) 
+		{
+			double *t = tensor;
+			
+			double lambda = 0.5*(t[0] + t[2]);
+			Vec3 iso = Vec3(t[0] - lambda, t[1], 0);
+
+			iso.Normalize();
+
+			return iso;
+		}
+
+		double gaussian_curvature(vert_t vert) 
+		{
 			edge_t edge = vert_edge[vert];
 
 			double curv = k3d::pi_times_2();
@@ -255,7 +437,8 @@ namespace detail {
 			return curv/area;
 		}
 
-		Vec3 mean_curvature(vert_t vert) {
+		Vec3 mean_curvature(vert_t vert) 
+		{
 			edge_t edge = vert_edge[vert];
 			double area = 0.0;
 			Vec3 mean(0,0,0);
@@ -280,7 +463,8 @@ namespace detail {
 		}
 
 		/// Voronoi region of vertex on edge intersecting with a triangle
-		double area_mixed(face_t face, edge_t edge) {
+		double area_mixed(face_t face, edge_t edge) 
+		{
 			Vec3 a(mesh.points->at(edge_vert[edge]).n);
 			Vec3 b(mesh.points->at(edge_vert[edge_ccw[edge]]).n);
 			Vec3 c(mesh.points->at(edge_vert[edge_ccw[edge_ccw[edge]]]).n);
@@ -319,7 +503,8 @@ namespace detail {
 		}
 
 		/// Cotangent of the angle of the vertex opposite of edge
-		double cotangent(edge_t edge) {
+		double cotangent(edge_t edge) 
+		{
 			edge_t next = edge_ccw[edge];
 
 			// get the 3d positions of the vertices
@@ -459,5 +644,4 @@ namespace detail {
 	{
 		return pgp_remesh::get_factory();
 	}
-
 } // namespace pgp_module
