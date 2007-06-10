@@ -206,6 +206,7 @@ namespace detail {
 			mean_curv.resize(num_verts);
 			curv_tens.resize(num_verts);
 			gaus_curv.resize(num_verts);
+			curv_tens.resize(num_verts);
 
 			edge_cot.resize(num_edges);
 			mean_curv.resize(num_verts);
@@ -243,6 +244,10 @@ namespace detail {
 			Vec3 pos() const
 			{
 				return Vec3(info.mesh.points->at(index).n);
+			}
+
+			Edge edge() const {
+				return Edge(info, info.vert_edge[index]);
 			}
 
 			const mesh_info& info;
@@ -288,9 +293,18 @@ namespace detail {
 			Edge(const mesh_info& _info, edge_t _edge = -1) :
 				info(_info), index(_edge) {}
 			
+			Edge(const Edge& e) :
+				info(e.info), index(e.index) {}
+
 			Edge& operator=(edge_t edge) 
 			{ 
 				index = edge; 
+				return *this; 
+			}
+			
+			Edge& operator=(const Edge& edge) 
+			{ 
+				index = edge.index; 
 				return *this; 
 			}
 
@@ -334,6 +348,21 @@ namespace detail {
 				return Edge(info, info.mesh.polyhedra->clockwise_edges->at(index));
 			}
 
+			Face face() const 
+			{
+				return Face(info, info.edge_face[index]);
+			}
+
+			Vert vert() const 
+			{
+				return Vert(info, info.edge_vert[index]);
+			}
+
+			Edge comp() const
+			{
+				return Edge(info, info.edge_comp[index]);
+			}
+
 			edge_t operator() () const
 			{
 				return index;
@@ -360,6 +389,7 @@ namespace detail {
 
 
 
+
 		void fill_diff_geom() 
 		{
 			k3d::log() << debug << "Start fill" << std::endl;
@@ -377,8 +407,11 @@ namespace detail {
 			k3d::log() << debug << "Done gaussian" << std::endl;
 		}
 
+		Vec3 normal(vert_t vert) {
+			return mean_curv[vert];	
+		}
 
-		Vec3 principal_curve_tensor(vert_t vert) 
+		double principal_curve_tensor(vert_t vert, Vec3& curv_dir0,  Vec3& curv_dir1)
 		{
 			// Choose basis for plane
 			// For each edge adjacent to vert
@@ -388,15 +421,70 @@ namespace detail {
 			//	Solve linear system to get a and b
 			//  c = 2 * Kh - a
 			//  check error = kg - (a*c - b*b)
-			//Vec3 ihat, jhat;
-			//
-			//edge_t edge = vert_edge[vert];
+			
+			Vec3 ihat, jhat, khat;
+			double d_x, d_y, w, k, len_square;
+			double m[4] = {0,0,0,0};
+			double x[2] = {0,0};
+			double a,b,c;
 
+			Vert v(*this, vert);
+			Edge e = v.edge();
+			edge_t first = e();
+			
+
+			ihat = e.dir();
+			ihat.Normalize();
+			
+			khat = normal(vert);
+			jhat = khat ^ ihat;
+			ihat = jhat ^ khat;
+
+			ihat.Normalize();
+			jhat.Normalize();
+
+			do {
+				d_x = e.dir() * ihat;		
+				d_y = e.dir() * jhat;
+				len_square = e.dir() * e.dir(); 
+
+				w = (edge_cot[e()] + edge_cot[e.comp()()]) * len_square;
+				k = 2.0*(e.dir()*khat)/len_square;
+				
+				m[0] += w * d_x * d_x * d_x * d_x;
+				m[1] += 2.0* w * d_x * d_x * d_x * d_y;
+				m[2] += w * d_x * d_x * d_x * d_y;
+				m[3] += w * d_x * d_x * d_y * d_y;
+
+				x[0] += w * d_x * d_x * k;
+				x[1] += w * d_x * d_y * k;
+
+				e = e.comp().next();
+			} while(e() != first);
+
+			double det = m[0]*m[3] - m[1]*m[2];
+			
+			if(det == 0.0) return 0;
+
+			det = 1/det;
+
+			a = det*(m[3]*x[0] - m[1]*x[1]);
+			b = det*(-1.0*m[2]*x[0] + m[0]*x[1]);
+			c = 0.5*mean_curv[vert].Length() - a;
+			
+			double error = gaus_curv[vert] - a*c + b*b;
+			
 			//Vec3 vi = Vec3(mesh.points->at(vert).n);
 			//Vec3 vj = Vec3(mesh.points->at(vert_edge[edge_comp[edge]]).n);
-			//
+			Vec3 iso = isotropic_tensor(Vec3(a,b,c));
+			
+			double *t = iso;
+			double angle = atan2(t[1], t[0]);
 
-			return Vec3();	
+			//curv_dir0 = cos(angle)*ihat + sin(angle) *jhat;
+			//curv_dir1 = cos(angle+k3d::pi_over_2)*ihat + sin(angle+k3d::pi_over_2)*jhat;
+	
+			return error;	
 		}
 		
 		Vec3 isotropic_tensor(Vec3 tensor) 
@@ -558,7 +646,6 @@ namespace detail {
 		std::vector<Vec3> face_j_basis;
 
 		std::vector<Vec3> mean_curv;
-		std::vector<Vec3> normal;
 		std::vector<Vec3> curv_tens; // represents a b c values of tensor
 	};
 };
