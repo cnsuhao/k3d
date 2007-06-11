@@ -390,8 +390,20 @@ namespace detail {
 
 
 
-		void fill_diff_geom() 
+		void fill_diff_geom(k3d::mesh& OutputMesh) 
 		{
+			k3d::typed_array<k3d::vector3>* curv_p = new k3d::typed_array<k3d::vector3>;
+			boost::shared_ptr<k3d::typed_array<k3d::vector3> > curv(curv_p);
+
+			k3d::typed_array<k3d::vector3>* p1_p = new k3d::typed_array<k3d::vector3>;
+			boost::shared_ptr<k3d::typed_array<k3d::vector3> > p1(p1_p);
+
+			k3d::typed_array<k3d::vector3>* p2_p = new k3d::typed_array<k3d::vector3>;
+			boost::shared_ptr<k3d::typed_array<k3d::vector3> > p2(p2_p);
+			curv->resize(num_verts);
+			p1->resize(num_verts);
+			p2->resize(num_verts);
+
 			k3d::log() << debug << "Start fill" << std::endl;
 			for(size_t i = 0; i < num_edges; ++i) {
 				edge_cot[i] = cotangent(i);
@@ -399,11 +411,32 @@ namespace detail {
 			k3d::log() << debug << "Done cot" << std::endl;
 			for(size_t i = 0; i < num_verts; ++i) {
 				mean_curv[i] = mean_curvature(i);
+				curv->at(i).n[0] = mean_curv[i][0];
+				curv->at(i).n[1] = mean_curv[i][1];
+				curv->at(i).n[2] = mean_curv[i][2];
 			}
 			k3d::log() << debug << "Done mean" << std::endl;
 			for(size_t i = 0; i < num_verts; ++i) {
 				gaus_curv[i] = gaussian_curvature(i);
 			}
+			Vec3 pc1,pc2;
+			for(size_t i = 0; i < num_verts; ++i) {
+				principal_curve_tensor(i, pc1,  pc2);
+				p1->at(i).n[0] = pc1[0];
+				p1->at(i).n[1] = pc1[1];
+				p1->at(i).n[2] = pc1[2];
+				
+				p2->at(i).n[0] = pc2[0];
+				p2->at(i).n[1] = pc2[1];
+				p2->at(i).n[2] = pc2[2];
+			}
+
+			OutputMesh.vertex_data["PGPMeanCurv"] = curv;
+			OutputMesh.vertex_data["PGPPrincCurv1"] = p1;
+			OutputMesh.vertex_data["PGPPrincCurv2"] = p2;
+
+
+
 			k3d::log() << debug << "Done gaussian" << std::endl;
 		}
 
@@ -464,8 +497,11 @@ namespace detail {
 
 			double det = m[0]*m[3] - m[1]*m[2];
 			
-			if(det == 0.0) return 0;
-
+			if(det == 0.0) {
+				curv_dir0 = Vec3();
+				curv_dir1 = Vec3();
+				return 0;
+			}
 			det = 1/det;
 
 			a = det*(m[3]*x[0] - m[1]*x[1]);
@@ -479,10 +515,20 @@ namespace detail {
 			Vec3 iso = isotropic_tensor(Vec3(a,b,c));
 			
 			double *t = iso;
-			double angle = atan2(t[1], t[0]);
+			double angle = atan2(t[1], t[0])*0.5;
 
-			//curv_dir0 = cos(angle)*ihat + sin(angle) *jhat;
-			//curv_dir1 = cos(angle+k3d::pi_over_2)*ihat + sin(angle+k3d::pi_over_2)*jhat;
+			Vec3 temp_i = ihat;
+			Vec3 temp_j = jhat;
+
+			temp_i *= cos(angle);
+			temp_j *= sin(angle);
+			curv_dir0 = temp_i + temp_j;
+
+			temp_i = ihat;
+			temp_j = jhat;
+			temp_i *= cos(angle + k3d::pi_over_2());
+			temp_j *= sin(angle + k3d::pi_over_2());
+			curv_dir1 = temp_i + temp_j;
 	
 			return error;	
 		}
@@ -674,7 +720,7 @@ namespace detail {
 			OutputMesh = InputMesh;
 			k3d::typed_array<k3d::vector3>* curv_p = new k3d::typed_array<k3d::vector3>;
 			boost::shared_ptr<k3d::typed_array<k3d::vector3> > curv(curv_p);
-			m.fill_diff_geom();
+			m.fill_diff_geom(OutputMesh);
 			curv->resize(OutputMesh.points->size());
 
 			// Will do this more efficiently later
@@ -694,7 +740,7 @@ namespace detail {
 			OutputMesh = InputMesh;
 			k3d::typed_array<k3d::vector3>* curv_p = new k3d::typed_array<k3d::vector3>;
 			boost::shared_ptr<k3d::typed_array<k3d::vector3> > curv(curv_p);
-			m.fill_diff_geom();
+			m.fill_diff_geom(OutputMesh);
 
 			curv->resize(OutputMesh.points->size());
 
