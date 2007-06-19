@@ -419,9 +419,10 @@ namespace detail {
 			for(size_t i = 0; i < num_verts; ++i) {
 				gaus_curv[i] = gaussian_curvature(i);
 			}
-			Vec3 pc1,pc2;
+			Vec3 pc1,pc2, tens;
+			k3d::log() << debug << "Done gaussian" << std::endl;
 			for(size_t i = 0; i < num_verts; ++i) {
-				principal_curve_tensor(i, pc1,  pc2);
+				principal_curve_tensor(i, pc1,  pc2, tens);
 				p1->at(i).n[0] = pc1[0];
 				p1->at(i).n[1] = pc1[1];
 				p1->at(i).n[2] = pc1[2];
@@ -435,16 +436,14 @@ namespace detail {
 			OutputMesh.vertex_data["PGPPrincCurv1"] = p1;
 			OutputMesh.vertex_data["PGPPrincCurv2"] = p2;
 
-
-
-			k3d::log() << debug << "Done gaussian" << std::endl;
 		}
 
-		Vec3 normal(vert_t vert) {
+		Vec3 normal(vert_t vert) 
+		{
 			return mean_curv[vert];	
 		}
 
-		double principal_curve_tensor(vert_t vert, Vec3& curv_dir0,  Vec3& curv_dir1)
+		double principal_curve_tensor(vert_t vert, Vec3& curv_dir0,  Vec3& curv_dir1, Vec3& tens)
 		{
 			// Choose basis for plane
 			// For each edge adjacent to vert
@@ -475,10 +474,24 @@ namespace detail {
 
 			ihat.Normalize();
 			jhat.Normalize();
+			khat.Normalize();
+			Vec3 d;
+			double len;
 
 			do {
-				d_x = e.dir() * ihat;		
-				d_y = e.dir() * jhat;
+				d = khat;
+				d *= (khat*e.dir());
+				d = e.dir() - d;
+				d.Normalize();
+
+				d_x = d*ihat;
+				d_y = d*jhat; 
+
+				len = sqrt(d_x*d_x + d_y*d_y);
+
+				d_x /= len;
+				d_y /= len;
+				
 				len_square = e.dir() * e.dir(); 
 
 				w = (edge_cot[e()] + edge_cot[e.comp()()]) * len_square;
@@ -509,25 +522,27 @@ namespace detail {
 			c = 0.5*mean_curv[vert].Length() - a;
 			
 			double error = gaus_curv[vert] - a*c + b*b;
-			
+			tens = Vec3(a,b,c);
 			//Vec3 vi = Vec3(mesh.points->at(vert).n);
 			//Vec3 vj = Vec3(mesh.points->at(vert_edge[edge_comp[edge]]).n);
-			Vec3 iso = isotropic_tensor(Vec3(a,b,c));
+			Vec3 iso = isotropic_tensor(tens);
 			
 			double *t = iso;
-			double angle = atan2(t[1], t[0])*0.5;
+			double angle = 0.5*atan2(t[1], t[0]);
+			double e1, e2;
+			eigen(tens, e1, e2);
 
 			Vec3 temp_i = ihat;
 			Vec3 temp_j = jhat;
 
-			temp_i *= cos(angle);
-			temp_j *= sin(angle);
+			temp_i *= e1*cos(angle);
+			temp_j *= e1*sin(angle);
 			curv_dir0 = temp_i + temp_j;
 
 			temp_i = ihat;
 			temp_j = jhat;
-			temp_i *= cos(angle + k3d::pi_over_2());
-			temp_j *= sin(angle + k3d::pi_over_2());
+			temp_i *= e2*cos(angle + k3d::pi_over_2());
+			temp_j *= e2*sin(angle + k3d::pi_over_2());
 			curv_dir1 = temp_i + temp_j;
 	
 			return error;	
@@ -543,6 +558,17 @@ namespace detail {
 			iso.Normalize();
 
 			return iso;
+		}
+
+		void eigen(Vec3 tensor, double& e1, double& e2) 
+		{
+			double a = tensor[0];
+			double b = tensor[1];
+			double c = tensor[2];
+			double root = sqrt(a*a + 4*b*b - 2*a*c + c*c );
+
+			e1 = 0.5*(a + c - root);
+			e2 = 0.5*(a + c + root);
 		}
 
 		double gaussian_curvature(vert_t vert) 

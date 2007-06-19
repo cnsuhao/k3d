@@ -93,18 +93,23 @@ public:
 			
 			if(draw_selected) {
 				k3d::gl::color3d(k3d::color(1,0,0));
-				k3d::gl::vertex3d(points[vert]);
+
+				//k3d::gl::vertex3d(points[vert]);
+
 				x =  k3d::to_point(p1[vert]);
 				x *= scale;
 				k3d::gl::vertex3d(points[vert] + x);
+				k3d::gl::vertex3d(points[vert] - x);
 			}
 
 			if(draw_unselected) {
 				k3d::gl::color3d(k3d::color(0,1,0));
-				k3d::gl::vertex3d(points[vert]);
+				//k3d::gl::vertex3d(points[vert]);
+				
 				x = k3d::to_point(p2[vert]);
 				x *= scale;
 				k3d::gl::vertex3d(points[vert] + x);
+				k3d::gl::vertex3d(points[vert] - x);
 			}
 		}
 		glEnd();
