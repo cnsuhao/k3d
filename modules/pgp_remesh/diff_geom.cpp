@@ -57,6 +57,9 @@ namespace detail {
 		curv->resize(mesh.num_verts);
 		p1->resize(mesh.num_verts);
 		p2->resize(mesh.num_verts);
+		edge_cot.resize(mesh.num_edges);
+		mean_curv.resize(mesh.num_edges);
+		gaus_curv.resize(mesh.num_edges);
 
 		k3d::log() << debug << "Start fill" << std::endl;
 		for(size_t i = 0; i < mesh.num_edges; ++i) {
