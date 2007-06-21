@@ -28,6 +28,7 @@
 #include <k3dsdk/painter_render_state_gl.h>
 #include <k3dsdk/persistent.h>
 #include <k3dsdk/selection.h>
+#include <vector>
 
 namespace libk3dquadremesh
 {
@@ -43,16 +44,16 @@ class point_mean_curv_painter :
 public:
 	point_mean_curv_painter(k3d::iplugin_factory& Factory, k3d::idocument& Document) :
 		base(Factory, Document),
-		m_draw_selected(init_owner(*this) + init_name("draw_selected") + init_label(_("Draw Selected")) + init_description(_("Draw normals for selected polygons")) + init_value(true)),
-		m_draw_unselected(init_owner(*this) + init_name("draw_unselected") + init_label(_("Draw Unselected")) + init_description(_("Draw normals for unselected polygons")) + init_value(false)),
+		m_draw_p1(init_owner(*this) + init_name("draw_p1") + init_label(_("Draw Major Curvature")) + init_description(_("Draw major curvature direction")) + init_value(true)),
+		m_draw_p2(init_owner(*this) + init_name("draw_p2") + init_label(_("Draw Minor Curvature")) + init_description(_("Draw minor curvature direction")) + init_value(true)),
+		m_draw_ring(init_owner(*this) + init_name("draw_unselected") + init_label(_("Draw One Ring")) + init_description(_("Draw one ring neighborhood for selected vertices")) + init_value(true)),
 		m_selected_color(init_owner(*this) + init_name("selected_color") + init_label(_("Selected Color")) + init_description(_("Normal color for selected polygons")) + init_value(k3d::color(0, 1, 1))),
-		m_unselected_color(init_owner(*this) + init_name("unselected_color") + init_label(_("Unselected Color")) + init_description(_("Normal color for unselected polygons")) + init_value(k3d::color(0, 0.6, 0.6))),
 		m_scale(init_owner(*this) + init_name("scale") + init_label(_("Scale")) + init_description(_("Scaling of vectors")) + init_value(1.0))
 	{
-		m_draw_selected.changed_signal().connect(make_async_redraw_slot());
-		m_draw_unselected.changed_signal().connect(make_async_redraw_slot());
+		m_draw_p1.changed_signal().connect(make_async_redraw_slot());
+		m_draw_p2.changed_signal().connect(make_async_redraw_slot());
+		m_draw_ring.changed_signal().connect(make_async_redraw_slot());
 		m_selected_color.changed_signal().connect(make_async_redraw_slot());
-		m_unselected_color.changed_signal().connect(make_async_redraw_slot());
 		m_scale.changed_signal().connect(make_async_redraw_slot());
 	}
 
@@ -63,22 +64,25 @@ public:
 
 		if(Mesh.vertex_data.find("PGPMeanCurv") == Mesh.vertex_data.end())
 			return;
-		if(Mesh.vertex_data.find("PGPMeanCurv") == Mesh.vertex_data.end())
+		if(Mesh.vertex_data.find("PGPPrincCurv1") == Mesh.vertex_data.end())
 			return;
-		if(Mesh.vertex_data.find("PGPMeanCurv") == Mesh.vertex_data.end())
+		if(Mesh.vertex_data.find("PGPPrincCurv2") == Mesh.vertex_data.end())
 			return;
 		
-		const bool draw_selected = m_draw_selected.value();
-		const bool draw_unselected = m_draw_unselected.value();
+		const bool draw_p1 = m_draw_p1.value();
+		const bool draw_p2 = m_draw_p2.value();
+		const bool draw_ring = m_draw_ring.value();
 		k3d::log() << debug << "PGP MeanCurv" << std::endl;
 
 		const k3d::mesh::points_t& points = *Mesh.points;
-
+		const k3d::mesh::selection_t& vert_selection = *Mesh.point_selection;
 		const size_t vert_count = points.size();
-
+		
+		const k3d::typed_array < std::vector<size_t> > & ring = dynamic_cast<const k3d::typed_array <std::vector<size_t> > & >(*((*(Mesh.vertex_data.find("PGPOneRing"))).second)); 
 		const k3d::typed_array < k3d::vector3 > & norm = dynamic_cast<const k3d::typed_array < k3d::vector3 > & >(*((*(Mesh.vertex_data.find("PGPMeanCurv"))).second)); 
 		const k3d::typed_array < k3d::vector3 > & p1 = dynamic_cast<const k3d::typed_array < k3d::vector3 > & >(*((*(Mesh.vertex_data.find("PGPPrincCurv1"))).second)); 
 		const k3d::typed_array < k3d::vector3 > & p2 = dynamic_cast<const k3d::typed_array < k3d::vector3 > & >(*((*(Mesh.vertex_data.find("PGPPrincCurv2"))).second)); 
+		
 		k3d::gl::store_attributes attributes;
 		glDisable(GL_LIGHTING);
 		double scale = m_scale.value();
@@ -91,7 +95,7 @@ public:
 			//k3d::gl::vertex3d(points[vert]);
 			//k3d::gl::vertex3d(points[vert] + k3d::to_point(norm[vert]));
 			
-			if(draw_selected) {
+			if(draw_p1) {
 				k3d::gl::color3d(k3d::color(1,0,0));
 
 				//k3d::gl::vertex3d(points[vert]);
@@ -102,7 +106,7 @@ public:
 				k3d::gl::vertex3d(points[vert] - x);
 			}
 
-			if(draw_unselected) {
+			if(draw_p2) {
 				k3d::gl::color3d(k3d::color(0,1,0));
 				//k3d::gl::vertex3d(points[vert]);
 				
@@ -111,6 +115,16 @@ public:
 				k3d::gl::vertex3d(points[vert] + x);
 				k3d::gl::vertex3d(points[vert] - x);
 			}
+
+			if(draw_ring && vert_selection[vert]) {
+				k3d::gl::color3d(m_selected_color.value());
+				for(int i = 0; i < ring[vert].size(); ++i) {
+					k3d::gl::vertex3d(points[vert]);
+					k3d::gl::vertex3d(points[ring[vert][i]]);
+					break;
+				}
+			}
+
 		}
 		glEnd();
 	}
@@ -128,10 +142,10 @@ public:
 	}
 
 private:
-	k3d_data(bool, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, with_serialization) m_draw_selected;
-	k3d_data(bool, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, with_serialization) m_draw_unselected;
+	k3d_data(bool, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, with_serialization) m_draw_p1;
+	k3d_data(bool, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, with_serialization) m_draw_p2;
+	k3d_data(bool, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, with_serialization) m_draw_ring;
 	k3d_data(k3d::color, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, with_serialization) m_selected_color;
-	k3d_data(k3d::color, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, with_serialization) m_unselected_color;
 	k3d_data(double, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, with_serialization) m_scale;
 };
 

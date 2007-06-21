@@ -54,9 +54,14 @@ namespace detail {
 
 		k3d::typed_array<k3d::vector3>* p2_p = new k3d::typed_array<k3d::vector3>;
 		boost::shared_ptr<k3d::typed_array<k3d::vector3> > p2(p2_p);
+
+		k3d::typed_array<std::vector<edge_t> >* ring_p = new k3d::typed_array<std::vector<edge_t> >;
+		boost::shared_ptr<k3d::typed_array<std::vector<edge_t> > > ring(ring_p);
+
 		curv->resize(mesh.num_verts);
 		p1->resize(mesh.num_verts);
 		p2->resize(mesh.num_verts);
+		ring->resize(mesh.num_verts);
 		edge_cot.resize(mesh.num_edges);
 		mean_curv.resize(mesh.num_edges);
 		gaus_curv.resize(mesh.num_edges);
@@ -65,6 +70,7 @@ namespace detail {
 		for(size_t i = 0; i < mesh.num_edges; ++i) {
 			edge_cot[i] = cotangent(i);
 		}
+
 		k3d::log() << debug << "Done cot" << std::endl;
 		for(size_t i = 0; i < mesh.num_verts; ++i) {
 			mean_curv[i] = mean_curvature(i);
@@ -92,7 +98,17 @@ namespace detail {
 		OutputMesh.vertex_data["PGPMeanCurv"] = curv;
 		OutputMesh.vertex_data["PGPPrincCurv1"] = p1;
 		OutputMesh.vertex_data["PGPPrincCurv2"] = p2;
+		OutputMesh.vertex_data["PGPOneRing"] = ring;
 
+		for(size_t i = 0; i < mesh.num_verts; ++i) {
+			mesh_info::Vert v = mesh.getVert(i);
+			mesh_info::Edge e = v.edge();
+			edge_t first = e();
+			do {
+				ring->at(i).push_back(e.next().vert().index);
+				e = e.comp().next();
+			} while(e() != first);
+		}
 	}
 
 	Vec3 diff_geom::normal(vert_t vert) 
@@ -121,7 +137,6 @@ namespace detail {
 		mesh_info::Edge e = v.edge();
 		edge_t first = e();
 		
-
 		ihat = e.dir();
 		ihat.Normalize();
 		

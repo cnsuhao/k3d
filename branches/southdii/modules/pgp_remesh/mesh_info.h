@@ -84,22 +84,26 @@ namespace detail {
 			num_edges = Mesh.polyhedra->edge_points->size();
 			num_faces = Mesh.polyhedra->face_first_loops->size();
 			num_verts = Mesh.points->size();
+			
 			edge_comp.resize(num_edges);
 			edge_ccw.resize(num_edges);
 			edge_face.resize(num_edges);
-
+			
+			face_edge.resize(num_faces);
 			face_poly.resize(num_faces);
 			vert_edge.resize(num_verts);
-			edge_vert.resize(num_verts);
-
+			edge_vert.resize(num_edges);
+			
+			// face->edge is missing
 			calc_edge_face_adj(*mesh.polyhedra, edge_face);
 			calc_edge_ccw_adj(*mesh.polyhedra, edge_ccw);
 			calc_edge_companion_adj(*mesh.polyhedra, edge_comp);
 			calc_vert_edge_ccw_adj(*mesh.polyhedra, vert_edge);
 			calc_edge_vert_ccw_adj(*mesh.polyhedra, edge_vert);
+			
 			calc_face_poly_adj(*mesh.polyhedra, face_poly);
 		}
-		
+
 		class Face;
 		class Edge;
 		class Vert;
@@ -273,12 +277,33 @@ namespace detail {
 		size_t num_faces;
 		size_t num_verts;
 
+		Face getFace(face_t face) const
+		{
+			// error checking?
+			return Face(*this, face);
+		}
+		
+		Edge getEdge(edge_t edge) const
+		{
+			// error checking?
+			return Edge(*this, edge);
+		}
+
+		Vert getVert(vert_t vert) const
+		{
+			// error checking?
+			return Vert(*this, vert);
+		}
+
+
 		const k3d::mesh& mesh;
 
 		indices_t edge_comp;
 		indices_t edge_face;
 		indices_t edge_vert;
 		indices_t edge_ccw;
+		
+		k3d::mesh::points_t points;
 
 		indices_t face_edge;
 		indices_t face_poly;
