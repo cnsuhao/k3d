@@ -55,7 +55,7 @@ namespace detail {
 	{
 		Vec3 n = triangle_raw_normal(v1, v2, v3);
 		n.Normalize();
-
+		
 		return n;
 	}
 
@@ -123,6 +123,7 @@ namespace detail {
 	{
 		indices_t comp;
 		comp.resize(Polyhedra.edge_points->size());
+
 		calc_edge_companion_adj(Polyhedra, comp);
 		for(size_t i = 0; i < Polyhedra.edge_points->size(); ++i) {
 			size_t vert = Polyhedra.edge_points->at(comp.at(i));
@@ -133,7 +134,6 @@ namespace detail {
 	/// TODO: Add desc	
 	void calc_edge_vert_ccw_adj(const k3d::mesh::polyhedra_t& Polyhedra, indices_t& adj) 
 	{
-		adj.resize(Polyhedra.edge_points->size());
 		for(size_t i = 0; i < Polyhedra.edge_points->size(); ++i) {
 			adj[i] = Polyhedra.edge_points->at(Polyhedra.clockwise_edges->at(i));
 		}
@@ -142,7 +142,6 @@ namespace detail {
 	/// TODO: Add desc
 	void calc_face_poly_adj(const k3d::mesh::polyhedra_t& Polyhedra, indices_t& adj) 
 	{
-		adj.resize(Polyhedra.face_first_loops->size());
 		indices_t comp;
 		indices_t edge_face;
 		

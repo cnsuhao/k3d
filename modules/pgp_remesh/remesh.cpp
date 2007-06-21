@@ -58,11 +58,14 @@ namespace libk3dquadremesh
 
 		void on_create_mesh(const k3d::mesh& InputMesh, k3d::mesh& OutputMesh) 
 		{
+			k3d::log() << debug << "PGP: create mesh: " << std::endl;
 			detail::mesh_info m(InputMesh); 
+			k3d::log() << debug << "PGP: create mesh: diff geom" << std::endl;
 			detail::diff_geom diff(m);
 			OutputMesh = InputMesh;
 			k3d::typed_array<k3d::vector3>* curv_p = new k3d::typed_array<k3d::vector3>;
 			boost::shared_ptr<k3d::typed_array<k3d::vector3> > curv(curv_p);
+			k3d::log() << debug << "PGP: create mesh: fill diff geom" << std::endl;
 			diff.fill_diff_geom(OutputMesh);
 			curv->resize(OutputMesh.points->size());
 
@@ -75,10 +78,10 @@ namespace libk3dquadremesh
 
 			OutputMesh.vertex_data["PGPMeanCurv"] = curv;
 
-			k3d::log() << debug << "PGP: create mesh: " << curv.use_count() << " " << curv->size() << std::endl;
 		}
 		void on_update_mesh(const k3d::mesh& InputMesh, k3d::mesh& OutputMesh)		  
 		{
+			k3d::log() << debug << "PGP: update mesh" << std::endl;
 			detail::mesh_info m(InputMesh); 
 			detail::diff_geom diff(m);
 			OutputMesh = InputMesh;
@@ -96,7 +99,6 @@ namespace libk3dquadremesh
 
 			OutputMesh.vertex_data["PGPMeanCurv"] = curv;
 
-			k3d::log() << debug << "PGP: update mesh" << std::endl;
 		}
 
 		static k3d::iplugin_factory& get_factory()
