@@ -46,12 +46,14 @@ public:
 		base(Factory, Document),
 		m_draw_p1(init_owner(*this) + init_name("draw_p1") + init_label(_("Draw Major Curvature")) + init_description(_("Draw major curvature direction")) + init_value(true)),
 		m_draw_p2(init_owner(*this) + init_name("draw_p2") + init_label(_("Draw Minor Curvature")) + init_description(_("Draw minor curvature direction")) + init_value(true)),
+		m_draw_norm(init_owner(*this) + init_name("draw_norm") + init_label(_("Draw Mean Normal")) + init_description(_("Draw mean curvature normal")) + init_value(true)),
 		m_draw_ring(init_owner(*this) + init_name("draw_unselected") + init_label(_("Draw One Ring")) + init_description(_("Draw one ring neighborhood for selected vertices")) + init_value(true)),
 		m_selected_color(init_owner(*this) + init_name("selected_color") + init_label(_("Selected Color")) + init_description(_("Normal color for selected polygons")) + init_value(k3d::color(0, 1, 1))),
 		m_scale(init_owner(*this) + init_name("scale") + init_label(_("Scale")) + init_description(_("Scaling of vectors")) + init_value(1.0))
 	{
 		m_draw_p1.changed_signal().connect(make_async_redraw_slot());
 		m_draw_p2.changed_signal().connect(make_async_redraw_slot());
+		m_draw_norm.changed_signal().connect(make_async_redraw_slot());
 		m_draw_ring.changed_signal().connect(make_async_redraw_slot());
 		m_selected_color.changed_signal().connect(make_async_redraw_slot());
 		m_scale.changed_signal().connect(make_async_redraw_slot());
@@ -71,8 +73,8 @@ public:
 		
 		const bool draw_p1 = m_draw_p1.value();
 		const bool draw_p2 = m_draw_p2.value();
+		const bool draw_norm = m_draw_norm.value();
 		const bool draw_ring = m_draw_ring.value();
-		k3d::log() << debug << "PGP MeanCurv" << std::endl;
 
 		const k3d::mesh::points_t& points = *Mesh.points;
 		const k3d::mesh::selection_t& vert_selection = *Mesh.point_selection;
@@ -106,6 +108,7 @@ public:
 				k3d::gl::vertex3d(points[vert] - x);
 			}
 
+
 			if(draw_p2) {
 				k3d::gl::color3d(k3d::color(0,1,0));
 				//k3d::gl::vertex3d(points[vert]);
@@ -114,6 +117,16 @@ public:
 				x *= scale;
 				k3d::gl::vertex3d(points[vert] + x);
 				k3d::gl::vertex3d(points[vert] - x);
+			}
+
+			if(draw_norm) {
+				k3d::gl::color3d(k3d::color(0,0,1));
+				//k3d::gl::vertex3d(points[vert]);
+				
+				x = k3d::to_point(norm[vert]);
+				x *= scale;
+				k3d::gl::vertex3d(points[vert]);
+				k3d::gl::vertex3d(points[vert] + x);
 			}
 
 			if(draw_ring && vert_selection[vert]) {
@@ -145,6 +158,7 @@ private:
 	k3d_data(bool, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, with_serialization) m_draw_p1;
 	k3d_data(bool, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, with_serialization) m_draw_p2;
 	k3d_data(bool, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, with_serialization) m_draw_ring;
+	k3d_data(bool, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, with_serialization) m_draw_norm;
 	k3d_data(k3d::color, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, with_serialization) m_selected_color;
 	k3d_data(double, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, with_serialization) m_scale;
 };
