@@ -62,7 +62,7 @@ namespace detail {
 		double gaussian_curvature(vert_t vert);
 		Vec3 mean_curvature(vert_t vert);
 		/// Voronoi region of vertex on edge intersecting with a triangle
-		double area_mixed(face_t face, edge_t edge);
+		double area_mixed(edge_t edge);
 		/// Cotangent of the angle of the vertex opposite of edge
 		double cotangent(edge_t edge);
 		const mesh_info& mesh;
@@ -72,7 +72,9 @@ namespace detail {
 
 		std::vector<Vec3> face_i_basis;
 		std::vector<Vec3> face_j_basis;
-
+		double avg_e1;
+		double avg_e2;
+		
 		std::vector<Vec3> mean_curv;
 		std::vector<Vec3> curv_tens; // represents a b c values of tensor
 	};
