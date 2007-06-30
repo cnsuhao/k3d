@@ -55,26 +55,41 @@ namespace detail {
 		}
 
 		void fill_diff_geom(k3d::mesh& OutputMesh);
+		void smooth(int n, double h, int steps);
 		Vec3 normal(vert_t vert);
 		double principal_curve_tensor(vert_t vert, Vec3& curv_dir0,  Vec3& curv_dir1, Vec3& tens);
-		Vec3 isotropic_tensor(Vec3 tensor);
+		double principal_curve_tensor2(vert_t vert, double radius, Vec3& curv_dir0,  Vec3& curv_dir1, Vec3& tens);		Vec3 isotropic_tensor(Vec3 tensor);
 		void eigen(Vec3 tensor, double& e1, double& e2) ;
 		double gaussian_curvature(vert_t vert);
 		Vec3 mean_curvature(vert_t vert);
 		/// Voronoi region of vertex on edge intersecting with a triangle
 		double area_mixed(edge_t edge);
+
 		/// Cotangent of the angle of the vertex opposite of edge
 		double cotangent(edge_t edge);
+		double mean_weight(edge_t edge);
+		double mean_coord(edge_t e);		
 		const mesh_info& mesh;
 
 		std::vector<double> edge_cot;
 		std::vector<double> gaus_curv;
+		std::vector<double> mean_coords;
+		std::vector<double> mean_weights;
+		std::vector<double> k1;
+		std::vector<double> k2;
+
+		std::vector<bool> edge_searched;
+		std::vector<bool> face_searched;
+
+		std::vector<double> rep_x;
+		std::vector<double> rep_y;
 
 		std::vector<Vec3> face_i_basis;
 		std::vector<Vec3> face_j_basis;
-		double avg_e1;
-		double avg_e2;
-		
+	
+		std::vector<Vec3> vert_i_basis;
+		std::vector<Vec3> vert_j_basis;
+
 		std::vector<Vec3> mean_curv;
 		std::vector<Vec3> curv_tens; // represents a b c values of tensor
 	};
