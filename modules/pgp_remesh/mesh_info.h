@@ -180,46 +180,16 @@ namespace detail {
 			Edge(const Edge& e) :
 				info(e.info), index(e.index) {}
 
-			Edge& operator=(edge_t edge) 
-			{ 
-				index = edge; 
-				return *this; 
-			}
+			//Edge& operator=(edge_t edge) 
+			//{ 
+			//	index = edge; 
+			//	return *this; 
+			//}
 			
 			Edge& operator=(const Edge& edge) 
 			{ 
 				index = edge.index; 
 				return *this; 
-			}
-
-			// prefix counterclockwise traversal 
-			Edge& operator++ ()
-			{
-				index = info.edge_ccw[index];
-				return *this;
-			}
-			
-			// postfix counterclockwise traversal
-			Edge  operator++ (int) 
-			{
-				edge_t old = index;
-				index = info.edge_ccw[index];
-				return Edge(info, old);
-			}
-	
-			// prefix clockwise traversal
-			Edge& operator-- ()     
-			{
-				index = info.mesh.polyhedra->clockwise_edges->at(index);
-				return *this;
-			}
-			
-			// postfix clockwise traversal 
-			Edge  operator-- (int) 
-			{
-				edge_t old = index;
-				index = info.mesh.polyhedra->clockwise_edges->at(index);
-				return Edge(info, old);
 			}
 	
 			Edge next() const 
@@ -267,6 +237,7 @@ namespace detail {
 				return end()-start();
 			}	
 
+		private:
 			const mesh_info& info;
 			edge_t index;
 		};

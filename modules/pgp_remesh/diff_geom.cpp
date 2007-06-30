@@ -34,6 +34,7 @@
 #include <iostream>
 #include <map>
 #include "diff_geom.h"
+#include <gmm/gmm.h>
 
 namespace libk3dquadremesh
 {
@@ -66,10 +67,28 @@ namespace detail {
 		mean_curv.resize(mesh.num_edges);
 		gaus_curv.resize(mesh.num_edges);
 
+		vert_i_basis.resize(mesh.num_verts);
+		vert_j_basis.resize(mesh.num_verts);
+		face_i_basis.resize(mesh.num_faces);
+		face_j_basis.resize(mesh.num_faces);
+		rep_x.resize(mesh.num_verts);
+		rep_y.resize(mesh.num_verts);
+		mean_coords.resize(mesh.num_edges);
+		mean_weights.resize(mesh.num_edges);
+
 		k3d::log() << debug << "Start fill" << std::endl;
 		for(size_t i = 0; i < mesh.num_edges; ++i) {
 			edge_cot[i] = cotangent(i);
 		}
+		
+		for(size_t i = 0; i < mesh.num_edges; ++i) {
+			mean_weights[i] = mean_weight(i);
+		}
+
+		for(size_t i = 0; i < mesh.num_edges; ++i) {
+			mean_coords[i] = mean_coord(i);
+		}
+		
 
 		k3d::log() << debug << "Done cot" << std::endl;
 		for(size_t i = 0; i < mesh.num_verts; ++i) {
@@ -82,12 +101,39 @@ namespace detail {
 		for(size_t i = 0; i < mesh.num_verts; ++i) {
 			gaus_curv[i] = gaussian_curvature(i);
 		}
-		avg_e1 = 0;
-		avg_e2 = 0;
 		Vec3 pc1,pc2, tens;
 		k3d::log() << debug << "Done gaussian" << std::endl;
+
 		for(size_t i = 0; i < mesh.num_verts; ++i) {
 			principal_curve_tensor(i, pc1,  pc2, tens);
+			p1->at(i).n[0] = pc1[0];
+			p1->at(i).n[1] = pc1[1];
+			p1->at(i).n[2] = pc1[2];
+			
+			p2->at(i).n[0] = pc2[0];
+			p2->at(i).n[1] = pc2[1];
+			p2->at(i).n[2] = pc2[2];
+		}
+
+
+		//smooth(2, 1, 50);
+
+		for(size_t i = 0; i < mesh.num_verts; ++i) {
+			double angle = 0.5*atan2(rep_y[i] , rep_x[i]);
+
+			Vec3 temp_i = vert_i_basis[i];
+			Vec3 temp_j = vert_j_basis[i];
+
+			temp_i *= cos(angle);
+			temp_j *= sin(angle);
+			pc1 = temp_i + temp_j;
+
+			temp_i = vert_i_basis[i];
+			temp_j = vert_j_basis[i];
+			temp_i *= cos(angle + k3d::pi_over_2());
+			temp_j *= sin(angle + k3d::pi_over_2());
+			pc2 = temp_i + temp_j;
+
 			p1->at(i).n[0] = pc1[0];
 			p1->at(i).n[1] = pc1[1];
 			p1->at(i).n[2] = pc1[2];
@@ -113,9 +159,135 @@ namespace detail {
 		}
 	}
 
+	// N-symmetry smoothing
+	void diff_geom::smooth(int n, double h, int steps) {
+		//std::vector<double> temp_x(mesh.num_verts), temp_y(mesh.num_verts);
+		//std::vector<double> cos_Nangle(mesh.num_edges);
+		//std::vector<double> sin_Nangle(mesh.num_edges);
+		//int count = steps;
+		//double error = 1;
+		//temp_x.resize(mesh.num_verts);
+		//temp_y.resize(mesh.num_verts);
+
+		//cos_Nangle.resize(mesh.num_edges);
+		//sin_Nangle.resize(mesh.num_edges);
+
+		//for(edge_t e = 0; e < mesh.num_edges; e++) {
+		//	Vec3 a = vert_i_basis[mesh.edge_vert[e]];
+		//	Vec3 b = vert_i_basis[mesh.edge_vert[mesh.edge_ccw[e]]];
+		//	double angle = 0.5*acos(a*b);
+		//	cos_Nangle[e] = cos(n*angle);
+		//	sin_Nangle[e] = sin(n*angle);
+		//}
+		
+		std::vector<double> B(2*mesh.num_verts);
+		std::vector<double> x(2*mesh.num_verts);
+		
+		gmm::row_matrix< gmm::wsvector<double> > M1(2*mesh.num_verts, 2*mesh.num_verts);
+		for(vert_t v = 0; v < mesh.num_verts; v++) {
+			mesh_info::Edge e = mesh.getVert(v).edge();
+			edge_t first = e();
+			
+			M1(2*v, 2*v) = 1.0+h;
+			M1(2*v+1, 2*v+1) = 1.0+h;
+			
+			do {
+				vert_t w = e.comp().vert()();
+				Vec3 geodesic = e.dir();
+
+				Vec3 a = vert_i_basis[v];
+				Vec3 b = vert_i_basis[w];
+				double angle_i = acos(a*geodesic);
+				double angle_j = acos(b*geodesic);
+				double angle = angle_j - angle_i;
+				double c = cos(n*angle);
+				double s = sin(n*angle);
+
+				M1(2*v, 2*w) = M1(2*v+1, 2*w+1) = -h*mean_coords[e()]*c;
+				M1(2*v, 2*w+1) = h*mean_coords[e()]*s;
+				M1(2*v+1, 2*w) = -h*mean_coords[e()]*s;			
+			
+				e = e.comp().next();
+			} while(e() != first);		
+		}
+
+		gmm::csr_matrix<double> M;
+		gmm::clean(M1, 1E-12);
+		gmm::copy(M1, M);
+
+		for(int v = 0; v < mesh.num_verts; v++) {
+			B[2*v]   = rep_x[v];
+			B[2*v+1] = rep_y[v];
+		}
+
+	
+		gmm::diagonal_precond<gmm::csr_matrix<double> > PR(M);
+
+
+		for(int i = 0; i < steps; ++i) {
+			gmm::iteration iter(1E-7);
+			iter.set_noisy(1);
+//			gmm::bicgstab(M, x, B, PR, iter);
+			double delta = 0;
+			gmm::gmres(M, x, B, PR, 100, iter);
+			for(vert_t v = 0; v < 2*mesh.num_verts; v++) {
+				delta += (B[v]-x[v])*(B[v]-x[v]);
+			}
+			B.swap(x);
+
+			if(delta < 1E-10) break;
+		}
+
+		for(vert_t v = 0; v < mesh.num_verts; v++) {
+			rep_x[v] = B[2*v];
+			rep_y[v] = B[2*v+1];
+		}
+		//for(vert_t v = 0; v < mesh.num_verts; v++) {
+		//	double x = rep_x[v];
+		//	double y = rep_y[v];
+		//	x *= (1+h);
+		//	y *= (1+h);
+
+		//	mesh_info::Edge e = mesh.getVert(v).edge();
+		//	edge_t first = e();
+		//	do {
+		//		double x_j, y_j;
+
+		//		x_j = rep_x[e.next().vert()()];
+		//		y_j = rep_y[e.next().vert()()];
+		//		
+		//		x -= mean_coords[e()]*h*(cos_Nangle[e()]*x_j - sin_Nangle[e()]*y_j);
+		//		y -= mean_coords[e()]*h*(sin_Nangle[e()]*x_j + cos_Nangle[e()]*y_j);
+
+		//		e = e.comp().next();
+		//	} while(e() != first);
+
+		//	temp_x[v] = x;
+		//	temp_y[v] = y;
+
+		//	error += (x-rep_x[v])*(x-rep_x[v]) + (y-rep_y[v])*(y-rep_y[v]);
+		//}
+	}
+
+
 	Vec3 diff_geom::normal(vert_t vert) 
 	{
-		return mean_curv[vert];	
+		Vec3 mc = mean_curv[vert];
+		if(mc*mc < 1E-10) {
+			mesh_info::Edge e = mesh.getVert(vert).edge();
+			edge_t first = e();
+			mc[0] = 0;
+			mc[1] = 0;
+			mc[2] = 0;
+			int count = 0;
+			do {
+				mc += triangle_normal(e.face()[0].start(), e.face()[1].start(), e.face()[2].start());
+				count ++;
+				e = e.comp().next();
+			} while(e() != first);
+			mc *= (1.0/count);
+		}
+		return mc;	
 	}
 
 	//double diff_geom::principal_curve_tensor(vert_t vert, Vec3& curv_dir0,  Vec3& curv_dir1, Vec3& tens)
@@ -223,6 +395,60 @@ namespace detail {
 	//}
 	
 
+	double diff_geom::principal_curve_tensor2(vert_t vert, double radius, Vec3& curv_dir0,  Vec3& curv_dir1, Vec3& tens)
+	{
+		//gmm::dense_matrix<double> tensor(3,3);
+		//gmm::clear(tensor);
+		//gmm::dense_matrix<double> outer(3,3);
+		//gmm::clear(outer);
+		//gmm::dense_matrix<double> orient(3,3);
+		//
+		//mesh_info::Vert v = mesh.getVert(vert);
+		//mesh_info::Edge e = mesh.getEdge(v());
+
+		//Vec3 center = v.pos();
+
+		//double area = 0;
+		//double angle;
+		//double intersection;
+		//double r_sqr = radius*radius;
+
+		//std::vector<edge_t> search;
+
+		//search.push_back(e());
+
+		//for(int i = 0; i < search.size(); i++) {
+		//	e = mesh.getEdge(search[i]);
+
+		//	if(face_searched[e.face()()]) {
+		//		face_searched[e.face()()] = true;
+		//		// add face area;
+		//		// also add all edge matrices that have not been added yet
+		//		// add all edge companions adjacent to faces that have not been searched yet
+
+		//		Vec3 a = e.start();
+		//		Vec3 b = e.next().start();
+		//		Vec3 c = e.next().next().start();
+		//		
+		//		bool a_in,b_in,c_in;
+
+		//		a_in = (a-center)*(a-center) < r_sqr;
+		//		b_in = (b-center)*(b-center) < r_sqr;
+		//		c_in = (c-center)*(c-center) < r_sqr;
+
+		//		if(a_in && b_in) {
+		//			
+		//		} else {
+		//			
+		//		}
+		//	}
+		//}
+		//
+		//for(int i = 0; i < search.size(); i++ {
+		//	// remove faces as having been searched
+		//}
+	}
+
 	double diff_geom::principal_curve_tensor(vert_t vert, Vec3& curv_dir0,  Vec3& curv_dir1, Vec3& tens)
 	{
 		// Choose basis for plane
@@ -236,16 +462,17 @@ namespace detail {
 		
 		Vec3 ihat, jhat, khat;
 		double d_x, d_y, w, k, len_square;
+
 		double AtA[3] = {0,0,0}; // Symmetric 2x2
 		double Atb[2] = {0,0}; 
 		double a,b,c;
 		double Kh2 = mean_curv[vert].Length();
 		mesh_info::Vert v(mesh, vert);
-		mesh_info::Edge e = v.edge().comp().next();
+		mesh_info::Edge e = v.edge();
 		edge_t first = e();
+				
+		bool print = (v.pos()[2] == 0.0);// || (v() % 100 == 0);
 		
-		bool print = (v.pos()[2] == 0.0) || (v() % 10 == 0);
-
 		ihat = e.dir();
 		ihat.Normalize();
 		
@@ -256,6 +483,9 @@ namespace detail {
 		ihat.Normalize();
 		jhat.Normalize();
 		khat.Normalize();
+
+		vert_i_basis[vert] = ihat;
+		vert_j_basis[vert] = jhat;
 
 		if(print) {
 			k3d::log() << "----" << v() << "----" << std::endl; 
@@ -273,6 +503,7 @@ namespace detail {
 
 		do {
 			area += area_mixed(e());
+			e = e.comp().next();
 		} while(e() != first);
 
 		area = 1.0/area;
@@ -296,7 +527,8 @@ namespace detail {
 			n++;
 			len_square = e.dir() * e.dir(); 
 
-			w = area * (1.0/8.0) * (cotangent(e.index) + cotangent(e.comp().index)) * len_square;
+			//w = (cotangent(e()) + cotangent(e.comp()())) * len_square;
+			w = mean_coords[e()];
 			k = 2.0*(e.dir()*khat)/len_square;
 			
 			if(print)
@@ -328,6 +560,9 @@ namespace detail {
 		double det = AtA[0]*AtA[2] - AtA[1]*AtA[1];
 		
 		if(det == 0.0) {
+			rep_x[vert] = 0;
+			rep_y[vert] = 0;
+
 			curv_dir0 = Vec3();
 			curv_dir1 = Vec3();
 			return 0;
@@ -339,8 +574,11 @@ namespace detail {
 		c = Kh2 - a;
 		
 		double error = gaus_curv[vert] - a*c + b*b;
-		tens = Vec3(a,b,c);
+		//if(error > 1) {
+		//	b = sqrt(std::abs(a*c - gaus_curv[vert]));
+		//}
 
+		tens = Vec3(a,b,c);
 		if(print) {
 			k3d::log() << "Error = (" << error << ")" << std::endl; 
 			k3d::log() << "abc = (" << a << ", " << b << ", " << c << ")" << std::endl;  
@@ -352,6 +590,9 @@ namespace detail {
 		
 		double *t = iso;
 		double angle = 0.5*atan2(t[1], t[0]);
+		rep_x[vert] = t[0];
+		rep_y[vert] = t[1];
+
 		double e1, e2;
 		eigen(tens, e1, e2);
 
@@ -487,6 +728,48 @@ namespace detail {
 		}
 
 		return area;
+	}
+
+	double diff_geom::mean_weight(edge_t edge) 
+	{
+		mesh_info::Edge e(mesh.getEdge(edge));
+
+		Vec3 e_v = e.dir();
+		Vec3 enn_v = e.next().next().dir();
+		Vec3 ecn_v = e.comp().next().dir();
+
+		double inv_len = 1.0/e_v.Length();
+
+		e_v *= inv_len;
+		enn_v.Normalize();
+		ecn_v.Normalize();
+
+		double cos_a0 = -(e_v * enn_v);
+		double cos_a1 = e_v * ecn_v;
+		
+		//double tan_half_a0 = std::sqrt((1-cos_a0)/(1+cos_a0));
+		//double tan_half_a1 = std::sqrt((1-cos_a1)/(1+cos_a1));
+		
+		// Which one is faster/more accurate?
+		 double tan_half_a0 = tan(0.5*acos(cos_a0));
+		 double tan_half_a1 = tan(0.5*acos(cos_a1));
+		
+		return inv_len*(tan_half_a0 + tan_half_a1);
+	}
+
+	double diff_geom::mean_coord(edge_t edge)
+	{
+		mesh_info::Edge e = mesh.getEdge(edge);
+		edge_t first = e();
+
+		double sum = 0;
+
+		do {
+			sum += mean_weights[e()];
+			e = e.comp().next();
+		} while(e() != first);
+
+		return mean_weights[first]/sum;
 	}
 
 	/// Cotangent of the angle of the vertex opposite of edge
