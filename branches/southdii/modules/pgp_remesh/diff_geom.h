@@ -58,7 +58,7 @@ namespace detail {
 		void smooth(int n, double h, int steps);
 		Vec3 normal(vert_t vert);
 		double principal_curve_tensor(vert_t vert, Vec3& curv_dir0,  Vec3& curv_dir1, Vec3& tens);
-		double principal_curve_tensor2(vert_t vert, double radius, Vec3& curv_dir0,  Vec3& curv_dir1, Vec3& tens);		Vec3 isotropic_tensor(Vec3 tensor);
+		double principal_curve_tensor2(vert_t vert, double radius, Vec3& curv_dir0,  Vec3& curv_dir1, Vec3& norm);		Vec3 isotropic_tensor(Vec3 tensor);
 		void eigen(Vec3 tensor, double& e1, double& e2) ;
 		double gaussian_curvature(vert_t vert);
 		Vec3 mean_curvature(vert_t vert);
@@ -70,7 +70,7 @@ namespace detail {
 		double mean_weight(edge_t edge);
 		double mean_coord(edge_t e);		
 		const mesh_info& mesh;
-
+		double bb_diag;
 		std::vector<double> edge_cot;
 		std::vector<double> gaus_curv;
 		std::vector<double> mean_coords;
@@ -92,6 +92,54 @@ namespace detail {
 
 		std::vector<Vec3> mean_curv;
 		std::vector<Vec3> curv_tens; // represents a b c values of tensor
+
+		bool leftOf(const Vec3& va, const Vec3& vb, const Vec3& vc, const Vec3& vd) {
+			Vec3 a(va);
+			Vec3 b(va);
+			Vec3 c(va);
+			a -= vd;
+			b -= vd;
+			c -= vd;
+			
+			double det =   a[0]*(b[1]*c[2] - c[1]*b[2]) 
+						 + a[1]*(b[2]*c[0] - c[2]*b[0]) 
+						 + a[2]*(b[0]*c[1] - c[0]*b[1]);
+
+			return det >= 0.0;
+		}
+		
+		// Signed dihedral angle of edge ab between oriented triangles abc and bad
+		double signed_angle(const Vec3& a, const Vec3& b, const Vec3& c, const Vec3& d) {
+			Vec3 t1_n = triangle_normal(a,b,c);
+			Vec3 t2_n = triangle_normal(b,a,d);
+
+			double angle = acos(t1_n*t2_n);
+			if(leftOf(a,b,c,d))
+				angle *= -1.0;
+
+			return angle;
+		}
+		// 
+		double segment_sphere_intersection_length(const Vec3& va, const Vec3& vb, double radius, const Vec3& center, bool a_in, Vec3& intersection) {
+			double c_a = (vb-va)*(vb-va);
+			double c_b = (va-center)*(vb-va);
+			double c_c = (va-center)*(va-center) - radius*radius;
+			double root = std::sqrt(c_b * c_b - 4.0 * c_a * c_c);
+			double t = (-c_b + root)/(2*c_a);
+			Vec3 temp;
+			if(t < 0) 
+				t = (-c_b - root)/(2*c_a);
+			intersection = (vb-va);
+			intersection *= t;
+			intersection += va;
+
+			if(a_in) {
+				
+				return (intersection-va).Length();
+			} else {
+				return (intersection-vb).Length();
+			}
+		}
 	};
 };
 

@@ -70,11 +70,7 @@ namespace libk3dquadremesh
 			curv->resize(OutputMesh.points->size());
 
 			// Will do this more efficiently later
-			for(int i = 0; i < curv->size(); i++) {
-				curv->at(i).n[0] = diff.mean_curv[i][0];
-				curv->at(i).n[1] = diff.mean_curv[i][1];
-				curv->at(i).n[2] = diff.mean_curv[i][2];
-			}
+
 
 			OutputMesh.vertex_data["PGPMeanCurv"] = curv;
 
@@ -91,11 +87,6 @@ namespace libk3dquadremesh
 			curv->resize(OutputMesh.points->size());
 
 			// Will do this more efficiently later
-			for(int i = 0; i < curv->size(); i++) {
-				curv->at(i).n[0] = diff.mean_curv[i][0];
-				curv->at(i).n[1] = diff.mean_curv[i][1];
-				curv->at(i).n[2] = diff.mean_curv[i][2];
-			}
 
 			OutputMesh.vertex_data["PGPMeanCurv"] = curv;
 
