@@ -54,11 +54,12 @@ namespace detail {
 		{
 		}
 
-		void fill_diff_geom(k3d::mesh& OutputMesh);
+		void fill_diff_geom(k3d::mesh& OutputMesh, bool mean, bool smooth, bool symm);
 		void smooth(int n, double h, int steps);
 		Vec3 normal(vert_t vert);
 		double principal_curve_tensor(vert_t vert, Vec3& curv_dir0,  Vec3& curv_dir1, Vec3& tens);
-		double principal_curve_tensor2(vert_t vert, double radius, Vec3& curv_dir0,  Vec3& curv_dir1, Vec3& norm);		Vec3 isotropic_tensor(Vec3 tensor);
+		double principal_curve_tensor2(vert_t vert, double radius, Vec3& curv_dir0,  Vec3& curv_dir1, Vec3& norm);		
+		Vec3 isotropic_tensor(Vec3 tensor);
 		void eigen(Vec3 tensor, double& e1, double& e2) ;
 		double gaussian_curvature(vert_t vert);
 		Vec3 mean_curvature(vert_t vert);
@@ -77,7 +78,7 @@ namespace detail {
 		std::vector<double> mean_weights;
 		std::vector<double> k1;
 		std::vector<double> k2;
-
+		bool mean;
 		std::vector<bool> edge_searched;
 		std::vector<bool> face_searched;
 
@@ -89,10 +90,11 @@ namespace detail {
 	
 		std::vector<Vec3> vert_i_basis;
 		std::vector<Vec3> vert_j_basis;
+		std::vector<Vec3> vert_k_basis;
 
 		std::vector<Vec3> mean_curv;
 		std::vector<Vec3> curv_tens; // represents a b c values of tensor
-
+		Vec3 project(vert_t vert, const Vec3& x);
 		bool leftOf(const Vec3& va, const Vec3& vb, const Vec3& vc, const Vec3& vd) {
 			Vec3 a(va);
 			Vec3 b(va);
@@ -113,7 +115,13 @@ namespace detail {
 			Vec3 t1_n = triangle_normal(a,b,c);
 			Vec3 t2_n = triangle_normal(b,a,d);
 
+			double dot = t1_n*t2_n;
+
+			if( dot <= -1.0 ) return k3d::pi();  
+			if( dot >=  1.0 ) return 0;  
 			double angle = acos(t1_n*t2_n);
+
+
 			if(leftOf(a,b,c,d))
 				angle *= -1.0;
 
@@ -124,7 +132,13 @@ namespace detail {
 			double c_a = (vb-va)*(vb-va);
 			double c_b = (va-center)*(vb-va);
 			double c_c = (va-center)*(va-center) - radius*radius;
-			double root = std::sqrt(c_b * c_b - 4.0 * c_a * c_c);
+			double root = c_b * c_b - 4.0 * c_a * c_c;
+			if(root < 0) {
+				if(a_in) intersection = vb;
+				else intersection = va;
+				return (vb-va).Length();
+			}
+			root = std::sqrt(root);
 			double t = (-c_b + root)/(2*c_a);
 			Vec3 temp;
 			if(t < 0) 
