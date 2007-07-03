@@ -46,50 +46,39 @@ namespace libk3dquadremesh
 		typedef  k3d::material_client<k3d::mesh_modifier<k3d::persistent<k3d::node> > > base;
 	public:
 		pgp_remesh(k3d::iplugin_factory& Factory, k3d::idocument& Document) :
-			base(Factory, Document)
+			base(Factory, Document),
+			m_mean_coord(init_owner(*this) + init_name("use_mean") + init_label(_("Use Mean Coordinate Weights")) + init_description(_("Use Mean Coordinate Weights")) + init_value(true)),
+			m_smooth(init_owner(*this) + init_name("use_smooth") + init_label(_("Smooth Curvature")) + init_description(_("Smooth Curvature")) + init_value(false)),
+			m_symmetry(init_owner(*this) + init_name("smooth_4") + init_label(_("Smooth as 4-symmetry")) + init_description(_("Smooth as 4-symmetry")) + init_value(false))
 		{
-			k3d::log() << debug << "PGP Construct" << std::endl;
+			m_mean_coord.changed_signal().connect(make_reset_mesh_slot());
+			m_smooth.changed_signal().connect(make_reset_mesh_slot());
+			m_symmetry.changed_signal().connect(make_reset_mesh_slot());
 		}
 
 		~pgp_remesh()
 		{
-			k3d::log() << debug << "PGP Deconstruct" << std::endl;
 		}
 
 		void on_create_mesh(const k3d::mesh& InputMesh, k3d::mesh& OutputMesh) 
 		{
-			k3d::log() << debug << "PGP: create mesh: " << std::endl;
-			detail::mesh_info m(InputMesh); 
-			k3d::log() << debug << "PGP: create mesh: diff geom" << std::endl;
-			detail::diff_geom diff(m);
+			//k3d::log() << debug << "PGP: create mesh: " << std::endl;
+			//detail::mesh_info m(InputMesh); 
+			//k3d::log() << debug << "PGP: create mesh: diff geom" << std::endl;
+			//detail::diff_geom diff(m);
 			OutputMesh = InputMesh;
-			k3d::typed_array<k3d::vector3>* curv_p = new k3d::typed_array<k3d::vector3>;
-			boost::shared_ptr<k3d::typed_array<k3d::vector3> > curv(curv_p);
-			k3d::log() << debug << "PGP: create mesh: fill diff geom" << std::endl;
-			diff.fill_diff_geom(OutputMesh);
-			curv->resize(OutputMesh.points->size());
-
-			// Will do this more efficiently later
-
-
-			OutputMesh.vertex_data["PGPMeanCurv"] = curv;
-
+			//k3d::typed_array<k3d::vector3>* curv_p = new k3d::typed_array<k3d::vector3>;
+			//k3d::log() << debug << "PGP: create mesh: fill diff geom" << std::endl;
+			//diff.fill_diff_geom(OutputMesh);
+			//// Will do this more efficiently later
 		}
 		void on_update_mesh(const k3d::mesh& InputMesh, k3d::mesh& OutputMesh)		  
 		{
-			k3d::log() << debug << "PGP: update mesh" << std::endl;
 			detail::mesh_info m(InputMesh); 
 			detail::diff_geom diff(m);
 			OutputMesh = InputMesh;
 			k3d::typed_array<k3d::vector3>* curv_p = new k3d::typed_array<k3d::vector3>;
-			boost::shared_ptr<k3d::typed_array<k3d::vector3> > curv(curv_p);
-			diff.fill_diff_geom(OutputMesh);
-			curv->resize(OutputMesh.points->size());
-
-			// Will do this more efficiently later
-
-			OutputMesh.vertex_data["PGPMeanCurv"] = curv;
-
+			diff.fill_diff_geom(OutputMesh, m_mean_coord.value(), m_smooth.value(), m_symmetry.value());
 		}
 
 		static k3d::iplugin_factory& get_factory()
@@ -106,6 +95,11 @@ namespace libk3dquadremesh
 			return factory;
 
 		}
+	private:
+		k3d_data(bool, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, with_serialization) m_mean_coord;
+		k3d_data(bool, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, with_serialization) m_smooth;
+		k3d_data(bool, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, with_serialization) m_symmetry;
+
 	};
 
 

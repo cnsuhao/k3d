@@ -45,7 +45,7 @@ namespace detail {
 
 
 	/// TODO: Add desc
-	void diff_geom::fill_diff_geom(k3d::mesh& OutputMesh) 
+	void diff_geom::fill_diff_geom(k3d::mesh& OutputMesh, bool _mean, bool _smooth, bool symm) 
 	{
 		k3d::typed_array<k3d::vector3>* curv_p = new k3d::typed_array<k3d::vector3>;
 		boost::shared_ptr<k3d::typed_array<k3d::vector3> > curv(curv_p);
@@ -70,13 +70,14 @@ namespace detail {
 
 		vert_i_basis.resize(mesh.num_verts);
 		vert_j_basis.resize(mesh.num_verts);
+		vert_k_basis.resize(mesh.num_verts);
 		face_i_basis.resize(mesh.num_faces);
 		face_j_basis.resize(mesh.num_faces);
 		rep_x.resize(mesh.num_verts);
 		rep_y.resize(mesh.num_verts);
 		mean_coords.resize(mesh.num_edges);
 		mean_weights.resize(mesh.num_edges);
-
+		mean = _mean;
 		Vec3 bb_min, bb_max;
 		
 		mesh_info::Vert v = mesh.getVert(0);
@@ -112,34 +113,80 @@ namespace detail {
 		
 
 		//k3d::log() << debug << "Done cot" << std::endl;
-		//for(size_t i = 0; i < mesh.num_verts; ++i) {
-		//	mean_curv[i] = mean_curvature(i);
-		//	curv->at(i).n[0] = mean_curv[i][0];
-		//	curv->at(i).n[1] = mean_curv[i][1];
-		//	curv->at(i).n[2] = mean_curv[i][2];
-		//}
+		for(size_t i = 0; i < mesh.num_verts; ++i) {
+			mean_curv[i] = mean_curvature(i);
+			curv->at(i).n[0] = mean_curv[i][0];
+			curv->at(i).n[1] = mean_curv[i][1];
+			curv->at(i).n[2] = mean_curv[i][2];
+		}
 		//k3d::log() << debug << "Done mean" << std::endl;
-		//for(size_t i = 0; i < mesh.num_verts; ++i) {
-		//	gaus_curv[i] = gaussian_curvature(i);
-		//}
+		for(size_t i = 0; i < mesh.num_verts; ++i) {
+			gaus_curv[i] = gaussian_curvature(i);
+		}
 		Vec3 pc1,pc2, tens;
 		//k3d::log() << debug << "Done gaussian" << std::endl;
 
-		//for(size_t i = 0; i < mesh.num_verts; ++i) {
-		//	principal_curve_tensor(i, pc1,  pc2, tens);
-		//	p1->at(i).n[0] = pc1[0];
-		//	p1->at(i).n[1] = pc1[1];
-		//	p1->at(i).n[2] = pc1[2];
-		//	
-		//	p2->at(i).n[0] = pc2[0];
-		//	p2->at(i).n[1] = pc2[1];
-		//	p2->at(i).n[2] = pc2[2];
-		//}
-
-		k3d::log() << debug << "Start pcd" << std::endl;
 		for(size_t i = 0; i < mesh.num_verts; ++i) {
-			k3d::log() << debug << i << std::endl;
-			principal_curve_tensor2(i, bb_diag/10, pc1,  pc2, tens);
+			principal_curve_tensor(i, pc1,  pc2, tens);
+			p1->at(i).n[0] = pc1[0];
+			p1->at(i).n[1] = pc1[1];
+			p1->at(i).n[2] = pc1[2];
+			
+			p2->at(i).n[0] = pc2[0];
+			p2->at(i).n[1] = pc2[1];
+			p2->at(i).n[2] = pc2[2];
+		}
+
+//		k3d::log() << debug << "Start pcd " << bb_diag/50 << std::endl;
+//		for(size_t i = 0; i < mesh.num_verts; ++i) {
+////			k3d::log() << debug << i << std::endl;
+////			principal_curve_tensor2(i, bb_diag/100, pc1,  pc2, tens);
+//			p1->at(i).n[0] = pc1[0];
+//			p1->at(i).n[1] = pc1[1];
+//			p1->at(i).n[2] = pc1[2];
+//			
+//			p2->at(i).n[0] = pc2[0];
+//			p2->at(i).n[1] = pc2[1];
+//			p2->at(i).n[2] = pc2[2];
+//
+//			curv->at(i).n[0] = tens[0];
+//			curv->at(i).n[1] = tens[1];
+//			curv->at(i).n[2] = tens[2];
+//		}
+//		k3d::log() << debug << "Start pcd" << std::endl;
+
+		if(_smooth)
+			smooth(2, 200, 100);
+
+		for(size_t i = 0; i < mesh.num_verts; ++i) {
+			if(std::abs(rep_y[i]) <= 1E-10 && std::abs(rep_x[i]) <= 1E-10) {
+				p1->at(i).n[0] = 0;
+				p1->at(i).n[1] = 0;
+				p1->at(i).n[2] = 0;
+				
+				p2->at(i).n[0] = 0;
+				p2->at(i).n[1] = 0;
+				p2->at(i).n[2] = 0;
+
+				curv->at(i).n[0] = mean_curv[i][0];
+				curv->at(i).n[1] = mean_curv[i][1];
+				curv->at(i).n[2] = mean_curv[i][2];
+				continue;
+			}
+			double angle = 0.5*atan2(rep_y[i] , rep_x[i]);
+
+			Vec3 temp_i = vert_i_basis[i];
+			Vec3 temp_j = vert_j_basis[i];
+
+			temp_i *= cos(angle);
+			temp_j *= sin(angle);
+			pc1 = temp_i + temp_j;
+
+			temp_i = vert_i_basis[i];
+			temp_j = vert_j_basis[i];
+			temp_i *= cos(angle + k3d::pi_over_2());
+			temp_j *= sin(angle + k3d::pi_over_2());
+			pc2 = temp_i + temp_j;
 			p1->at(i).n[0] = pc1[0];
 			p1->at(i).n[1] = pc1[1];
 			p1->at(i).n[2] = pc1[2];
@@ -148,38 +195,11 @@ namespace detail {
 			p2->at(i).n[1] = pc2[1];
 			p2->at(i).n[2] = pc2[2];
 
-			curv->at(i).n[0] = tens[0];
-			curv->at(i).n[1] = tens[1];
-			curv->at(i).n[2] = tens[2];
+			curv->at(i).n[0] = mean_curv[i][0];
+			curv->at(i).n[1] = mean_curv[i][1];
+			curv->at(i).n[2] = mean_curv[i][2];
+
 		}
-		k3d::log() << debug << "Start pcd" << std::endl;
-
-		//smooth(2, 1, 50);
-
-		//for(size_t i = 0; i < mesh.num_verts; ++i) {
-		//	double angle = 0.5*atan2(rep_y[i] , rep_x[i]);
-
-		//	Vec3 temp_i = vert_i_basis[i];
-		//	Vec3 temp_j = vert_j_basis[i];
-
-		//	temp_i *= cos(angle);
-		//	temp_j *= sin(angle);
-		//	pc1 = temp_i + temp_j;
-
-		//	temp_i = vert_i_basis[i];
-		//	temp_j = vert_j_basis[i];
-		//	temp_i *= cos(angle + k3d::pi_over_2());
-		//	temp_j *= sin(angle + k3d::pi_over_2());
-		//	pc2 = temp_i + temp_j;
-
-		//	p1->at(i).n[0] = pc1[0];
-		//	p1->at(i).n[1] = pc1[1];
-		//	p1->at(i).n[2] = pc1[2];
-		//	
-		//	p2->at(i).n[0] = pc2[0];
-		//	p2->at(i).n[1] = pc2[1];
-		//	p2->at(i).n[2] = pc2[2];
-		//}
 
 		OutputMesh.vertex_data["PGPMeanCurv"] = curv;
 		OutputMesh.vertex_data["PGPPrincCurv1"] = p1;
@@ -198,6 +218,7 @@ namespace detail {
 	}
 
 	// N-symmetry smoothing
+
 	void diff_geom::smooth(int n, double h, int steps) {
 		//std::vector<double> temp_x(mesh.num_verts), temp_y(mesh.num_verts);
 		//std::vector<double> cos_Nangle(mesh.num_edges);
@@ -231,13 +252,17 @@ namespace detail {
 			
 			do {
 				vert_t w = e.comp().vert()();
-				Vec3 geodesic = e.dir();
 
-				Vec3 a = vert_i_basis[v];
-				Vec3 b = vert_i_basis[w];
-				double angle_i = acos(a*geodesic);
-				double angle_j = acos(b*geodesic);
-				double angle = angle_j - angle_i;
+				Vec3 g_v = project(v, e.dir());
+				Vec3 g_w = project(w, e.dir());
+
+				double angle_i = atan2(g_v[1], g_v[0]);
+				double angle_j = atan2(g_w[1], g_w[0]);
+				while(angle_i < 0) angle_i += k3d::pi_times_2();
+				while(angle_j < 0) angle_j += k3d::pi_times_2();
+				double angle = angle_i - angle_j;
+				while(angle < 0) angle += k3d::pi_times_2();
+
 				double c = cos(n*angle);
 				double s = sin(n*angle);
 
@@ -250,81 +275,68 @@ namespace detail {
 		}
 
 		gmm::csr_matrix<double> M;
-		gmm::clean(M1, 1E-12);
+		gmm::clean(M1, 1E-8);
 		gmm::copy(M1, M);
 
 		for(int v = 0; v < mesh.num_verts; v++) {
-			B[2*v]   = rep_x[v];
-			B[2*v+1] = rep_y[v];
+			double angle = (0.5)*atan2(rep_y[v], rep_x[v]);
+			B[2*v]   = cos(n*angle);
+			B[2*v+1] = sin(n*angle);
 		}
 
 	
 		gmm::diagonal_precond<gmm::csr_matrix<double> > PR(M);
 
-
-		for(int i = 0; i < steps; ++i) {
-			gmm::iteration iter(1E-7);
-			iter.set_noisy(1);
-//			gmm::bicgstab(M, x, B, PR, iter);
+		int i = 0;
+		for(i = 0; i < steps; ++i) {
+			gmm::iteration iter(1E-8);
+			iter.set_noisy(0);
+			gmm::bicgstab(M, x, B, PR, iter);
 			double delta = 0;
-			gmm::gmres(M, x, B, PR, 100, iter);
+//			gmm::gmres(M, x, B, PR, 100, iter);
 			for(vert_t v = 0; v < 2*mesh.num_verts; v++) {
 				delta += (B[v]-x[v])*(B[v]-x[v]);
 			}
 			B.swap(x);
 
-			if(delta < 1E-10) break;
+			if(delta < 1E-8) break;
 		}
-
+		std::cout << i << std::endl;
 		for(vert_t v = 0; v < mesh.num_verts; v++) {
-			rep_x[v] = B[2*v];
-			rep_y[v] = B[2*v+1];
+			double angle = (1.0/n)*atan2(B[2*v+1], B[2*v]);
+			rep_x[v] = cos(2*angle);
+			rep_y[v] = sin(2*angle);
 		}
-		//for(vert_t v = 0; v < mesh.num_verts; v++) {
-		//	double x = rep_x[v];
-		//	double y = rep_y[v];
-		//	x *= (1+h);
-		//	y *= (1+h);
 
-		//	mesh_info::Edge e = mesh.getVert(v).edge();
-		//	edge_t first = e();
-		//	do {
-		//		double x_j, y_j;
-
-		//		x_j = rep_x[e.next().vert()()];
-		//		y_j = rep_y[e.next().vert()()];
-		//		
-		//		x -= mean_coords[e()]*h*(cos_Nangle[e()]*x_j - sin_Nangle[e()]*y_j);
-		//		y -= mean_coords[e()]*h*(sin_Nangle[e()]*x_j + cos_Nangle[e()]*y_j);
-
-		//		e = e.comp().next();
-		//	} while(e() != first);
-
-		//	temp_x[v] = x;
-		//	temp_y[v] = y;
-
-		//	error += (x-rep_x[v])*(x-rep_x[v]) + (y-rep_y[v])*(y-rep_y[v]);
-		//}
 	}
 
 
 	Vec3 diff_geom::normal(vert_t vert) 
 	{
 		Vec3 mc = mean_curv[vert];
-		if(mc*mc < 1E-10) {
-			mesh_info::Edge e = mesh.getVert(vert).edge();
-			edge_t first = e();
-			mc[0] = 0;
-			mc[1] = 0;
-			mc[2] = 0;
-			int count = 0;
-			do {
-				mc += triangle_normal(e.face()[0].start(), e.face()[1].start(), e.face()[2].start());
-				count ++;
-				e = e.comp().next();
-			} while(e() != first);
-			mc *= (1.0/count);
+		Vec3 n;
+
+		mesh_info::Edge e = mesh.getVert(vert).edge();
+		edge_t first = e();
+		n[0] = 0;
+		n[1] = 0;
+		n[2] = 0;
+		int count = 0;
+		do {
+			n += triangle_normal(e.face()[0].start(), e.face()[1].start(), e.face()[2].start());
+			count ++;
+			e = e.comp().next();
+		} while(e() != first);
+		n *= (1.0/count);
+
+		if(mc*mc < 1E-8) {
+			n.Normalize();		
+			return n;
 		}
+		if(mc*n < 0) {
+			mc *= -1.0;
+		}
+		mc.Normalize();
 		return mc;	
 	}
 
@@ -432,175 +444,216 @@ namespace detail {
 	//	return error;	
 	//}
 	
+	Vec3 diff_geom::project(vert_t vert, const Vec3& x) {
+		Vec3 dir = vert_k_basis[vert];
+		dir *= (vert_k_basis[vert]*x);
+		dir = x - dir;
+		return Vec3(dir*vert_i_basis[vert], dir*vert_j_basis[vert], 0);
+	}
 
 	double diff_geom::principal_curve_tensor2(vert_t vert, double radius, Vec3& curv_dir0,  Vec3& curv_dir1, Vec3& norm)
 	{
-		std::cout << radius;
-		gmm::dense_matrix<double> tensor(3,3);
-		gmm::clear(tensor);
-		
-		mesh_info::Vert v = mesh.getVert(vert);
-		mesh_info::Edge e = mesh.getEdge(v());
-
-		Vec3 center = v.pos();
-
-		double area = 0;
-		double r_sqr = radius*radius;
-
-		std::vector<edge_t> search;
-
-		search.push_back(e());
-		
-		k3d::log() << debug << "start loop"  << std::endl;
-
-		for(int i = 0; i < search.size(); i++) {
-			e = mesh.getEdge(search[i]);
-			k3d::log() << debug << i << " : search face"  << std::endl;
-
-			if(!face_searched[e.face()()]) {
-				face_searched[e.face()()] = true;
-				// add face area;
-				// also add all edge matrices that have not been added yet
-				// add all edge companions adjacent to faces that have not been searched yet
-
-				Vec3 va = e.start();
-				Vec3 vb = e.next().start();
-				Vec3 vc = e.next().next().start();
-				
-				double p;
-				bool a_in,b_in,c_in;
-				double length,angle;
-				a_in = (va-center)*(va-center) < r_sqr;
-				b_in = (vb-center)*(vb-center) < r_sqr;
-				c_in = (vc-center)*(vc-center) < r_sqr;
-				Vec3 edge;
-				int j = 0;
-				Vec3 intersection[2];
-				double intersection_area;
-
-				if(!face_searched[e.comp().face()()]) {
-					k3d::log() << debug << i << " : check e1"  << std::endl;
-					search.push_back(e.comp()());
-					Vec3 edge = e.dir();
-					if(a_in && b_in) {
-						length = edge.Length();
-					} else if(a_in || b_in) {
-						length = segment_sphere_intersection_length(va, vb, radius, center, a_in, intersection[j]);
-						j++;
-					}
-					angle = signed_angle(va, vb, vc, e.comp().next().end());
-					p = angle*length;
-					k3d::log() << debug << i << " : check e1 " << angle << " " << length << std::endl;
-
-					tensor(0,0) += p*edge[0]*edge[0];
-					tensor(1,1) += p*edge[1]*edge[1];
-					tensor(2,2) += p*edge[2]*edge[2];
-
-					tensor(0,1) += p*edge[0]*edge[1];
-					tensor(0,2) += p*edge[0]*edge[2];
-					tensor(1,2) += p*edge[1]*edge[2];
-				} else if((a_in && !b_in) || (!a_in && b_in)) {
-					segment_sphere_intersection_length(va, vb, radius, center, a_in, intersection[j]);
-					j++;
-				}
-
-				if(!face_searched[e.next().comp().face()()]) {
-					search.push_back(e.next().comp()());
-					Vec3 edge = e.next().dir();
-					if(b_in && c_in) {
-						length = edge.Length();
-					} else if(b_in || c_in) {
-						length = segment_sphere_intersection_length(vb, vc, radius, center, b_in, intersection[j]);
-						j++;
-					}
-					angle = signed_angle(vb, vc, va, e.next().comp().next().end());
-					k3d::log() << debug << i << " : check e2 " << angle << " " << length << std::endl;
-					p = angle*length;
-					tensor(0,0) += p*edge[0]*edge[0];
-					tensor(1,1) += p*edge[1]*edge[1];
-					tensor(2,2) += p*edge[2]*edge[2];
-
-					tensor(0,1) += p*edge[0]*edge[1];
-					tensor(0,2) += p*edge[0]*edge[2];
-					tensor(1,2) += p*edge[1]*edge[2];
-				} else if((b_in && !c_in) || (!b_in && c_in)) {
-					segment_sphere_intersection_length(vb, vc, radius, center, b_in, intersection[j]);
-					j++;
-				}
-
-				if(!face_searched[e.next().next().comp().face()()]) {
-					search.push_back(e.next().next().comp()());
-					Vec3 edge = e.next().next().dir();
-					if(c_in && a_in) {
-						length = edge.Length();
-					} else if(c_in || a_in) {
-						// j should not be 2 here, because that would imply that a_in && c_in is true
-						length = segment_sphere_intersection_length(vc, va, radius, center, c_in, intersection[j]);
-						j++;
-					}
-					angle = signed_angle(vc, va, vb, e.next().comp().next().next().end());
-					k3d::log() << debug << i << " : check e3 " << angle << " " << length << std::endl;
-					p = angle*length;
-					tensor(0,0) += p*edge[0]*edge[0];
-					tensor(1,1) += p*edge[1]*edge[1];
-					tensor(2,2) += p*edge[2]*edge[2];
-
-					tensor(0,1) += p*edge[0]*edge[1];
-					tensor(0,2) += p*edge[0]*edge[2];
-					tensor(1,2) += p*edge[1]*edge[2];
-				} else if((c_in && !a_in) || (!c_in && a_in)) {
-					// j should not be 2 here, because that would imply that a_in && c_in is true
-					segment_sphere_intersection_length(vc, va, radius, center, c_in, intersection[j]);
-					j++;
-				}
-
-				if(j == 2) {
-					double temp_area = triangle_area(va,vb,vc);
-
-					if(!a_in && b_in && c_in) 
-						temp_area -= std::abs(triangle_area(va, intersection[0], intersection[1]));
-					if(a_in && !b_in && c_in) 
-						temp_area -= std::abs(triangle_area(vb, intersection[0], intersection[1]));
-					if(a_in && b_in && !c_in) 
-						temp_area -= std::abs(triangle_area(vb, intersection[0], intersection[1]));
-
-					if(a_in && !b_in && !c_in) 
-						temp_area = std::abs(triangle_area(va, intersection[0], intersection[1]));
-					if(!a_in && b_in && !c_in) 
-						temp_area = std::abs(triangle_area(vb, intersection[0], intersection[1]));
-					if(!a_in && !b_in && c_in) 
-						temp_area = std::abs(triangle_area(vb, intersection[0], intersection[1]));
-
-					area += temp_area;
-				} else {
-					area += triangle_area(va,vb,vc);
-				}
-			}
-		}
-
-		tensor(1,0) = tensor(0,1);
-		tensor(2,0) = tensor(0,2);
-		tensor(2,1) = tensor(1,2);
-		
-		std::cout << std::endl << area << std::endl;
-		gmm::scale(tensor, 1.0/area);
-		std::vector<double> eigval;
-		eigval.resize(3);
-		gmm::dense_matrix<double> eigvect(3,3);
-		std::cout << tensor << std::endl;
-		gmm::symmetric_qr_algorithm(tensor, eigval, eigvect);
-
-		int max,min,n;
-
-		if(eigval[0] > eigval[1] && eigval[1] > eigval[2]) {
-			max = 0; min = 1; n = 2;
-		}
-
-		// cleanup
-		for(int i = 0; i < search.size(); i++) {
-			e = mesh.getEdge(search[i]);
-			face_searched[e.face()()] = false;
-		}
+////		std::cout << radius;
+//		gmm::dense_matrix<double> tensor(3,3);
+//		gmm::clear(tensor);
+//		
+//		mesh_info::Vert v = mesh.getVert(vert);
+//		mesh_info::Edge e = mesh.getEdge(v());
+//
+//		Vec3 center = v.pos();
+//
+//		double area = 0;
+//		double r_sqr = radius*radius;
+//
+//		std::vector<edge_t> search;
+//
+//		search.push_back(e());
+//		
+////		k3d::log() << debug << "start loop"  << std::endl;
+//
+//		for(int i = 0; i < search.size(); i++) {
+//			e = mesh.getEdge(search[i]);
+//			if(!face_searched[e.face()()]) {
+//				face_searched[e.face()()] = true;
+//				// add face area;
+//				// also add all edge matrices that have not been added yet
+//				// add all edge companions adjacent to faces that have not been searched yet
+//
+//				Vec3 va = e.start();
+//				Vec3 vb = e.next().start();
+//				Vec3 vc = e.next().next().start();
+//				
+//				double p;
+//				bool a_in,b_in,c_in;
+//				double length,angle;
+//				a_in = (va-center)*(va-center) < r_sqr;
+//				b_in = (vb-center)*(vb-center) < r_sqr;
+//				c_in = (vc-center)*(vc-center) < r_sqr;
+//				Vec3 edge;
+//				int j = 0;
+//				Vec3 intersection[2];
+//				double intersection_area;
+//
+//				if(!face_searched[e.comp().face()()]) {
+////					k3d::log() << debug << i << " : check e1"  << std::endl;
+//					search.push_back(e.comp()());
+//					Vec3 edge = e.dir();
+//					if(a_in && b_in) {
+//						length = edge.Length();
+//					} else if(a_in || b_in) {
+//						length = segment_sphere_intersection_length(va, vb, radius, center, a_in, intersection[j]);
+//						j++;
+//					}
+//					angle = signed_angle(va, vb, vc, e.comp().next().end());
+//					p = angle*length;
+////					k3d::log() << debug << i << " : check e1 " << angle << " " << length << std::endl;
+//
+//					tensor(0,0) += p*edge[0]*edge[0];
+//					tensor(1,1) += p*edge[1]*edge[1];
+//					tensor(2,2) += p*edge[2]*edge[2];
+//
+//					tensor(0,1) += p*edge[0]*edge[1];
+//					tensor(0,2) += p*edge[0]*edge[2];
+//					tensor(1,2) += p*edge[1]*edge[2];
+//				} else if((a_in && !b_in) || (!a_in && b_in)) {
+//					segment_sphere_intersection_length(va, vb, radius, center, a_in, intersection[j]);
+//					j++;
+//				}
+//
+//				if(!face_searched[e.next().comp().face()()]) {
+//					search.push_back(e.next().comp()());
+//					Vec3 edge = e.next().dir();
+//					if(b_in && c_in) {
+//						length = edge.Length();
+//					} else if(b_in || c_in) {
+//						length = segment_sphere_intersection_length(vb, vc, radius, center, b_in, intersection[j]);
+//						j++;
+//					}
+//					angle = signed_angle(vb, vc, va, e.next().comp().next().end());
+////					k3d::log() << debug << i << " : check e2 " << angle << " " << length << std::endl;
+//					p = angle*length;
+//					tensor(0,0) += p*edge[0]*edge[0];
+//					tensor(1,1) += p*edge[1]*edge[1];
+//					tensor(2,2) += p*edge[2]*edge[2];
+//
+//					tensor(0,1) += p*edge[0]*edge[1];
+//					tensor(0,2) += p*edge[0]*edge[2];
+//					tensor(1,2) += p*edge[1]*edge[2];
+//				} else if((b_in && !c_in) || (!b_in && c_in)) {
+//					segment_sphere_intersection_length(vb, vc, radius, center, b_in, intersection[j]);
+//					j++;
+//				}
+//
+//				if(!face_searched[e.next().next().comp().face()()]) {
+//					search.push_back(e.next().next().comp()());
+//					Vec3 edge = e.next().next().dir();
+//					if(c_in && a_in) {
+//						length = edge.Length();
+//					} else if(c_in || a_in) {
+//						// j should not be 2 here, because that would imply that a_in && c_in is true
+//						length = segment_sphere_intersection_length(vc, va, radius, center, c_in, intersection[j]);
+//						j++;
+//					}
+//					angle = signed_angle(vc, va, vb, e.next().comp().next().next().end());
+////					k3d::log() << debug << i << " : check e3 " << angle << " " << length << std::endl;
+//					p = angle*length;
+//					tensor(0,0) += p*edge[0]*edge[0];
+//					tensor(1,1) += p*edge[1]*edge[1];
+//					tensor(2,2) += p*edge[2]*edge[2];
+//
+//					tensor(0,1) += p*edge[0]*edge[1];
+//					tensor(0,2) += p*edge[0]*edge[2];
+//					tensor(1,2) += p*edge[1]*edge[2];
+//				} else if((c_in && !a_in) || (!c_in && a_in)) {
+//					// j should not be 2 here, because that would imply that a_in && c_in is true
+//					segment_sphere_intersection_length(vc, va, radius, center, c_in, intersection[j]);
+//					j++;
+//				}
+//
+//				if(j == 2) {
+//					double temp_area = triangle_area(va,vb,vc);
+//
+//					if(!a_in && b_in && c_in) 
+//						temp_area -= std::abs(triangle_area(va, intersection[0], intersection[1]));
+//					if(a_in && !b_in && c_in) 
+//						temp_area -= std::abs(triangle_area(vb, intersection[0], intersection[1]));
+//					if(a_in && b_in && !c_in) 
+//						temp_area -= std::abs(triangle_area(vb, intersection[0], intersection[1]));
+//
+//					if(a_in && !b_in && !c_in) 
+//						temp_area = std::abs(triangle_area(va, intersection[0], intersection[1]));
+//					if(!a_in && b_in && !c_in) 
+//						temp_area = std::abs(triangle_area(vb, intersection[0], intersection[1]));
+//					if(!a_in && !b_in && c_in) 
+//						temp_area = std::abs(triangle_area(vb, intersection[0], intersection[1]));
+//
+//					area += temp_area;
+//				} else {
+//					area += triangle_area(va,vb,vc);
+//				}
+//			}
+//		}
+//
+//		tensor(1,0) = tensor(0,1);
+//		tensor(2,0) = tensor(0,2);
+//		tensor(2,1) = tensor(1,2);
+//		
+////		std::cout << std::endl << area << std::endl;
+//		gmm::scale(tensor, 1.0/area);
+//		std::vector<double> eigval;
+//		eigval.resize(3);
+//		gmm::dense_matrix<double> eigvect(3,3);
+////		std::cout << tensor << std::endl;
+//		gmm::symmetric_qr_algorithm(tensor, eigval, eigvect);
+//
+////		std::cout << eigvect << std::endl;
+////		std::cout << eigval << std::endl;
+//
+//		int max,min,n;
+//		double ev[3];
+//		ev[0] = std::abs(eigval[0]);
+//		ev[1] = std::abs(eigval[1]);
+//		ev[2] = std::abs(eigval[2]);
+//
+//		if(ev[0] > ev[1] && ev[1] > ev[2]) {
+//			max = 0; min = 1; n = 2;
+//		}
+//		if(ev[2] > ev[1] && ev[1] > ev[0]) {
+//			max = 2; min = 1; n = 0;
+//		}
+//
+//		if(ev[1] > ev[2] && ev[2] > ev[0]) {
+//			max = 1; min = 2; n = 0;
+//		}
+//		if(ev[0] > ev[2] && ev[2] > ev[1]) {
+//			max = 0; min = 2; n = 1;
+//		}
+//
+//		if(ev[2] > ev[0] && ev[0] > ev[1]) {
+//			max = 2; min = 0; n = 1;
+//		}
+//		if(ev[1] > ev[0] && ev[0] > ev[2]) {
+//			max = 1; min = 0; n = 2;
+//		}
+//		//std::cout << max << " " << min << " " << n << std::endl << "-----------" << std::endl;
+//
+//		curv_dir0[0] = eigvect(0,max);
+//		curv_dir0[1] = eigvect(1,max);
+//		curv_dir0[2] = eigvect(2,max);
+//
+//		curv_dir1[0] = eigvect(0,min);
+//		curv_dir1[1] = eigvect(1,min);
+//		curv_dir1[2] = eigvect(2,min);
+//
+//		norm[0] = eigvect(0,n);
+//		norm[1] = eigvect(1,n);
+//		norm[2] = eigvect(2,n);
+//
+//		// cleanup
+//		for(int i = 0; i < search.size(); i++) {
+//			e = mesh.getEdge(search[i]);
+//			face_searched[e.face()()] = false;
+//		}
 	}
 
 	double diff_geom::principal_curve_tensor(vert_t vert, Vec3& curv_dir0,  Vec3& curv_dir1, Vec3& tens)
@@ -617,12 +670,24 @@ namespace detail {
 		Vec3 ihat, jhat, khat;
 		double d_x, d_y, w, k, len_square;
 
-		double AtA[3] = {0,0,0}; // Symmetric 2x2
-		double Atb[2] = {0,0}; 
+		//double AtA[3] = {0,0,0}; // Symmetric 2x2
+		//double Atb[2] = {0,0}; 
+
 		double a,b,c;
+
 		double Kh2 = mean_curv[vert].Length();
+		if(std::abs(Kh2) < 1E-8) {
+			rep_x[vert] = 0;
+			rep_y[vert] = 0;
+
+			curv_dir0 = Vec3();
+			curv_dir1 = Vec3();
+			tens = Vec3();
+			return 0;
+		}
+
 		mesh_info::Vert v(mesh, vert);
-		mesh_info::Edge e = v.edge();
+		mesh_info::Edge e = v.edge().comp().next();
 		edge_t first = e();
 				
 		bool print = (v.pos()[2] == 0.0);// || (v() % 100 == 0);
@@ -640,6 +705,7 @@ namespace detail {
 
 		vert_i_basis[vert] = ihat;
 		vert_j_basis[vert] = jhat;
+		vert_k_basis[vert] = khat;
 
 		if(print) {
 			k3d::log() << "----" << v() << "----" << std::endl; 
@@ -653,13 +719,21 @@ namespace detail {
 
 		double len;
 		double area = 0;
-		double valence = 0;
+		int valence = 0;
 
 		do {
 			area += area_mixed(e());
+			valence++;
 			e = e.comp().next();
 		} while(e() != first);
 
+		gmm::dense_matrix<double> A(valence, 3);
+		gmm::dense_matrix<double> AtA(3, 3);		
+		std::vector<double> B(valence, 0.0);
+		std::vector<double> AtB(3,0.0);
+		std::vector<double> X(3,0.0);
+
+		int i = 0;
 		area = 1.0/area;
 		int n = 0;
 		do {
@@ -681,51 +755,72 @@ namespace detail {
 			n++;
 			len_square = e.dir() * e.dir(); 
 
-			//w = (cotangent(e()) + cotangent(e.comp()())) * len_square;
+//			w = area*(cotangent(e()) + cotangent(e.comp()())) * len_square;
 			w = mean_coords[e()];
 			k = 2.0*(e.dir()*khat)/len_square;
 			
 			if(print)
 				k3d::log()  << ", w = ("<<w<<")";
 
-			double x2y2 = (d_x*d_x - d_y*d_y);
-			double xy2  = 2.0*d_x*d_y;
+			//double x2y2 = (d_x*d_x - d_y*d_y);
+			//double xy2  = 2.0*d_x*d_y;
 			
 			if(print)
 				k3d::log() << ", k = (" << k << ")\n";
-			
-			AtA[0] += w * x2y2 * x2y2;
-			AtA[1] += w * xy2 * x2y2;
-			AtA[2] += w * xy2 * xy2;
+			w = std::sqrt(std::abs(w));
+			A(i, 0) = w* d_x * d_x;
+			A(i, 1) = w* 2.0 *d_x * d_y;
+			A(i, 2) = w* d_y * d_y;
+			B[i] = w * k;
 
-			double sum = w * (k - Kh2 * d_y * d_y);
-			Atb[0] += sum * x2y2;
-			Atb[1] += sum * xy2;
+			//AtA[0] += w * x2y2 * x2y2;
+			//AtA[1] += w * xy2 * x2y2;
+			//AtA[2] += w * xy2 * xy2;
+
+			//double sum = w * (k - Kh2 * d_y * d_y);
+			//Atb[0] += sum * x2y2;
+			//Atb[1] += sum * xy2;
 
 			e = e.comp().next();
+			i++;
 		} while(e() != first);
 
-		if(print) {
-			k3d::log() << "AtA = (" << AtA[0] << ", " << AtA[1] << ", " << AtA[2] << ")" << std::endl; 
-			k3d::log() << "Atb = (" << Atb[0] << ", " << Atb[1] << ")" << std::endl; 
-			k3d::log() << "K G = (" << gaus_curv[vert] << ")" << std::endl; 			
-		}
+		//if(print) {
+		//	k3d::log() << "AtA = (" << AtA[0] << ", " << AtA[1] << ", " << AtA[2] << ")" << std::endl; 
+		//	k3d::log() << "Atb = (" << Atb[0] << ", " << Atb[1] << ")" << std::endl; 
+		//	k3d::log() << "K G = (" << gaus_curv[vert] << ")" << std::endl; 			
+		//}
 
-		double det = AtA[0]*AtA[2] - AtA[1]*AtA[1];
+		//double det = AtA[0]*AtA[2] - AtA[1]*AtA[1];
+		std::vector<int> pivot; pivot.resize(3);
+
 		
-		if(det == 0.0) {
+		gmm::mult(gmm::transposed(A), B, AtB);
+		gmm::mult(gmm::transposed(A), A, AtA);
+
+		gmm::lu_factor(AtA, pivot);
+		double det = gmm::lu_det(AtA);
+
+		if(std::abs(det) < 1E-10) {
 			rep_x[vert] = 0;
 			rep_y[vert] = 0;
 
 			curv_dir0 = Vec3();
 			curv_dir1 = Vec3();
+			tens = Vec3();
 			return 0;
 		}
-		det = 1/det;
+		gmm::lu_solve(AtA, pivot, X, AtB);
+		
+		a = X[0];
+		b = X[1];
+		c = X[2];
 
-		a = det*(AtA[2]*Atb[0] - AtA[1]*Atb[1]);
-		b = det*(AtA[0]*Atb[1] - AtA[1]*Atb[0]);
-		c = Kh2 - a;
+		//det = 1/det;
+
+		//a = det*(AtA[2]*Atb[0] - AtA[1]*Atb[1]);
+		//b = det*(AtA[0]*Atb[1] - AtA[1]*Atb[0]);
+		//c = Kh2 - a;
 		
 		double error = gaus_curv[vert] - a*c + b*b;
 		//if(error > 1) {
@@ -749,7 +844,7 @@ namespace detail {
 
 		double e1, e2;
 		eigen(tens, e1, e2);
-
+		
 		if(print) {
 			k3d::log() << "eigen = (" << e1 << ", " << e2 << ")" << std::endl;  
 		}
@@ -810,8 +905,13 @@ namespace detail {
 		
 			AB.Normalize();
 			AC.Normalize();
+			double dot = AB*AC;
 
-			curv -= acos(AB * AC);
+			if( dot <= -1.0 ) return k3d::pi();  
+			if( dot >=  1.0 ) return 0;  
+			double angle = 
+	
+			curv -= acos(dot);
 			edge = mesh.edge_ccw[mesh.edge_comp[edge]];
 
 		} while(edge != mesh.vert_edge[vert]);
