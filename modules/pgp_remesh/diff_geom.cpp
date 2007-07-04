@@ -42,51 +42,51 @@ namespace libk3dquadremesh
 namespace detail {
 	#include <modules/qslim/MxMath.h>
 	#include <modules/qslim/MxTriangle.h>
-
-
-	/// TODO: Add desc
-	void diff_geom::fill_diff_geom(k3d::mesh& OutputMesh, bool _mean, bool _smooth, bool symm) 
+	Vec3 triangle_raw_normal(const Vec3& v1, const Vec3& v2, const Vec3& v3)
 	{
-		k3d::typed_array<k3d::vector3>* curv_p = new k3d::typed_array<k3d::vector3>;
-		boost::shared_ptr<k3d::typed_array<k3d::vector3> > curv(curv_p);
+		Vec3 a = v2 - v1;
+		Vec3 b = v3 - v1;
+		return a^b;
+	}
 
-		k3d::typed_array<k3d::vector3>* p1_p = new k3d::typed_array<k3d::vector3>;
-		boost::shared_ptr<k3d::typed_array<k3d::vector3> > p1(p1_p);
+	double triangle_area(const Vec3& v1, const Vec3& v2, const Vec3& v3)
+	{
+		return 0.5 * norm(triangle_raw_normal(v1, v2, v3));
+	}
 
-		k3d::typed_array<k3d::vector3>* p2_p = new k3d::typed_array<k3d::vector3>;
-		boost::shared_ptr<k3d::typed_array<k3d::vector3> > p2(p2_p);
-
-		k3d::typed_array<std::vector<edge_t> >* ring_p = new k3d::typed_array<std::vector<edge_t> >;
-		boost::shared_ptr<k3d::typed_array<std::vector<edge_t> > > ring(ring_p);
-
-		curv->resize(mesh.num_verts);
-		p1->resize(mesh.num_verts);
-		p2->resize(mesh.num_verts);
-		ring->resize(mesh.num_verts);
-		edge_cot.resize(mesh.num_edges);
-		mean_curv.resize(mesh.num_edges);
-		gaus_curv.resize(mesh.num_edges);
-		face_searched.resize(mesh.num_faces, false);
-
-		vert_i_basis.resize(mesh.num_verts);
-		vert_j_basis.resize(mesh.num_verts);
-		vert_k_basis.resize(mesh.num_verts);
-		face_i_basis.resize(mesh.num_faces);
-		face_j_basis.resize(mesh.num_faces);
-		rep_x.resize(mesh.num_verts);
-		rep_y.resize(mesh.num_verts);
-		mean_coords.resize(mesh.num_edges);
-		mean_weights.resize(mesh.num_edges);
-		mean = _mean;
-		Vec3 bb_min, bb_max;
+	
+	Vec3 triangle_normal(const Vec3& v1, const Vec3& v2, const Vec3& v3)
+	{
+		Vec3 n = triangle_raw_normal(v1, v2, v3);
+		n.Normalize();
 		
-		mesh_info::Vert v = mesh.getVert(0);
-		bb_min[0] = bb_max[0] = v.pos()[0];
-		bb_min[1] = bb_max[1] = v.pos()[1];
-		bb_min[2] = bb_max[2] = v.pos()[2];
+		return n;
+	}
 
-		for(size_t i = 1; i < mesh.num_verts; ++i) {
-			mesh_info::Vert v = mesh.getVert(i);
+
+	
+	void diff_geom::initialize() {
+		edge_cot.resize(mesh->num_edges);
+		mean_curv.resize(mesh->num_edges);
+		gaus_curv.resize(mesh->num_edges);
+		face_searched.resize(mesh->num_faces, false);
+
+		k1.resize(mesh->num_verts);
+		k2.resize(mesh->num_verts);
+		tangent_basis_i.resize(mesh->num_verts);
+		tangent_basis_j.resize(mesh->num_verts);
+		tangent_basis_k.resize(mesh->num_verts);
+		tensor.resize(mesh->num_verts);
+		mean_coords.resize(mesh->num_edges);
+		mean_weights.resize(mesh->num_edges);
+
+		Vec3 bb_min, bb_max;
+		bb_min[0] = bb_max[0] = mesh->getVert(0).pos()[0];
+		bb_min[1] = bb_max[1] = mesh->getVert(0).pos()[1];
+		bb_min[2] = bb_max[2] = mesh->getVert(0).pos()[2];
+
+		for(size_t i = 1; i < mesh->num_verts; ++i) {
+			mesh_info::Vert v = mesh->getVert(i);
 			if(v.pos()[0] > bb_max[0]) bb_max[0] = v.pos()[0];
 			if(v.pos()[1] > bb_max[1]) bb_max[1] = v.pos()[1];
 			if(v.pos()[2] > bb_max[2]) bb_max[2] = v.pos()[2];
@@ -98,68 +98,82 @@ namespace detail {
 
 		bb_diag = (bb_min-bb_max).Length();
 
-		k3d::log() << debug << "Start fill" << std::endl;
-		for(size_t i = 0; i < mesh.num_edges; ++i) {
+//		std::cout << " cot \n";
+		for(size_t i = 0; i < mesh->num_edges; ++i) {
 			edge_cot[i] = cotangent(i);
 		}
 		
-		for(size_t i = 0; i < mesh.num_edges; ++i) {
+//		std::cout << " gauss \n";
+		for(size_t i = 0; i < mesh->num_verts; ++i) {
+			gaus_curv[i] = gaussian_curvature(i);
+		}
+
+//		std::cout << " weight \n";
+		for(size_t i = 0; i < mesh->num_edges; ++i) {
 			mean_weights[i] = mean_weight(i);
 		}
 
-		for(size_t i = 0; i < mesh.num_edges; ++i) {
+//		std::cout << " coordt \n";
+		for(size_t i = 0; i < mesh->num_edges; ++i) {
 			mean_coords[i] = mean_coord(i);
 		}
-		
 
-		//k3d::log() << debug << "Done cot" << std::endl;
-		for(size_t i = 0; i < mesh.num_verts; ++i) {
+//		std::cout << " mean curv \n";
+		for(size_t i = 0; i < mesh->num_verts; ++i) {
 			mean_curv[i] = mean_curvature(i);
-			curv->at(i).n[0] = mean_curv[i][0];
-			curv->at(i).n[1] = mean_curv[i][1];
-			curv->at(i).n[2] = mean_curv[i][2];
 		}
-		//k3d::log() << debug << "Done mean" << std::endl;
-		for(size_t i = 0; i < mesh.num_verts; ++i) {
-			gaus_curv[i] = gaussian_curvature(i);
-		}
-		Vec3 pc1,pc2, tens;
-		//k3d::log() << debug << "Done gaussian" << std::endl;
 
-		for(size_t i = 0; i < mesh.num_verts; ++i) {
-			principal_curve_tensor(i, pc1,  pc2, tens);
-			p1->at(i).n[0] = pc1[0];
-			p1->at(i).n[1] = pc1[1];
-			p1->at(i).n[2] = pc1[2];
+//		std::cout << " basis \n";
+		for(size_t i = 0; i < mesh->num_verts; ++i) {
+			mesh_info::Vert v = mesh->getVert(i);
+			mesh_info::Edge e = v.edge();
+	
+			Vec3 ihat = e.dir();
+			ihat.Normalize();
 			
-			p2->at(i).n[0] = pc2[0];
-			p2->at(i).n[1] = pc2[1];
-			p2->at(i).n[2] = pc2[2];
+			Vec3 khat = normal(i);
+			Vec3 jhat = khat ^ ihat;
+			ihat = jhat ^ khat;
+
+			ihat.Normalize();
+			jhat.Normalize();
+			khat.Normalize();
+
+			tangent_basis_i[i] = ihat;
+			tangent_basis_j[i] = jhat;
+			tangent_basis_k[i] = khat;
 		}
 
-//		k3d::log() << debug << "Start pcd " << bb_diag/50 << std::endl;
-//		for(size_t i = 0; i < mesh.num_verts; ++i) {
-////			k3d::log() << debug << i << std::endl;
-////			principal_curve_tensor2(i, bb_diag/100, pc1,  pc2, tens);
-//			p1->at(i).n[0] = pc1[0];
-//			p1->at(i).n[1] = pc1[1];
-//			p1->at(i).n[2] = pc1[2];
-//			
-//			p2->at(i).n[0] = pc2[0];
-//			p2->at(i).n[1] = pc2[1];
-//			p2->at(i).n[2] = pc2[2];
-//
-//			curv->at(i).n[0] = tens[0];
-//			curv->at(i).n[1] = tens[1];
-//			curv->at(i).n[2] = tens[2];
-//		}
-//		k3d::log() << debug << "Start pcd" << std::endl;
 
-		if(_smooth)
-			smooth(2, 200, 100);
+//		std::cout << " pc \n";
+		for(size_t i = 0; i < mesh->num_verts; ++i) {
+			principal_curve_tensor(i, tensor[i]);
+		}
 
-		for(size_t i = 0; i < mesh.num_verts; ++i) {
-			if(std::abs(rep_y[i]) <= 1E-10 && std::abs(rep_x[i]) <= 1E-10) {
+//		std::cout << " end \n";
+
+	}
+	
+	
+	void diff_geom::dump_draw_data(k3d::mesh& OutputMesh) 
+	{
+		k3d::typed_array<k3d::vector3>* curv_p = new k3d::typed_array<k3d::vector3>;
+		boost::shared_ptr<k3d::typed_array<k3d::vector3> > curv(curv_p);
+		k3d::typed_array<k3d::vector3>* p1_p = new k3d::typed_array<k3d::vector3>;
+		boost::shared_ptr<k3d::typed_array<k3d::vector3> > p1(p1_p);
+
+		k3d::typed_array<k3d::vector3>* p2_p = new k3d::typed_array<k3d::vector3>;
+		boost::shared_ptr<k3d::typed_array<k3d::vector3> > p2(p2_p);
+
+		curv->resize(mesh->num_verts);
+		p1->resize(mesh->num_verts);
+		p2->resize(mesh->num_verts);
+
+
+		Vec3 pc1,pc2, tens;
+//		std::cout << " dump 1 \n";
+		for(size_t i = 0; i < mesh->num_verts; ++i) {
+			if(std::abs(tensor[i].first) <= 1E-10 && std::abs(tensor[i].second) <= 1E-10) {
 				p1->at(i).n[0] = 0;
 				p1->at(i).n[1] = 0;
 				p1->at(i).n[2] = 0;
@@ -168,22 +182,22 @@ namespace detail {
 				p2->at(i).n[1] = 0;
 				p2->at(i).n[2] = 0;
 
-				curv->at(i).n[0] = mean_curv[i][0];
-				curv->at(i).n[1] = mean_curv[i][1];
-				curv->at(i).n[2] = mean_curv[i][2];
+				curv->at(i).n[0] = 0;//mean_curv[i][0];
+				curv->at(i).n[1] = 0;//mean_curv[i][1];
+				curv->at(i).n[2] = 0;//mean_curv[i][2];
 				continue;
 			}
-			double angle = 0.5*atan2(rep_y[i] , rep_x[i]);
+			double angle = 0.5*atan2(tensor[i].second , tensor[i].first);
 
-			Vec3 temp_i = vert_i_basis[i];
-			Vec3 temp_j = vert_j_basis[i];
+			Vec3 temp_i = tangent_basis_i[i];
+			Vec3 temp_j = tangent_basis_j[i];
 
 			temp_i *= cos(angle);
 			temp_j *= sin(angle);
 			pc1 = temp_i + temp_j;
 
-			temp_i = vert_i_basis[i];
-			temp_j = vert_j_basis[i];
+			temp_i = tangent_basis_i[i];
+			temp_j = tangent_basis_j[i];
 			temp_i *= cos(angle + k3d::pi_over_2());
 			temp_j *= sin(angle + k3d::pi_over_2());
 			pc2 = temp_i + temp_j;
@@ -195,56 +209,44 @@ namespace detail {
 			p2->at(i).n[1] = pc2[1];
 			p2->at(i).n[2] = pc2[2];
 
-			curv->at(i).n[0] = mean_curv[i][0];
-			curv->at(i).n[1] = mean_curv[i][1];
-			curv->at(i).n[2] = mean_curv[i][2];
-
+			curv->at(i).n[0] = 0;//mean_curv[i][0];
+			curv->at(i).n[1] = 0;//mean_curv[i][1];
+			curv->at(i).n[2] = 0;//mean_curv[i][2];
 		}
 
 		OutputMesh.vertex_data["PGPMeanCurv"] = curv;
 		OutputMesh.vertex_data["PGPPrincCurv1"] = p1;
 		OutputMesh.vertex_data["PGPPrincCurv2"] = p2;
-		OutputMesh.vertex_data["PGPOneRing"] = ring;
-
-		for(size_t i = 0; i < mesh.num_verts; ++i) {
-			mesh_info::Vert v = mesh.getVert(i);
-			mesh_info::Edge e = v.edge();
-			edge_t first = e();
-			do {
-				ring->at(i).push_back(e.next().vert().index);
-				e = e.comp().next();
-			} while(e() != first);
-		}
 	}
 
-	// N-symmetry smoothing
-
-	void diff_geom::smooth(int n, double h, int steps) {
-		//std::vector<double> temp_x(mesh.num_verts), temp_y(mesh.num_verts);
-		//std::vector<double> cos_Nangle(mesh.num_edges);
-		//std::vector<double> sin_Nangle(mesh.num_edges);
+	void diff_geom::smooth(double h, int steps, bool four_symm = false) {
+		//std::vector<double> temp_x(mesh->num_verts), temp_y(mesh->num_verts);
+		//std::vector<double> cos_Nangle(mesh->num_edges);
+		//std::vector<double> sin_Nangle(mesh->num_edges);
 		//int count = steps;
 		//double error = 1;
-		//temp_x.resize(mesh.num_verts);
-		//temp_y.resize(mesh.num_verts);
+		//temp_x.resize(mesh->num_verts);
+		//temp_y.resize(mesh->num_verts);
 
-		//cos_Nangle.resize(mesh.num_edges);
-		//sin_Nangle.resize(mesh.num_edges);
+		//cos_Nangle.resize(mesh->num_edges);
+		//sin_Nangle.resize(mesh->num_edges);
 
-		//for(edge_t e = 0; e < mesh.num_edges; e++) {
-		//	Vec3 a = vert_i_basis[mesh.edge_vert[e]];
-		//	Vec3 b = vert_i_basis[mesh.edge_vert[mesh.edge_ccw[e]]];
+		//for(edge_t e = 0; e < mesh->num_edges; e++) {
+		//	Vec3 a = vert_i_basis[mesh->edge_vert[e]];
+		//	Vec3 b = vert_i_basis[mesh->edge_vert[mesh->edge_ccw[e]]];
 		//	double angle = 0.5*acos(a*b);
 		//	cos_Nangle[e] = cos(n*angle);
 		//	sin_Nangle[e] = sin(n*angle);
 		//}
+		if(steps == 0) return;
+		double n = four_symm ? 4 : 2;		
+		std::vector<double> B(2*mesh->num_verts);
+		std::vector<double> x(2*mesh->num_verts);
 		
-		std::vector<double> B(2*mesh.num_verts);
-		std::vector<double> x(2*mesh.num_verts);
 		
-		gmm::row_matrix< gmm::wsvector<double> > M1(2*mesh.num_verts, 2*mesh.num_verts);
-		for(vert_t v = 0; v < mesh.num_verts; v++) {
-			mesh_info::Edge e = mesh.getVert(v).edge();
+		gmm::row_matrix< gmm::wsvector<double> > M1(2*mesh->num_verts, 2*mesh->num_verts);
+		for(vert_t v = 0; v < mesh->num_verts; v++) {
+			mesh_info::Edge e = mesh->getVert(v).edge();
 			edge_t first = e();
 			
 			M1(2*v, 2*v) = 1.0+h;
@@ -274,38 +276,48 @@ namespace detail {
 			} while(e() != first);		
 		}
 
-		gmm::csr_matrix<double> M;
+		gmm::csr_matrix<double> M; // ! pre compute this!@!!!
 		gmm::clean(M1, 1E-8);
 		gmm::copy(M1, M);
 
-		for(int v = 0; v < mesh.num_verts; v++) {
-			double angle = (0.5)*atan2(rep_y[v], rep_x[v]);
-			B[2*v]   = cos(n*angle);
-			B[2*v+1] = sin(n*angle);
+		if(four_symm) {
+			for(int v = 0; v < mesh->num_verts; v++) {
+				double angle = (0.5)*atan2(tensor[v].second, tensor[v].first);
+				B[2*v]   = cos(n*angle);
+				B[2*v+1] = sin(n*angle);
+			} 
+		} else {
+			for(int v = 0; v < mesh->num_verts; v++) {
+				B[2*v]   = tensor[v].first;
+				B[2*v+1] = tensor[v].second;
+			} 
 		}
+
 
 	
 		gmm::diagonal_precond<gmm::csr_matrix<double> > PR(M);
 
 		int i = 0;
 		for(i = 0; i < steps; ++i) {
-			gmm::iteration iter(1E-8);
+			gmm::iteration iter(1E-10);
 			iter.set_noisy(0);
+			//iter.set_maxiter(150);
 			gmm::bicgstab(M, x, B, PR, iter);
 			double delta = 0;
 //			gmm::gmres(M, x, B, PR, 100, iter);
-			for(vert_t v = 0; v < 2*mesh.num_verts; v++) {
+			for(vert_t v = 0; v < 2*mesh->num_verts; v++) {
 				delta += (B[v]-x[v])*(B[v]-x[v]);
 			}
 			B.swap(x);
 
-			if(delta < 1E-8) break;
+			if(delta < 1E-10) break;
 		}
-		std::cout << i << std::endl;
-		for(vert_t v = 0; v < mesh.num_verts; v++) {
+		std::cout << i << "/" << steps << std::endl;
+
+		for(vert_t v = 0; v < mesh->num_verts; v++) {
 			double angle = (1.0/n)*atan2(B[2*v+1], B[2*v]);
-			rep_x[v] = cos(2*angle);
-			rep_y[v] = sin(2*angle);
+			tensor[v].first  = cos(2*angle);
+			tensor[v].second = sin(2*angle);
 		}
 
 	}
@@ -316,7 +328,7 @@ namespace detail {
 		Vec3 mc = mean_curv[vert];
 		Vec3 n;
 
-		mesh_info::Edge e = mesh.getVert(vert).edge();
+		mesh_info::Edge e = mesh->getVert(vert).edge();
 		edge_t first = e();
 		n[0] = 0;
 		n[1] = 0;
@@ -419,8 +431,8 @@ namespace detail {
 	//	
 	//	double error = gaus_curv[vert] - a*c + b*b;
 	//	tens = Vec3(a,b,c);
-	//	//Vec3 vi = Vec3(mesh.points->at(vert).n);
-	//	//Vec3 vj = Vec3(mesh.points->at(vert_edge[edge_comp[edge]]).n);
+	//	//Vec3 vi = Vec3(mesh->points->at(vert).n);
+	//	//Vec3 vj = Vec3(mesh->points->at(vert_edge[edge_comp[edge]]).n);
 	//	Vec3 iso = isotropic_tensor(tens);
 	//	
 	//	double *t = iso;
@@ -445,10 +457,10 @@ namespace detail {
 	//}
 	
 	Vec3 diff_geom::project(vert_t vert, const Vec3& x) {
-		Vec3 dir = vert_k_basis[vert];
-		dir *= (vert_k_basis[vert]*x);
+		Vec3 dir = tangent_basis_k[vert];
+		dir *= (tangent_basis_k[vert]*x);
 		dir = x - dir;
-		return Vec3(dir*vert_i_basis[vert], dir*vert_j_basis[vert], 0);
+		return Vec3(dir*tangent_basis_i[vert], dir*tangent_basis_j[vert], 0);
 	}
 
 	double diff_geom::principal_curve_tensor2(vert_t vert, double radius, Vec3& curv_dir0,  Vec3& curv_dir1, Vec3& norm)
@@ -457,8 +469,8 @@ namespace detail {
 //		gmm::dense_matrix<double> tensor(3,3);
 //		gmm::clear(tensor);
 //		
-//		mesh_info::Vert v = mesh.getVert(vert);
-//		mesh_info::Edge e = mesh.getEdge(v());
+//		mesh_info::Vert v = mesh->getVert(vert);
+//		mesh_info::Edge e = mesh->getEdge(v());
 //
 //		Vec3 center = v.pos();
 //
@@ -472,7 +484,7 @@ namespace detail {
 ////		k3d::log() << debug << "start loop"  << std::endl;
 //
 //		for(int i = 0; i < search.size(); i++) {
-//			e = mesh.getEdge(search[i]);
+//			e = mesh->getEdge(search[i]);
 //			if(!face_searched[e.face()()]) {
 //				face_searched[e.face()()] = true;
 //				// add face area;
@@ -651,12 +663,12 @@ namespace detail {
 //
 //		// cleanup
 //		for(int i = 0; i < search.size(); i++) {
-//			e = mesh.getEdge(search[i]);
+//			e = mesh->getEdge(search[i]);
 //			face_searched[e.face()()] = false;
 //		}
 	}
 
-	double diff_geom::principal_curve_tensor(vert_t vert, Vec3& curv_dir0,  Vec3& curv_dir1, Vec3& tens)
+	double diff_geom::principal_curve_tensor(vert_t vert, std::pair<double,double>& iso)
 	{
 		// Choose basis for plane
 		// For each edge adjacent to vert
@@ -667,45 +679,27 @@ namespace detail {
 		//  c = 2 * Kh - a
 		//  check error = kg - (a*c - b*b)
 		
-		Vec3 ihat, jhat, khat;
 		double d_x, d_y, w, k, len_square;
 
 		//double AtA[3] = {0,0,0}; // Symmetric 2x2
 		//double Atb[2] = {0,0}; 
 
 		double a,b,c;
+		bool print = false;
+		mesh_info::Vert v = mesh->getVert(vert);
+		mesh_info::Edge e = v.edge();
+		vert_t first = e();
 
 		double Kh2 = mean_curv[vert].Length();
 		if(std::abs(Kh2) < 1E-8) {
-			rep_x[vert] = 0;
-			rep_y[vert] = 0;
-
-			curv_dir0 = Vec3();
-			curv_dir1 = Vec3();
-			tens = Vec3();
+			iso.first = 0;
+			iso.second = 0;
 			return 0;
 		}
 
-		mesh_info::Vert v(mesh, vert);
-		mesh_info::Edge e = v.edge().comp().next();
-		edge_t first = e();
-				
-		bool print = (v.pos()[2] == 0.0);// || (v() % 100 == 0);
-		
-		ihat = e.dir();
-		ihat.Normalize();
-		
-		khat = normal(vert);
-		jhat = khat ^ ihat;
-		ihat = jhat ^ khat;
-
-		ihat.Normalize();
-		jhat.Normalize();
-		khat.Normalize();
-
-		vert_i_basis[vert] = ihat;
-		vert_j_basis[vert] = jhat;
-		vert_k_basis[vert] = khat;
+		Vec3 ihat = tangent_basis_i[vert];
+		Vec3 jhat = tangent_basis_j[vert];
+		Vec3 khat = tangent_basis_k[vert];
 
 		if(print) {
 			k3d::log() << "----" << v() << "----" << std::endl; 
@@ -714,6 +708,7 @@ namespace detail {
 			k3d::log() << "k = (" << khat[0] << ", " << khat[1] << ", " << khat[2] << ")" << std::endl; 
 			k3d::log() << "Kh2 = (" << Kh2 << ")" << std::endl; 			
 		}
+
 
 		Vec3 d;
 
@@ -802,12 +797,9 @@ namespace detail {
 		double det = gmm::lu_det(AtA);
 
 		if(std::abs(det) < 1E-10) {
-			rep_x[vert] = 0;
-			rep_y[vert] = 0;
+			iso.first = 0;
+			iso.second = 0;
 
-			curv_dir0 = Vec3();
-			curv_dir1 = Vec3();
-			tens = Vec3();
 			return 0;
 		}
 		gmm::lu_solve(AtA, pivot, X, AtB);
@@ -827,61 +819,39 @@ namespace detail {
 		//	b = sqrt(std::abs(a*c - gaus_curv[vert]));
 		//}
 
-		tens = Vec3(a,b,c);
+		Vec3 tens = Vec3(a,b,c);
+		iso = isotropic_tensor(tens);
 		if(print) {
 			k3d::log() << "Error = (" << error << ")" << std::endl; 
 			k3d::log() << "abc = (" << a << ", " << b << ", " << c << ")" << std::endl;  
+			k3d::log() << "iso = (" << iso.first << ", " << iso.second << ")" << std::endl;  
 		}
 
-		//Vec3 vi = Vec3(mesh.points->at(vert).n);
-		//Vec3 vj = Vec3(mesh.points->at(vert_edge[edge_comp[edge]]).n);
-		Vec3 iso = isotropic_tensor(tens);
+
+		//double e1, e2;
+		//eigen(tens, e1, e2);
 		
-		double *t = iso;
-		double angle = 0.5*atan2(t[1], t[0]);
-		rep_x[vert] = t[0];
-		rep_y[vert] = t[1];
-
-		double e1, e2;
-		eigen(tens, e1, e2);
-		
-		if(print) {
-			k3d::log() << "eigen = (" << e1 << ", " << e2 << ")" << std::endl;  
-		}
-
-		Vec3 temp_i = ihat;
-		Vec3 temp_j = jhat;
-
-		temp_i *= e1*cos(angle);
-		temp_j *= e1*sin(angle);
-		curv_dir0 = temp_i + temp_j;
-
-		temp_i = ihat;
-		temp_j = jhat;
-		temp_i *= e2*cos(angle + k3d::pi_over_2());
-		temp_j *= e2*sin(angle + k3d::pi_over_2());
-		curv_dir1 = temp_i + temp_j;
-
 		return error;	
 	}
 	
-	Vec3 diff_geom::isotropic_tensor(Vec3 tensor) 
+	std::pair<double,double> diff_geom::isotropic_tensor(Vec3 tens) 
 	{
-		double *t = tensor;
-		
-		double lambda = 0.5*(t[0] + t[2]);
-		Vec3 iso = Vec3(t[0] - lambda, t[1], 0);
+		double lambda = 0.5*(tens[0] + tens[2]);
+		Vec3 iso = Vec3(tens[0] - lambda, tens[1], 0);
 
 		iso.Normalize();
+		std::pair<double,double> ret;
+		ret.first = iso[0];
+		ret.second = iso[1];
 
-		return iso;
+		return ret;
 	}
 
-	void diff_geom::eigen(Vec3 tensor, double& e1, double& e2) 
+	void diff_geom::eigen(Vec3 tens, double& e1, double& e2) 
 	{
-		double a = tensor[0];
-		double b = tensor[1];
-		double c = tensor[2];
+		double a = tens[0];
+		double b = tens[1];
+		double c = tens[2];
 		double root = sqrt(a*a + 4*b*b - 2*a*c + c*c );
 
 		e1 = 0.5*(a + c - root);
@@ -890,15 +860,15 @@ namespace detail {
 
 	double diff_geom::gaussian_curvature(vert_t vert) 
 	{
-		edge_t edge = mesh.vert_edge[vert];
+		edge_t edge = mesh->vert_edge[vert];
 
 		double curv = k3d::pi_times_2();
 		double area = 0.0;
 		do {
 			area += area_mixed(edge);
-			Vec3 a(mesh.mesh.points->at(mesh.edge_vert[edge]).n);
-			Vec3 b(mesh.mesh.points->at(mesh.edge_vert[mesh.edge_ccw[edge]]).n);
-			Vec3 c(mesh.mesh.points->at(mesh.edge_vert[mesh.edge_ccw[mesh.edge_ccw[edge]]]).n);
+			Vec3 a(mesh->mesh->points->at(mesh->edge_vert[edge]).n);
+			Vec3 b(mesh->mesh->points->at(mesh->edge_vert[mesh->edge_ccw[edge]]).n);
+			Vec3 c(mesh->mesh->points->at(mesh->edge_vert[mesh->edge_ccw[mesh->edge_ccw[edge]]]).n);
 			
 			Vec3 AB = b-a;
 			Vec3 AC = c-a;
@@ -912,33 +882,33 @@ namespace detail {
 			double angle = 
 	
 			curv -= acos(dot);
-			edge = mesh.edge_ccw[mesh.edge_comp[edge]];
+			edge = mesh->edge_ccw[mesh->edge_comp[edge]];
 
-		} while(edge != mesh.vert_edge[vert]);
+		} while(edge != mesh->vert_edge[vert]);
 
 		return curv/area;
 	}
 
 	Vec3 diff_geom::mean_curvature(vert_t vert) 
 	{
-		edge_t edge = mesh.vert_edge[vert];
+		edge_t edge = mesh->vert_edge[vert];
 		double area = 0.0;
 		Vec3 mean(0,0,0);
 
 		do {
 			area += area_mixed(edge);
 			
-			double w = edge_cot[edge] + edge_cot[mesh.edge_comp[edge]];
-			Vec3 a(mesh.mesh.points->at(mesh.edge_vert[edge]).n);
-			Vec3 b(mesh.mesh.points->at(mesh.edge_vert[mesh.edge_ccw[edge]]).n);
+			double w = edge_cot[edge] + edge_cot[mesh->edge_comp[edge]];
+			Vec3 a(mesh->mesh->points->at(mesh->edge_vert[edge]).n);
+			Vec3 b(mesh->mesh->points->at(mesh->edge_vert[mesh->edge_ccw[edge]]).n);
 			
 			a -= b;
 			a *= w;
 
 			mean += a;
 
-			edge = mesh.edge_ccw[mesh.edge_comp[edge]];
-		} while(edge != mesh.vert_edge[vert]);
+			edge = mesh->edge_ccw[mesh->edge_comp[edge]];
+		} while(edge != mesh->vert_edge[vert]);
 		
 		mean /= (2.0*area);
 		return mean;
@@ -947,9 +917,9 @@ namespace detail {
 	/// Voronoi region of vertex on edge intersecting with a triangle
 	double diff_geom::area_mixed(edge_t edge) 
 	{
-		Vec3 a(mesh.mesh.points->at(mesh.edge_vert[edge]).n);
-		Vec3 b(mesh.mesh.points->at(mesh.edge_vert[mesh.edge_ccw[edge]]).n);
-		Vec3 c(mesh.mesh.points->at(mesh.edge_vert[mesh.edge_ccw[mesh.edge_ccw[edge]]]).n);
+		Vec3 a(mesh->mesh->points->at(mesh->edge_vert[edge]).n);
+		Vec3 b(mesh->mesh->points->at(mesh->edge_vert[mesh->edge_ccw[edge]]).n);
+		Vec3 c(mesh->mesh->points->at(mesh->edge_vert[mesh->edge_ccw[mesh->edge_ccw[edge]]]).n);
 
 		Vec3 AB = b-a;
 		Vec3 BC = c-b;
@@ -977,7 +947,7 @@ namespace detail {
 				area /= 4.0;
 		} else {
 			area = CA_norm2 * edge_cot[edge];
-			area += AB_norm2 * edge_cot[mesh.edge_ccw[mesh.edge_ccw[edge]]];
+			area += AB_norm2 * edge_cot[mesh->edge_ccw[mesh->edge_ccw[edge]]];
 			area *= 0.125;
 		}
 
@@ -986,7 +956,7 @@ namespace detail {
 
 	double diff_geom::mean_weight(edge_t edge) 
 	{
-		mesh_info::Edge e(mesh.getEdge(edge));
+		mesh_info::Edge e(mesh->getEdge(edge));
 
 		Vec3 e_v = e.dir();
 		Vec3 enn_v = e.next().next().dir();
@@ -1013,7 +983,7 @@ namespace detail {
 
 	double diff_geom::mean_coord(edge_t edge)
 	{
-		mesh_info::Edge e = mesh.getEdge(edge);
+		mesh_info::Edge e = mesh->getEdge(edge);
 		edge_t first = e();
 
 		double sum = 0;
@@ -1029,12 +999,12 @@ namespace detail {
 	/// Cotangent of the angle of the vertex opposite of edge
 	double diff_geom::cotangent(edge_t edge) 
 	{
-		edge_t next = mesh.edge_ccw[edge];
+		edge_t next = mesh->edge_ccw[edge];
 
 		// get the 3d positions of the vertices
-		Vec3 a(mesh.mesh.points->at(mesh.edge_vert[edge]).n);
-		Vec3 b(mesh.mesh.points->at(mesh.edge_vert[mesh.edge_ccw[edge]]).n);
-		Vec3 c(mesh.mesh.points->at(mesh.edge_vert[mesh.edge_ccw[mesh.edge_ccw[edge]]]).n);
+		Vec3 a(mesh->mesh->points->at(mesh->edge_vert[edge]).n);
+		Vec3 b(mesh->mesh->points->at(mesh->edge_vert[mesh->edge_ccw[edge]]).n);
+		Vec3 c(mesh->mesh->points->at(mesh->edge_vert[mesh->edge_ccw[mesh->edge_ccw[edge]]]).n);
 		
 		// a and b become the two edge vectors originating from vertex c
 		a -= c;

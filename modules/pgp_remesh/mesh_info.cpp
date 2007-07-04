@@ -34,30 +34,11 @@
 #include <iostream>
 #include <map>
 #include "mesh_info.h"
-
+ 
 namespace libk3dquadremesh
 {
 
 namespace detail {
-	Vec3 triangle_raw_normal(const Vec3& v1, const Vec3& v2, const Vec3& v3)
-	{
-		Vec3 a = v2 - v1;
-		Vec3 b = v3 - v1;
-		return a^b;
-	}
-
-	double triangle_area(const Vec3& v1, const Vec3& v2, const Vec3& v3)
-	{
-		return 0.5 * norm(triangle_raw_normal(v1, v2, v3));
-	}
-
-	Vec3 triangle_normal(const Vec3& v1, const Vec3& v2, const Vec3& v3)
-	{
-		Vec3 n = triangle_raw_normal(v1, v2, v3);
-		n.Normalize();
-		
-		return n;
-	}
 
 	void calc_edge_face_adj(const k3d::mesh::polyhedra_t& Polyhedra, indices_t& adj) 
 	{

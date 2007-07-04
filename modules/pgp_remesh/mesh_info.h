@@ -42,16 +42,11 @@ namespace libk3dquadremesh
 
 namespace detail {
 	#include <modules/qslim/MxMath.h>
-	#include <modules/qslim/MxTriangle.h>
 	typedef k3d::mesh::indices_t indices_t;
 	typedef size_t vert_t;
 	typedef size_t edge_t;
 	typedef size_t face_t;
 	typedef size_t poly_t;
-	Vec3 triangle_raw_normal(const Vec3& v1, const Vec3& v2, const Vec3& v3);
-
-	double triangle_area(const Vec3& v1, const Vec3& v2, const Vec3& v3);
-	Vec3 triangle_normal(const Vec3& v1, const Vec3& v2, const Vec3& v3);
 
 	/// TODO
 	void calc_edge_face_adj(const k3d::mesh::polyhedra_t& Polyhedra, indices_t& adj);
@@ -78,12 +73,19 @@ namespace detail {
 	class mesh_info 
 	{
 	public:
-		mesh_info(const k3d::mesh& Mesh) 
+		mesh_info() 
+		{
+			num_edges = 0;
+			num_faces = 0;
+			num_verts = 0;
+		}
+
+		mesh_info(const k3d::mesh* Mesh) 
 			: mesh(Mesh)
 		{
-			num_edges = Mesh.polyhedra->edge_points->size();
-			num_faces = Mesh.polyhedra->face_first_loops->size();
-			num_verts = Mesh.points->size();
+			num_edges = Mesh->polyhedra->edge_points->size();
+			num_faces = Mesh->polyhedra->face_first_loops->size();
+			num_verts = Mesh->points->size();
 			
 			edge_comp.resize(num_edges);
 			edge_ccw.resize(num_edges);
@@ -95,15 +97,15 @@ namespace detail {
 			edge_vert.resize(num_edges);
 			
 			// face->edge is missing
-			calc_edge_face_adj(*mesh.polyhedra, edge_face);
-			calc_edge_ccw_adj(*mesh.polyhedra, edge_ccw);
-			calc_edge_companion_adj(*mesh.polyhedra, edge_comp);
-			calc_vert_edge_ccw_adj(*mesh.polyhedra, vert_edge);
-			calc_edge_vert_ccw_adj(*mesh.polyhedra, edge_vert);
+			calc_edge_face_adj(*mesh->polyhedra, edge_face);
+			calc_edge_ccw_adj(*mesh->polyhedra, edge_ccw);
+			calc_edge_companion_adj(*mesh->polyhedra, edge_comp);
+			calc_vert_edge_ccw_adj(*mesh->polyhedra, vert_edge);
+			calc_edge_vert_ccw_adj(*mesh->polyhedra, edge_vert);
 			
-			calc_face_poly_adj(*mesh.polyhedra, face_poly);
+			calc_face_poly_adj(*mesh->polyhedra, face_poly);
 		}
-
+ 
 		class Face;
 		class Edge;
 		class Vert;
@@ -127,7 +129,7 @@ namespace detail {
 
 			Vec3 pos() const
 			{
-				return Vec3(info.mesh.points->at(index).n);
+				return Vec3(info.mesh->points->at(index).n);
 			}
 
 			Edge edge() const {
@@ -152,8 +154,8 @@ namespace detail {
 
 			Edge operator[] (size_t e) const
 			{
-				edge_t edge = info.mesh.polyhedra->loop_first_edges->at(
-					info.mesh.polyhedra->face_first_loops->at(index));
+				edge_t edge = info.mesh->polyhedra->loop_first_edges->at(
+					info.mesh->polyhedra->face_first_loops->at(index));
 				
 				for(int i = 0; i < e; i++) {
 					edge = info.edge_ccw[edge]; 
@@ -199,7 +201,7 @@ namespace detail {
 
 			Edge prev() const 
 			{
-				return Edge(info, info.mesh.polyhedra->clockwise_edges->at(index));
+				return Edge(info, info.mesh->polyhedra->clockwise_edges->at(index));
 			}
 
 			Face face() const 
@@ -224,12 +226,12 @@ namespace detail {
 
 			Vec3 start() const
 			{
-				return  Vec3(info.mesh.points->at(info.edge_vert[index]).n);
+				return  Vec3(info.mesh->points->at(info.edge_vert[index]).n);
 			}
 
 			Vec3 end() const
 			{
-				return  Vec3(info.mesh.points->at(info.edge_vert[info.edge_ccw[index]]).n);
+				return  Vec3(info.mesh->points->at(info.edge_vert[info.edge_ccw[index]]).n);
 			}	
 
 			Vec3 dir() const
@@ -252,8 +254,7 @@ namespace detail {
 		{
 			// error checking?
 			return Face(*this, face);
-		}
-		
+		}		
 		Edge getEdge(edge_t edge) const
 		{
 			// error checking?
@@ -266,33 +267,17 @@ namespace detail {
 			return Vert(*this, vert);
 		}
 
-
-		const k3d::mesh& mesh;
+		const k3d::mesh* mesh;
 
 		indices_t edge_comp;
 		indices_t edge_face;
 		indices_t edge_vert;
-		indices_t edge_ccw;
-		
-		k3d::mesh::points_t points;
+		indices_t edge_ccw;		
 
 		indices_t face_edge;
 		indices_t face_poly;
-
 		indices_t vert_edge;
-
 		indices_t poly_face;
-
-		// Local coordinate frame at each face
-		std::vector<Vec3> face_basis_i;
-		std::vector<Vec3> face_basis_j;
-		std::vector<Vec3> face_normal;
-
-		// Local coordinate frame at each vertex
-		std::vector<Vec3> vert_basis_i;
-		std::vector<Vec3> vert_basis_j;
-		std::vector<Vec3> vert_normal;
-		
 	};
 };
 }; // namespace pgp_module
