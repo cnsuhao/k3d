@@ -182,9 +182,9 @@ namespace detail {
 				p2->at(i).n[1] = 0;
 				p2->at(i).n[2] = 0;
 
-				curv->at(i).n[0] = 0;//mean_curv[i][0];
-				curv->at(i).n[1] = 0;//mean_curv[i][1];
-				curv->at(i).n[2] = 0;//mean_curv[i][2];
+				curv->at(i).n[0] = mean_curv[i][0];
+				curv->at(i).n[1] = mean_curv[i][1];
+				curv->at(i).n[2] = mean_curv[i][2];
 				continue;
 			}
 			double angle = 0.5*atan2(tensor[i].second , tensor[i].first);
@@ -209,9 +209,9 @@ namespace detail {
 			p2->at(i).n[1] = pc2[1];
 			p2->at(i).n[2] = pc2[2];
 
-			curv->at(i).n[0] = 0;//mean_curv[i][0];
-			curv->at(i).n[1] = 0;//mean_curv[i][1];
-			curv->at(i).n[2] = 0;//mean_curv[i][2];
+			curv->at(i).n[0] = mean_curv[i][0];
+			curv->at(i).n[1] = mean_curv[i][1];
+			curv->at(i).n[2] = mean_curv[i][2];
 		}
 
 		OutputMesh.vertex_data["PGPMeanCurv"] = curv;
