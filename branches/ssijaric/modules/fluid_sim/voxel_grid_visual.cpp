@@ -28,11 +28,11 @@ public:
 
 	{
 		m_voxel_grid.changed_signal().connect(make_topology_changed_slot());
+		m_voxel_grid.changed_signal().connect(make_reset_mesh_slot());
 	}
 
 	sigc::slot<void, iunknown*> make_reset_mesh_slot()		
 	{
-		k3d::log() << "make_reset_mesh_slot()" << std::endl;
 		return sigc::mem_fun(*this, &voxel_grid_visual::reset_mesh);
 	}
 
@@ -51,8 +51,6 @@ public:
 
 	void on_create_mesh_topology(k3d::mesh& Mesh)
 	{
-		k3d::log() << "on_create_mesh_topology: " << m_voxel_grid.value() << std::endl;
-		
 		typedef k3d::mesh mesh;
 		
 		if (m_voxel_grid.value() != 0) {
@@ -71,20 +69,8 @@ public:
 			unsigned long columns = m_columns;
 			unsigned long slices = m_slices;
 	
-			/**
-			unsigned long point_rows = 2 + 1;
-			unsigned long point_columns = 2 + 1;
-			unsigned long point_slices = 2 + 1;
-
-			unsigned long rows = 2;
-			unsigned long columns = 2;
-			unsigned long slices = 2;
-			**/
-
-
 			unsigned long num_faces = rows*columns*point_slices + rows*point_columns*slices + point_rows*columns*slices;
 		
-
 			boost::shared_ptr<mesh::polyhedra_t> polyhedra(new mesh::polyhedra_t());
 			boost::shared_ptr<mesh::indices_t> edge_points(new mesh::indices_t(4 * num_faces));
 			boost::shared_ptr<mesh::points_t> points(new mesh::points_t(point_rows*point_columns*point_slices));
@@ -219,8 +205,6 @@ public:
 	{	
 		// create points here
 
-		k3d::log() << "on_update_mesh_geometry: " << m_voxel_grid.value() << std::endl;
-
 		if (m_voxel_grid.value() != 0) {
 			const double px = boost::any_cast<double>(get_property(*(m_voxel_grid.value()), "px")->property_value());
 			const double nx = boost::any_cast<double>(get_property(*(m_voxel_grid.value()), "nx")->property_value());
@@ -247,11 +231,6 @@ public:
 			vox_width_x = k3d::vector3(vw, 0, 0);
 			vox_width_y = k3d::vector3(0, -vw, 0);
 			vox_width_z = k3d::vector3(0, 0, -vw);
-			/*
-			k3d::log() << "WIDTH: " << vw << std::endl;
-			k3d::log() << nx << "  " << py << "  " << pz << std::endl;
-			k3d::log() << point_rows << "  " << point_columns << "  " << point_slices << std::endl;
-			*/
 
 			vox_inc = k3d::vector3(0,0,0);
 
@@ -274,45 +253,14 @@ public:
 				vox_inc = vox_inc + vox_width_y;
 	                }
 
-			/*
-			int num = 0;
-			for(unsigned long slice = 0; slice != 3; ++slice)
-                	{
-	                        for(unsigned long row = 0; row != 3; ++row)
-        	                {
-					for (unsigned long column = 0; column != 3; ++column)
-					{
-		                                *point = k3d::to_point(x + z + y + vox_inc);
-						vox_inc = vox_inc + vox_width_x; 
-						k3d::log() << num << ": " << *point << std::endl;
-						++num;
-
-						point++;
-					}
-					vox_inc[0] = 0;
-					vox_inc = vox_inc + vox_width_z;
-					k3d::log() << std::endl;
-                	        }
-				vox_inc[2] = 0;
-				vox_inc = vox_inc + vox_width_y;
-	                }
-			*/
-
-
-
 		}
 	}
 
 	void reset_mesh(iunknown* const Hint)
         {
 
-		k3d::log() << "reset_mesh " << m_voxel_grid.value() << std::endl;
 		if (m_voxel_grid.value() != 0) {
-			if(k3d::mesh* const output_mesh = m_output_mesh.internal_value()) {
-				//on_create_mesh_topology(*output_mesh);			
-				//on_update_mesh_geometry(*output_mesh);
-			}
-			dynamic_cast<voxel_grid*>(m_voxel_grid.value())->voxel_grid_changed_signal.connect(make_geometry_changed_slot());
+			dynamic_cast<voxel_grid*>(m_voxel_grid.value())->voxel_grid_changed_signal.connect(make_topology_changed_slot());
 		}
         }
 
