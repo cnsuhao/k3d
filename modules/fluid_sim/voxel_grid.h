@@ -68,13 +68,13 @@ private:
 
 
 	// many of the properties will be removed - only voxel width will be modifiable by the user
-	k3d_data(double, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, no_serialization) m_nx;
-        k3d_data(double, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, no_serialization) m_ny;
-	k3d_data(double, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, no_serialization) m_nz;
+	k3d_data(double, immutable_name, change_signal, with_undo, local_storage, no_constraint, read_only_property, no_serialization) m_nx;
+        k3d_data(double, immutable_name, change_signal, with_undo, local_storage, no_constraint, read_only_property, no_serialization) m_ny;
+	k3d_data(double, immutable_name, change_signal, with_undo, local_storage, no_constraint, read_only_property, no_serialization) m_nz;
 
-	k3d_data(double, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, no_serialization) m_px;
-        k3d_data(double, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, no_serialization) m_py;
-	k3d_data(double, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, no_serialization) m_pz;
+	k3d_data(double, immutable_name, change_signal, with_undo, local_storage, no_constraint, read_only_property, no_serialization) m_px;
+        k3d_data(double, immutable_name, change_signal, with_undo, local_storage, no_constraint, read_only_property, no_serialization) m_py;
+	k3d_data(double, immutable_name, change_signal, with_undo, local_storage, no_constraint, read_only_property, no_serialization) m_pz;
 
 
 	k3d_data(double, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, no_serialization) m_vox_width;

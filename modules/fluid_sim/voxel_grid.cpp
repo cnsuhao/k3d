@@ -43,15 +43,6 @@ namespace fluid_sim
 		m_porigin[2] = m_pz.value();
 
 		m_grid = new array_type(boost::extents[m_rows.value()][m_cols.value()][m_slices.value()]);
-		
-		/**
-		m_nx.changed_signal().connect(vgrid_modified_slot_x());
-		m_ny.changed_signal().connect(vgrid_modified_slot_y());
-		m_nz.changed_signal().connect(vgrid_modified_slot_z());
-		m_px.changed_signal().connect(vgrid_modified_slot_x());
-		m_py.changed_signal().connect(vgrid_modified_slot_y());
-		m_pz.changed_signal().connect(vgrid_modified_slot_z());
-		**/
 	}
 
 	k3d::iplugin_factory& voxel_grid::get_factory()
@@ -92,39 +83,36 @@ namespace fluid_sim
 	// all of m_cols, m_slices and m_rows need to be computed, except for when voxel_width changes
 	void voxel_grid::vgrid_modified_x(k3d::iunknown* Hint)
 	{
-		double diff = std::fabs(m_px.value() - m_nx.value());
+		double diff = std::fabs(m_orig_px - m_orig_nx);
 		double rem = fmod(diff, m_vox_width.value());
 		if (rem != 0) {
 			double offset = rem/2.0;
-			m_nx.set_value(m_nx.value() - offset);
-			m_px.set_value(m_px.value() + offset);
+			m_nx.set_value(m_orig_nx - offset);
+			m_px.set_value(m_orig_px + offset);
 		}
 		m_cols.set_value((int)((std::fabs(m_px.value() - m_nx.value()))/m_vox_width.value()));
-
-		// emit the change
-		voxel_grid_changed_signal.emit(Hint);
 		
 	}
 
 	void voxel_grid::vgrid_modified_y(k3d::iunknown* Hint) {
-		double diff = std::fabs(m_py.value() - m_ny.value());
+		double diff = std::fabs(m_orig_py - m_orig_ny);
 		double rem = fmod(diff, m_vox_width.value());
 		if (rem != 0) {
 			double offset = rem/2.0;
-			m_ny.set_value(m_ny.value() - offset);
-			m_py.set_value(m_py.value() + offset);
+			m_ny.set_value(m_orig_ny - offset);
+			m_py.set_value(m_orig_py + offset);
 		}
 
 		m_rows.set_value((int)((std::fabs(m_py.value() - m_ny.value()))/m_vox_width.value()));
 	}
 
 	void voxel_grid::vgrid_modified_z(k3d::iunknown* Hint) {
-		double diff = std::fabs(m_pz.value() - m_nz.value());
+		double diff = std::fabs(m_orig_pz - m_orig_nz);
 		double rem = fmod(diff, m_vox_width.value());
 		if (rem != 0) {
 			double offset = rem/2.0;
-			m_nz.set_value(m_nz.value() - offset);
-			m_pz.set_value(m_pz.value() + offset);
+			m_nz.set_value(m_orig_nz - offset);
+			m_pz.set_value(m_orig_pz + offset);
 		}
 
 		m_slices.set_value((int)((std::fabs(m_pz.value() - m_nz.value()))/m_vox_width.value()));
@@ -135,6 +123,7 @@ namespace fluid_sim
 		vgrid_modified_x(Hint);
 		vgrid_modified_y(Hint);
 		vgrid_modified_z(Hint);
+		voxel_grid_changed_signal.emit(Hint);
 	}
 
 
