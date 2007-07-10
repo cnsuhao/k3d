@@ -46,18 +46,14 @@ public:
 		base(Factory, Document),
 		m_draw_p1(init_owner(*this) + init_name("draw_p1") + init_label(_("Draw Minor Curvature")) + init_description(_("Draw major curvature direction")) + init_value(true)),
 		m_draw_p2(init_owner(*this) + init_name("draw_p2") + init_label(_("Draw Major Curvature")) + init_description(_("Draw minor curvature direction")) + init_value(false)),
-		m_draw_norm(init_owner(*this) + init_name("draw_norm") + init_label(_("Draw Mean Normal")) + init_description(_("Draw mean curvature normal")) + init_value(false)),
 		m_p1_color(init_owner(*this) + init_name("p1_color") + init_label(_("Minor Color")) + init_description(_("Minor color")) + init_value(k3d::color(1, 0, 0))),
 		m_p2_color(init_owner(*this) + init_name("p2_color") + init_label(_("Major Color")) + init_description(_("Major color")) + init_value(k3d::color(0, 1, 0))),
-		m_norm_color(init_owner(*this) + init_name("norm_color") + init_label(_("Mean Normal Color")) + init_description(_("Mean Normal color")) + init_value(k3d::color(0, 0, 1))),
 		m_scale(init_owner(*this) + init_name("scale") + init_label(_("Scale")) + init_description(_("Scaling of vectors")) + init_value(1.0))
 	{
 		m_draw_p1.changed_signal().connect(make_async_redraw_slot());
 		m_draw_p2.changed_signal().connect(make_async_redraw_slot());
-		m_draw_norm.changed_signal().connect(make_async_redraw_slot());
 		m_p1_color.changed_signal().connect(make_async_redraw_slot());
 		m_p2_color.changed_signal().connect(make_async_redraw_slot());
-		m_norm_color.changed_signal().connect(make_async_redraw_slot());
 		m_scale.changed_signal().connect(make_async_redraw_slot());
 	}
 
@@ -66,8 +62,6 @@ public:
 		if(!k3d::validate_polyhedra(Mesh))
 			return;
 
-		if(Mesh.vertex_data.find("PGPMeanCurv") == Mesh.vertex_data.end())
-			return;
 		if(Mesh.vertex_data.find("PGPPrincCurv1") == Mesh.vertex_data.end())
 			return;
 		if(Mesh.vertex_data.find("PGPPrincCurv2") == Mesh.vertex_data.end())
@@ -75,13 +69,10 @@ public:
 		
 		const bool draw_p1 = m_draw_p1.value();
 		const bool draw_p2 = m_draw_p2.value();
-		const bool draw_norm = m_draw_norm.value();
 
 		const k3d::mesh::points_t& points = *Mesh.points;
-		const k3d::mesh::selection_t& vert_selection = *Mesh.point_selection;
 		const size_t vert_count = points.size();
 		
-		const k3d::typed_array < k3d::vector3 > & norm = dynamic_cast<const k3d::typed_array < k3d::vector3 > & >(*((*(Mesh.vertex_data.find("PGPMeanCurv"))).second)); 
 		const k3d::typed_array < k3d::vector3 > & p1 = dynamic_cast<const k3d::typed_array < k3d::vector3 > & >(*((*(Mesh.vertex_data.find("PGPPrincCurv1"))).second)); 
 		const k3d::typed_array < k3d::vector3 > & p2 = dynamic_cast<const k3d::typed_array < k3d::vector3 > & >(*((*(Mesh.vertex_data.find("PGPPrincCurv2"))).second)); 
 		
@@ -92,10 +83,6 @@ public:
 		glBegin(GL_LINES);
 		for(size_t vert = 0; vert != vert_count; ++vert)
 		{
-			//k3d::gl::color3d(m_selected_color.value());
-			//k3d::gl::vertex3d(points[vert]);
-			//k3d::gl::vertex3d(points[vert] + k3d::to_point(norm[vert]));
-			
 			if(draw_p1) {
 				k3d::gl::color3d(m_p1_color.value());
 
@@ -113,15 +100,6 @@ public:
 				x *= scale;
 				k3d::gl::vertex3d(points[vert] + x);
 				k3d::gl::vertex3d(points[vert] - x);
-			}
-
-			if(draw_norm) {
-				k3d::gl::color3d(m_norm_color.value());
-				
-				x = k3d::to_point(norm[vert]);
-				x *= scale;
-				k3d::gl::vertex3d(points[vert]);
-				k3d::gl::vertex3d(points[vert] + x);
 			}
 		} 
 		glEnd();
@@ -142,10 +120,8 @@ public:
 private:
 	k3d_data(bool, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, with_serialization) m_draw_p1;
 	k3d_data(bool, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, with_serialization) m_draw_p2;
-	k3d_data(bool, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, with_serialization) m_draw_norm;
 	k3d_data(k3d::color, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, with_serialization) m_p1_color;
 	k3d_data(k3d::color, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, with_serialization) m_p2_color;
-	k3d_data(k3d::color, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, with_serialization) m_norm_color;
 	k3d_data(double, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, with_serialization) m_scale;
 };
 

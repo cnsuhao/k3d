@@ -39,22 +39,19 @@
 namespace libk3dquadremesh
 {
 	class pgp_remesh :
-		public k3d::material_client<k3d::mesh_modifier<k3d::persistent<k3d::node> > >
+		public k3d::mesh_modifier<k3d::persistent<k3d::node> > 
 	{
-		typedef  k3d::material_client<k3d::mesh_modifier<k3d::persistent<k3d::node> > > base;
+		typedef  k3d::mesh_modifier<k3d::persistent<k3d::node> >  base_t;
 	public:
 		pgp_remesh(k3d::iplugin_factory& Factory, k3d::idocument& Document) :
-			base(Factory, Document),
-			m_mean_coord(init_owner(*this) + init_name("use_mean") + init_label(_("Use Mean Coordinate Weights")) + init_description(_("Use Mean Coordinate Weights")) + init_value(true)),
+			base_t(Factory, Document),
 			m_smooth(init_owner(*this) + init_name("use_smooth") + init_label(_("Smooth Curvature")) + init_description(_("Smooth Curvature")) + init_value(true)),
 			m_symmetry(init_owner(*this) + init_name("smooth_4") + init_label(_("Smooth as 4-symmetry")) + init_description(_("Smooth as 4-symmetry")) + init_value(false)),
 			m_steps(init_owner(*this) + init_name("steps") + init_label(_("Smoothing steps")) + init_description(_("Smoothing steps")) + init_value(1) + init_constraint(constraint::minimum(0))),
-			m_h(init_owner(*this) + init_name("h") + init_label(_("Smoothing timestep")) + init_description(_("Smoothing timesteps")) + init_value(1000.0) + init_constraint(constraint::minimum(0.0001))),
+			m_h(init_owner(*this) + init_name("h") + init_label(_("Smoothing timestep")) + init_description(_("Smoothing timesteps")) + init_value(100.0) + init_constraint(constraint::minimum(0.0001))),
 			prev_steps(0),
 			smoothed(false)
 		{
-			std::cout << "construct \n";
-			m_mean_coord.changed_signal().connect(make_reset_mesh_slot());
 			//m_smooth.changed_signal().connect(sigc::mem_fun(*this, &pgp_remesh::smooth));
 			//m_steps.changed_signal().connect(sigc::mem_fun(*this, &pgp_remesh::smooth));
 			//m_h.changed_signal().connect(sigc::mem_fun(*this, &pgp_remesh::smooth));
@@ -102,18 +99,23 @@ namespace libk3dquadremesh
 		}
 		void on_update_mesh(const k3d::mesh& InputMesh, k3d::mesh& OutputMesh)		  
 		{
-			std::cout << "info \n";
- 
+			base_t::document().pipeline_profiler().start_execution(*this, "Process Mesh");
 			info = detail::mesh_info(&InputMesh);
+			base_t::document().pipeline_profiler().finish_execution(*this, "Process Mesh");
 
-			std::cout << "geom \n";
+			base_t::document().pipeline_profiler().start_execution(*this, "Calc Diff Geom");
 			geom = detail::diff_geom(&info);
-			OutputMesh = InputMesh;
-			std::cout << " init \n";
 			geom.initialize();
-			std::cout << " dump \n";
+			base_t::document().pipeline_profiler().finish_execution(*this, "Calc Diff Geom");
+
+			base_t::document().pipeline_profiler().start_execution(*this, "Smooth");
 			geom.smooth(m_h.value(), m_steps.value(), m_symmetry.value());
+			base_t::document().pipeline_profiler().finish_execution(*this, "Smooth");
+
+			base_t::document().pipeline_profiler().start_execution(*this, "Output");
+			OutputMesh = InputMesh;
 			geom.dump_draw_data(OutputMesh);
+			base_t::document().pipeline_profiler().finish_execution(*this, "Output");
 		}
 
 		static k3d::iplugin_factory& get_factory()
@@ -131,7 +133,6 @@ namespace libk3dquadremesh
 
 		}
 	private:
-		k3d_data(bool,   immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, with_serialization) m_mean_coord;
 		k3d_data(bool,   immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, with_serialization) m_smooth;
 		k3d_data(bool,   immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, with_serialization) m_symmetry;
 		k3d_data(int,    immutable_name, change_signal, with_undo, local_storage, with_constraint, writable_property, with_serialization) m_steps;
