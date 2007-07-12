@@ -54,9 +54,10 @@ namespace detail {
 	/// TODO: Add desc
 	class diff_geom 
 	{
-	typedef std::pair<double,double> tensor_t;
 	
 	public:
+		typedef std::pair<double,double> tensor_t;
+		
 		diff_geom() 
 		{
 			init = false;
