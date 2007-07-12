@@ -35,6 +35,7 @@
 #include <map>
 #include "mesh_info.h"
 #include "diff_geom.h"
+#include "pgp.h"
 
 namespace libk3dquadremesh
 {
@@ -116,6 +117,24 @@ namespace libk3dquadremesh
 			OutputMesh = InputMesh;
 			geom.dump_draw_data(OutputMesh);
 			base_t::document().pipeline_profiler().finish_execution(*this, "Output");
+
+			pgp = detail::PGP(&info, &geom);
+
+			base_t::document().pipeline_profiler().start_execution(*this, "PGP Setup");
+			pgp.setup();
+			base_t::document().pipeline_profiler().finish_execution(*this, "PGP Setup");
+
+			base_t::document().pipeline_profiler().start_execution(*this, "PGP solve");
+			pgp.solve();
+			base_t::document().pipeline_profiler().finish_execution(*this, "PGP solve");
+
+			base_t::document().pipeline_profiler().start_execution(*this, "PGP extract");
+			pgp.extract();
+			base_t::document().pipeline_profiler().finish_execution(*this, "PGP extract");
+
+			base_t::document().pipeline_profiler().start_execution(*this, "PGP remesh");
+			pgp.remesh(OutputMesh);
+			base_t::document().pipeline_profiler().finish_execution(*this, "PGP remesh");
 		}
 
 		static k3d::iplugin_factory& get_factory()
@@ -141,6 +160,7 @@ namespace libk3dquadremesh
 		bool smoothed;
 		detail::mesh_info info;
 		detail::diff_geom geom;
+		detail::PGP pgp;
 		k3d::mesh m;
 	};
 
