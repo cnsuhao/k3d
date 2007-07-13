@@ -35,6 +35,7 @@
 #include <k3dsdk/node.h>
 #include <k3dsdk/persistent.h>
 #include <k3dsdk/utility.h>
+#include <k3dsdk/color.h>
 #include <iostream>
 #include <map>
 #include <utility>
@@ -188,14 +189,18 @@ namespace detail {
 				pf.lamda[0] = x[0];
 				pf.lamda[1] = x[1];
 				pf.lamda[2] = x[2];
+				
+				pf.lamda[0] = 1;
+				pf.lamda[1] = 1;
+				pf.lamda[2] = 1;
 
-				std::cout << "t = " << f << " L = " << "(" << x[0] << ", " << x[1] << ", " << x[2] << ")\n";
+				//std::cout << "t = " << f << " L = " << "(" << x[0] << ", " << x[1] << ", " << x[2] << ")\n";
 
 				double max1 = pf.vf[0]*pf.vf[1]; 
 				double max2 = pf.vf[0]*pf.vf[2]; 
 
-				double max_arg1 = 0;
-				double max_arg2 = 0;
+				int max_arg1 = 0;
+				int max_arg2 = 0;
 
 				for(int i = 1; i < 4; i++) {
 					double dot1 = pf.vf[0]*rotate90(pf.vf[1], i);
@@ -211,31 +216,243 @@ namespace detail {
 					}
 				}
 
-				pf.delta[0] = omega*0.5*((pf.vf[1] + pf.vf[2])*pf.e[0]);
-				pf.delta[1] = omega*0.5*((pf.vf[0] + pf.vf[2])*pf.e[1]);
-				pf.delta[2] = omega*0.5*((pf.vf[0] + pf.vf[1])*pf.e[2]);
+				pf.rot[0] = 0;
+				pf.rot[1] = max_arg1;
+				pf.rot[2] = max_arg2;
+
+
+				for(int i = 0; i < 3; ++i) {
+					int v0 = (i+1)%3;
+					int v1 = (i+2)%3;
+
+					pf.delta[i] = omega*0.5*((rotate90(pf.vf[v0], pf.rot[v0]) + rotate90(pf.vf[v1], pf.rot[v1]))*pf.e[i]);
+					pf.delta_p[i] = omega*0.5*((rotate90(pf.vf[v0], pf.rot[v0]+1) + rotate90(pf.vf[v1], pf.rot[v1]+1))*pf.e[i]);
+				}
+				//pf.delta[0] = omega*0.5*((rotate90(pf.vf[1], pf.rot[1]) + pf.vf[2], pf.rot[2])*pf.e[0]);
+				//pf.delta[0] = omega*0.5*((rotate90(pf.vf[0], pf.rot[1]) + pf.vf[2], pf.rot[2])*pf.e[0]);
+				//pf.delta[1] = omega*0.5*((pf.vf[0] + pf.vf[2])*pf.e[1]);
+				//pf.delta[2] = omega*0.5*((pf.vf[0] + pf.vf[1])*pf.e[2]);
+				//pf.delta_p[0] = omega*0.5*((pf.vf[1] + pf.vf[2])*pf.e[0]);
+				//pf.delta_p[1] = omega*0.5*((pf.vf[0] + pf.vf[2])*pf.e[1]);
+				//pf.delta_p[2] = omega*0.5*((pf.vf[0] + pf.vf[1])*pf.e[2]);
 			}
 		}
 
 		void solve() 
 		{
-			//gmm::row_matrix< gmm::wsvector<double> > A(mesh->num_edges, mesh->num_verts);
+			gmm::dense_matrix<double> D(4,4);
+			gmm::dense_matrix<double> Temp1(4,4);
+			gmm::dense_matrix<double> Temp2(4,4);
+			M[0].resize(4,4);
+			M[1].resize(4,4);
+			M[2].resize(4,4);
 
-			//// compute
+			//M[0](0,2) = -1;
+			//M[0](1,3) = 1;
+
+			M[0](0,2) = 1;
+			M[0](1,3) = -1;
+
+			M[0](2,0) = 1;
+			M[0](3,1) = 1;
+
+			k3d::log() << -1 << ": mult a" <<std::endl;
+			gmm::mult(M[0], M[0], M[1]);
+			k3d::log() << -1 << ": mult b" <<std::endl;
+			gmm::mult(M[0], M[1], M[2]);
+			
+			std::vector<int> mapping(mesh->num_verts, 0);
+			
+
+			for(size_t p = 0; p < mesh->mesh->polyhedra->first_faces->size(); p++) {
+				face_t f = mesh->mesh->polyhedra->first_faces->at(p);
+				mapping[face_data[f].vert[0]] = -face_data[f].vert[0];
+				k3d::log() << "poly constrain " << face_data[f].vert[0] <<std::endl;
+			}
+			
+			int curr = 0;
+			for(vert_t v = 0; v < mapping.size(); ++v) {
+				if(mapping[v] == 0) {
+					mapping[v] = curr++;
+				}
+			}
+			gmm::row_matrix< gmm::wsvector<double> > A(4*curr, 4*curr);
+			std::vector<double> X(4*curr, 0.0);
+			std::vector<double> B(4*curr, 0.0);
+
+			std::vector<double> sum_lamba(mesh->num_verts, 0.0);
+			
+			for(face_t f = 0; f < mesh->num_faces; ++f) {
+				for(int e = 0; e < 3; ++e) {
+					vert_t i = face_data[f].vert[(e+1)%3];
+					vert_t j = face_data[f].vert[(e+2)%3];
+					sum_lamba[i] += face_data[f].lamda[e];
+					sum_lamba[j] += face_data[f].lamda[e];
+				}								
+			}
+			
+			for(vert_t v = 0; v < mapping.size(); ++v) {
+				if(mapping[v] >= 0) {
+					vert_t vm = 4*mapping[v];
+					std::cout << v << "->" << vm << " = " << sum_lamba[v] << std::endl;
+					A(vm + 0, vm + 0) = sum_lamba[v];
+					A(vm + 1, vm + 1) = sum_lamba[v];
+					A(vm + 2, vm + 2) = sum_lamba[v];
+					A(vm + 3, vm + 3) = sum_lamba[v];
+				}
+			}
+						
+			for(face_t f = 0; f < mesh->num_faces; ++f) {
+				for(int e = 0; e < 3; ++e) {
+					int v0 = (e+1)%3;
+					int v1 = (e+2)%3;
+					int i = 4*mapping[face_data[f].vert[v0]];
+					int j = 4*mapping[face_data[f].vert[v1]];
+					bool constrain0 = (mapping[face_data[f].vert[v0]] < 0);
+					bool constrain1 = (mapping[face_data[f].vert[v1]] < 0);
+
+
+					// Taken care of in seperate loop
+					//if(!constrain0) {
+					//	A(i + 0, i + 0) += face_data[f].lamda[e];
+					//	A(i + 1, i + 1) += face_data[f].lamda[e];
+					//	A(i + 2, i + 2) += face_data[f].lamda[e];
+					//	A(i + 3, i + 3) += face_data[f].lamda[e];
+					//}
+	
+					//if(!constrain1) {
+					//	A(j + 0, j + 0) += face_data[f].lamda[e];
+					//	A(j + 1, j + 1) += face_data[f].lamda[e];
+					//	A(j + 2, j + 2) += face_data[f].lamda[e];
+					//	A(j + 3, j + 3) += face_data[f].lamda[e];
+					//}
+
+					double cos_d = face_data[f].lamda[e]*std::cos(face_data[f].delta[e]);
+					double sin_d = face_data[f].lamda[e]*std::sin(face_data[f].delta[e]);
+					double cos_dt = face_data[f].lamda[e]*std::cos(face_data[f].delta_p[e]);
+					double sin_dt = face_data[f].lamda[e]*std::sin(face_data[f].delta_p[e]);
+					
+					D.clear();
+					D(0,0) = D(1,1) = -cos_d;
+					D(0,1) = sin_d;
+					D(1,0) = -sin_d;
+
+					D(2,2) = D(3,3) = -cos_dt;
+					D(2,3) = sin_dt;
+					D(3,2) = -sin_dt;
+
+					int r0 = face_data[f].rot[v0];
+					int r1 = face_data[f].rot[v1];
+					if((r1 % 2) == 1) r1 = (r1+2)%4;
+
+					//k3d::log() << f << ": " << r0 << " " << r1 << std::endl;
+					if(r0 == 0 && r1 == 0) {
+						gmm::copy(D, Temp2);
+					} else if (r0 == 0 && r1 != 0) {
+						//k3d::log() << "mult 1" <<std::endl;
+						gmm::mult(M[r1-1], D, Temp2);
+					} else if (r0 != 0 && r1 == 0) {
+						//k3d::log() << "mult 2" <<std::endl;
+						gmm::mult(D, M[r0-1], Temp2);
+					} else {
+						//k3d::log() << "mult 3" <<std::endl;
+						gmm::mult(D, M[r0-1], Temp1);
+						//k3d::log() << "mult 4" <<std::endl;
+						gmm::mult(M[r1-1], Temp1, Temp2);
+					}
+
+					if(constrain0 && !constrain1) {
+						//std::cout << "con0 |";
+						double den = 1.0/sum_lamba[face_data[f].vert[v0]];
+						//std::cout << "|";
+
+						B[j + 0] -= (Temp2(0,0) + Temp2(0,2))*den;
+						B[j + 1] -= (Temp2(1,0) + Temp2(1,2))*den;
+						B[j + 2] -= (Temp2(2,0) + Temp2(2,2))*den;
+						B[j + 3] -= (Temp2(3,0) + Temp2(3,2))*den;
+						//std::cout << "|" <<std::endl;
+						
+					} else if(!constrain0 && constrain1) {
+						//std::cout << "con1 |";
+						double den = 1.0/sum_lamba[face_data[f].vert[v1]];
+						//std::cout << "|";
+
+						B[i + 0] -= (Temp2(0,0) + Temp2(2,0))*den;
+						B[i + 1] -= (Temp2(0,1) + Temp2(2,1))*den;
+						B[i + 2] -= (Temp2(0,2) + Temp2(2,2))*den;
+						B[i + 3] -= (Temp2(0,3) + Temp2(2,3))*den;
+						//std::cout << "|" <<std::endl;
+
+					} else if(!constrain0 && !constrain1) {
+						//std::cout << "- | " << i << " " << j << std::endl;
+						A(j + 0, i + 0) += Temp2(0, 0);
+						A(j + 0, i + 1) += Temp2(0, 1);
+						A(j + 0, i + 2) += Temp2(0, 2);
+						A(j + 0, i + 3) += Temp2(0, 3);
+
+						A(j + 1, i + 0) += Temp2(1, 0);
+						A(j + 1, i + 1) += Temp2(1, 1);
+						A(j + 1, i + 2) += Temp2(1, 2);
+						A(j + 1, i + 3) += Temp2(1, 3);
+
+						A(j + 2, i + 0) += Temp2(2, 0);
+						A(j + 2, i + 1) += Temp2(2, 1);
+						A(j + 2, i + 2) += Temp2(2, 2);
+						A(j + 2, i + 3) += Temp2(2, 3);
+
+						A(j + 3, i + 0) += Temp2(3, 0);
+						A(j + 3, i + 1) += Temp2(3, 1);
+						A(j + 3, i + 2) += Temp2(3, 2);
+						A(j + 3, i + 3) += Temp2(3, 3);
+
+						///// 
+
+						A(i + 0, j + 0) += Temp2(0, 0);
+						A(i + 0, j + 1) += Temp2(1, 0);
+						A(i + 0, j + 2) += Temp2(2, 0);
+						A(i + 0, j + 3) += Temp2(3, 0);
+
+						A(i + 1, j + 0) += Temp2(0, 1);
+						A(i + 1, j + 1) += Temp2(1, 1);
+						A(i + 1, j + 2) += Temp2(2, 1);
+						A(i + 1, j + 3) += Temp2(3, 1);
+
+						A(i + 2, j + 0) += Temp2(0, 2);
+						A(i + 2, j + 1) += Temp2(1, 2);
+						A(i + 2, j + 2) += Temp2(2, 2);
+						A(i + 2, j + 3) += Temp2(3, 2);
+
+						A(i + 3, j + 0) += Temp2(0, 3);
+						A(i + 3, j + 1) += Temp2(1, 3);
+						A(i + 3, j + 2) += Temp2(2, 3);
+						A(i + 3, j + 3) += Temp2(3, 3);
+						//std::cout << "-" << std::endl;
+					}
+				}
+			}
 
 			//gmm::clean(A, 1E-10);
-			//gmm::csr_matrix<double> B(mesh->num_edges, mesh->num_verts);
-			//gmm::copy(A, B);
-			//gmm::row_matrix< gmm::wsvector<double> > 
+			gmm::csr_matrix<double> S(4*curr, 4*curr);
+			gmm::copy(A, S);
 
-			//gmm::row_matrix< gmm::wsvector<double> > C
-			//
+			gmm::diagonal_precond<gmm::csr_matrix<double> > PR(S);
+			//gmm::identity_matrix PR;
+			gmm::iteration iter(1E-12);
+			iter.set_noisy(1);
+			gmm::cg(S, X, B, PR, iter);
+			
+			for(vert_t v = 0; v < mapping.size(); ++v) {
+				if(mapping[v] < 0) {
+					vert_data[v].theta = 0;
+					vert_data[v].phi   = 0;
+				} else {
+					vert_t vm = mapping[v];
+					vert_data[v].theta = atan2(B[vm + 1], B[vm + 0]);
+					vert_data[v].phi   = atan2(B[vm + 3], B[vm + 2]);
+				}
+			}
+			
 
-			gmm::row_matrix< gmm::wsvector<double> > M(3,3);
-			M(0,0) += 1;
-			M(1,1) += 1;
-			M(2,2) += 1;
-			k3d::log() << M << std::endl;
 		}
 
 		void extract() 
@@ -245,7 +462,27 @@ namespace detail {
 
 		void remesh(k3d::mesh& OutputMesh) 
 		{
+			k3d::typed_array<k3d::color>* c1_p = new k3d::typed_array<k3d::color>;
+			boost::shared_ptr<k3d::typed_array<k3d::color> > c1(c1_p);
+
+			k3d::typed_array<k3d::color>* c2_p = new k3d::typed_array<k3d::color>;
+			boost::shared_ptr<k3d::typed_array<k3d::color> > c2(c2_p);
 			
+			c1->resize(mesh->num_edges);
+			c2->resize(mesh->num_edges);
+			//k3d::mesh::named_arrays& a1 = OutputMesh.polyhedra->face_varying_data;
+
+			//a1["PGP_pre_theta_color"] = c1;
+			//a1["PGP_pre_phi_color"] = c2;
+
+		
+			//for(face_t f = 0; f < mesh->num_faces; ++f) {
+			//	edge_t e0 = face_data[f].edge[0]
+			//	edge_t e1 = face_data[f].edge[0]
+			//	edge_t e2 = face_data[f].edge[0]
+			//}
+			//vert_data[v].theta*
+
 		}
 
 
@@ -258,6 +495,7 @@ namespace detail {
 			int rot[3];
 			double lamda[3];
 			double delta[3];
+			double delta_p[3];
 			vec2 vf[3]; // vector field projected into triangle plane
 			vec2 e[3]; // edge vectors in triangle space
 		};
@@ -267,10 +505,14 @@ namespace detail {
 			bool aligned;
 			Vec3 dir;
 
+			double theta;
+			double phi;
 		};
 		std::vector<per_face> face_data;
 		std::vector<per_vert> vert_data;
 		double omega;
+
+		gmm::dense_matrix<double> M[3];
 	};
 };
 
