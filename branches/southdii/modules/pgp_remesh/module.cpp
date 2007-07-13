@@ -28,10 +28,12 @@ namespace libk3dquadremesh
 
 extern k3d::iplugin_factory& pgp_remesh_factory();
 extern k3d::iplugin_factory& point_mean_curv_painter_factory();
+extern k3d::iplugin_factory& pgp_face_painter_factory();
 } // namespace libk3dquadremesh
 
 
 K3D_MODULE_START(Registry)
 	Registry.register_factory(libk3dquadremesh::pgp_remesh_factory());
 	Registry.register_factory(libk3dquadremesh::point_mean_curv_painter_factory());
+	Registry.register_factory(libk3dquadremesh::pgp_face_painter_factory());
 K3D_MODULE_END

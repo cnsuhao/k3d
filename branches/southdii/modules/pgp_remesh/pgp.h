@@ -37,6 +37,7 @@
 #include <k3dsdk/utility.h>
 #include <k3dsdk/color.h>
 #include <iostream>
+#include <fstream>
 #include <map>
 #include <utility>
 #include "mesh_info.h"
@@ -96,7 +97,7 @@ namespace detail {
 
 		}
 
-		void setup() 
+		void setup(double omega) 
 		{
 			face_data.resize(mesh->num_faces);
 			vert_data.resize(mesh->num_verts);
@@ -261,6 +262,11 @@ namespace detail {
 			k3d::log() << -1 << ": mult b" <<std::endl;
 			gmm::mult(M[0], M[1], M[2]);
 			
+			std::cout << D << std::endl;			
+			std::cout << M[0] << std::endl;			
+			std::cout << M[1] << std::endl;			
+			std::cout << M[2] << std::endl;			
+			
 			std::vector<int> mapping(mesh->num_verts, 0);
 			
 
@@ -294,7 +300,7 @@ namespace detail {
 			for(vert_t v = 0; v < mapping.size(); ++v) {
 				if(mapping[v] >= 0) {
 					vert_t vm = 4*mapping[v];
-					std::cout << v << "->" << vm << " = " << sum_lamba[v] << std::endl;
+					//std::cout << v << "->" << vm << " = " << sum_lamba[v] << std::endl;
 					A(vm + 0, vm + 0) = sum_lamba[v];
 					A(vm + 1, vm + 1) = sum_lamba[v];
 					A(vm + 2, vm + 2) = sum_lamba[v];
@@ -331,16 +337,35 @@ namespace detail {
 					double sin_d = face_data[f].lamda[e]*std::sin(face_data[f].delta[e]);
 					double cos_dt = face_data[f].lamda[e]*std::cos(face_data[f].delta_p[e]);
 					double sin_dt = face_data[f].lamda[e]*std::sin(face_data[f].delta_p[e]);
-					
-					D.clear();
-					D(0,0) = D(1,1) = -cos_d;
+					if(f == 0) {
+
+						std::cout << cos_d << " " << cos_dt << " " << sin_d << " "<< sin_dt << " " << std::endl;
+						std::cout << D << std::endl;
+					}
+					gmm::clear(D);
+					if(f == 0) std::cout << "0 " << D << std::endl;
+					D(0,0) = -cos_d;
+					if(f == 0) std::cout << "1 " << D << std::endl;
+					D(1,1) = -cos_d;
+					if(f == 0) std::cout << "2 " << D << std::endl;
 					D(0,1) = sin_d;
+					if(f == 0) std::cout << "3 " << D << std::endl;
 					D(1,0) = -sin_d;
+					if(f == 0) std::cout << "4 " << D << std::endl;
 
-					D(2,2) = D(3,3) = -cos_dt;
+					D(2,2) = -cos_dt;
+					if(f == 0) std::cout << "5 " << D << std::endl;
+					D(3,3) = -cos_dt;
+					if(f == 0) std::cout << "6 " << D << std::endl;
 					D(2,3) = sin_dt;
+					if(f == 0) std::cout << "7 " << D << std::endl;
 					D(3,2) = -sin_dt;
-
+					if(f == 0) std::cout << "8 " << D << std::endl;
+//					std::cout << D << std::endl;
+					if(f == 0) {
+						std::cout << "8 " << D << std::endl;
+					}
+					
 					int r0 = face_data[f].rot[v0];
 					int r1 = face_data[f].rot[v1];
 					if((r1 % 2) == 1) r1 = (r1+2)%4;
@@ -359,6 +384,9 @@ namespace detail {
 						gmm::mult(D, M[r0-1], Temp1);
 						//k3d::log() << "mult 4" <<std::endl;
 						gmm::mult(M[r1-1], Temp1, Temp2);
+					}
+					if(f == 0) {
+						std::cout << Temp2 << std::endl;
 					}
 
 					if(constrain0 && !constrain1) {
@@ -431,14 +459,26 @@ namespace detail {
 				}
 			}
 
-			//gmm::clean(A, 1E-10);
+			gmm::clean(A, 1E-10);
 			gmm::csr_matrix<double> S(4*curr, 4*curr);
 			gmm::copy(A, S);
-
+			
+/*			gmm::dense_matrix<double> print_out(4*curr, 4*curr);
+			gmm::copy(A, print_out);
+			
+			std::ofstream fout("bblah.mat");
+			for(vert_t v = 0; v < 4*curr; ++v) {
+				for(vert_t w = 0; w < 4*curr; ++w) {
+					fout << print_out(v,w) << ' ';
+				}
+				fout << std::endl;
+			}
+			fout.close();
+	*/		
 			gmm::diagonal_precond<gmm::csr_matrix<double> > PR(S);
 			//gmm::identity_matrix PR;
-			gmm::iteration iter(1E-12);
-			iter.set_noisy(1);
+			gmm::iteration iter(1E-10);
+			iter.set_noisy(0);
 			gmm::cg(S, X, B, PR, iter);
 			
 			for(vert_t v = 0; v < mapping.size(); ++v) {
@@ -446,10 +486,15 @@ namespace detail {
 					vert_data[v].theta = 0;
 					vert_data[v].phi   = 0;
 				} else {
-					vert_t vm = mapping[v];
+					vert_t vm = 4*mapping[v];
 					vert_data[v].theta = atan2(B[vm + 1], B[vm + 0]);
 					vert_data[v].phi   = atan2(B[vm + 3], B[vm + 2]);
+					if(vert_data[v].theta < 0) vert_data[v].theta += k3d::pi_times_2();
+					if(vert_data[v].phi < 0) vert_data[v].phi += k3d::pi_times_2();
 				}
+
+				std::cout << v << ": (" << vert_data[v].theta << ", " << vert_data[v].phi << ")" << std::endl;
+				
 			}
 			
 
@@ -470,19 +515,28 @@ namespace detail {
 			
 			c1->resize(mesh->num_edges);
 			c2->resize(mesh->num_edges);
-			//k3d::mesh::named_arrays& a1 = OutputMesh.polyhedra->face_varying_data;
 
-			//a1["PGP_pre_theta_color"] = c1;
-			//a1["PGP_pre_phi_color"] = c2;
+			k3d::mesh::polyhedra_t* poly = new k3d::mesh::polyhedra_t(*OutputMesh.polyhedra);
+			boost::shared_ptr<k3d::mesh::polyhedra_t> poly1(poly);
+			k3d::mesh::named_arrays& a1 = poly->face_varying_data;
+
+			a1["PGP_pre_theta_color"] = c1;
+			a1["PGP_pre_phi_color"] = c2;
 
 		
-			//for(face_t f = 0; f < mesh->num_faces; ++f) {
-			//	edge_t e0 = face_data[f].edge[0]
-			//	edge_t e1 = face_data[f].edge[0]
-			//	edge_t e2 = face_data[f].edge[0]
-			//}
-			//vert_data[v].theta*
+			for(face_t f = 0; f < mesh->num_faces; ++f) {
+				edge_t e0 = face_data[f].edge[0];
+				edge_t e1 = face_data[f].edge[1];
+				edge_t e2 = face_data[f].edge[2];
+				c1->at(e0) = k3d::color(k3d::basic_hsv((180.0/k3d::pi()) * vert_data[mesh->edge_vert[e0]].theta,1,1));
+				c1->at(e1) = k3d::color(k3d::basic_hsv((180.0/k3d::pi()) * vert_data[mesh->edge_vert[e1]].theta,1,1));
+				c1->at(e2) = k3d::color(k3d::basic_hsv((180.0/k3d::pi()) * vert_data[mesh->edge_vert[e2]].theta,1,1));
+				c2->at(e0) = k3d::color(k3d::basic_hsv((180.0/k3d::pi()) * vert_data[mesh->edge_vert[e0]].phi,1,1));
+				c2->at(e1) = k3d::color(k3d::basic_hsv((180.0/k3d::pi()) * vert_data[mesh->edge_vert[e1]].phi,1,1));
+				c2->at(e2) = k3d::color(k3d::basic_hsv((180.0/k3d::pi()) * vert_data[mesh->edge_vert[e2]].phi,1,1));
+			}
 
+			OutputMesh.polyhedra = poly1;
 		}
 
 
@@ -510,7 +564,6 @@ namespace detail {
 		};
 		std::vector<per_face> face_data;
 		std::vector<per_vert> vert_data;
-		double omega;
 
 		gmm::dense_matrix<double> M[3];
 	};
