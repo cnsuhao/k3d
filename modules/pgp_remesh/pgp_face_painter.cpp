@@ -55,9 +55,9 @@ public:
 		if (k3d::is_sds(Mesh))
 			return;
 		
-		if(Mesh.face_varying_data.find("PGP_pre_theta_color") == Mesh.face_varying_data.end())
+		if(Mesh.polyhedra->face_varying_data.find("PGP_pre_theta_color") == Mesh.polyhedra->face_varying_data.end())
 			return;
-		if(Mesh.face_varying_data.find("PGP_pre_phi_color") == Mesh.face_varying_data.end())
+		if(Mesh.polyhedra->face_varying_data.find("PGP_pre_phi_color") == Mesh.polyhedra->face_varying_data.end())
 			return;
 
 		const k3d::mesh::indices_t& face_first_loops = *Mesh.polyhedra->face_first_loops;
@@ -66,9 +66,8 @@ public:
 		const k3d::mesh::indices_t& edge_points = *Mesh.polyhedra->edge_points;
 		const k3d::mesh::indices_t& clockwise_edges = *Mesh.polyhedra->clockwise_edges;
 		const k3d::mesh::points_t& points = *Mesh.points;
-		*Mesh.polyhedra->face_varying_data;
-		const k3d::typed_array < k3d::color > & c_theta = dynamic_cast<const k3d::typed_array < k3d::color > & >(*((*(Mesh.face_varying_data.find("PGP_pre_theta_color"))).second)); 
-		const k3d::typed_array < k3d::color > & c_phi   = dynamic_cast<const k3d::typed_array < k3d::color > & >(*((*(Mesh.face_varying_data.find("PGP_pre_phi_color"))).second)); 
+		const k3d::typed_array < k3d::color > & c_theta = dynamic_cast<const k3d::typed_array < k3d::color > & >(*((*(Mesh.polyhedra->face_varying_data.find("PGP_pre_theta_color"))).second)); 
+		const k3d::typed_array < k3d::color > & c_phi   = dynamic_cast<const k3d::typed_array < k3d::color > & >(*((*(Mesh.polyhedra->face_varying_data.find("PGP_pre_phi_color"))).second)); 
 
 		const size_t face_count = face_first_loops.size();
 
@@ -99,7 +98,9 @@ public:
 			const size_t first_edge = loop_first_edges[face_first_loops[face]];
 			for(size_t edge = first_edge; ; )
 			{
+				k3d::gl::material(GL_FRONT_AND_BACK, GL_DIFFUSE, c_theta[edge]);
 				k3d::gl::vertex3d(points[edge_points[edge]]);
+
 				edge = clockwise_edges[edge];
 				if(edge == first_edge)
 					break;
@@ -158,7 +159,7 @@ public:
 		static k3d::document_plugin_factory<pgp_face_painter, k3d::interface_list<k3d::gl::imesh_painter > > factory(
 			k3d::uuid(0xa8f9e6e8, 0x59b14fa4, 0x8dde0fad, 0x89cea90d),
 			"OpenGLPGPFacePainter",
-			_("Renders mesh faces"),
+			_("Renders mesh faces with PGP"),
 			"OpenGL Painters",
 			k3d::iplugin_factory::EXPERIMENTAL);
 
