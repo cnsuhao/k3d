@@ -203,7 +203,8 @@ namespace detail {
 				int max_arg1 = 0;
 				int max_arg2 = 0;
 
-				for(int i = 1; i < 4; i++) {
+				for(int i = 2; i < 4; i+=2) {
+				//for(int i = 1; i < 4; i++) {
 					double dot1 = pf.vf[0]*rotate90(pf.vf[1], i);
 					double dot2 = pf.vf[0]*rotate90(pf.vf[2], i);
 
@@ -487,8 +488,8 @@ namespace detail {
 					vert_data[v].phi   = 0;
 				} else {
 					vert_t vm = 4*mapping[v];
-					vert_data[v].theta = atan2(B[vm + 1], B[vm + 0]);
-					vert_data[v].phi   = atan2(B[vm + 3], B[vm + 2]);
+					vert_data[v].theta = atan2(X[vm + 1], X[vm + 0]);
+					vert_data[v].phi   = atan2(X[vm + 3], X[vm + 2]);
 					if(vert_data[v].theta < 0) vert_data[v].theta += k3d::pi_times_2();
 					if(vert_data[v].phi < 0) vert_data[v].phi += k3d::pi_times_2();
 				}
@@ -528,12 +529,12 @@ namespace detail {
 				edge_t e0 = face_data[f].edge[0];
 				edge_t e1 = face_data[f].edge[1];
 				edge_t e2 = face_data[f].edge[2];
-				c1->at(e0) = k3d::color(k3d::basic_hsv((180.0/k3d::pi()) * vert_data[mesh->edge_vert[e0]].theta,1,1));
-				c1->at(e1) = k3d::color(k3d::basic_hsv((180.0/k3d::pi()) * vert_data[mesh->edge_vert[e1]].theta,1,1));
-				c1->at(e2) = k3d::color(k3d::basic_hsv((180.0/k3d::pi()) * vert_data[mesh->edge_vert[e2]].theta,1,1));
-				c2->at(e0) = k3d::color(k3d::basic_hsv((180.0/k3d::pi()) * vert_data[mesh->edge_vert[e0]].phi,1,1));
-				c2->at(e1) = k3d::color(k3d::basic_hsv((180.0/k3d::pi()) * vert_data[mesh->edge_vert[e1]].phi,1,1));
-				c2->at(e2) = k3d::color(k3d::basic_hsv((180.0/k3d::pi()) * vert_data[mesh->edge_vert[e2]].phi,1,1));
+				c1->at(e0) = k3d::color(k3d::basic_hsv((180.0/k3d::pi()) * vert_data[mesh->edge_vert[e1]].theta,1,1));
+				c1->at(e1) = k3d::color(k3d::basic_hsv((180.0/k3d::pi()) * vert_data[mesh->edge_vert[e2]].theta,1,1));
+				c1->at(e2) = k3d::color(k3d::basic_hsv((180.0/k3d::pi()) * vert_data[mesh->edge_vert[e0]].theta,1,1));
+				c2->at(e0) = k3d::color(k3d::basic_hsv((180.0/k3d::pi()) * vert_data[mesh->edge_vert[e1]].phi,1,1));
+				c2->at(e1) = k3d::color(k3d::basic_hsv((180.0/k3d::pi()) * vert_data[mesh->edge_vert[e2]].phi,1,1));
+				c2->at(e2) = k3d::color(k3d::basic_hsv((180.0/k3d::pi()) * vert_data[mesh->edge_vert[e0]].phi,1,1));
 			}
 
 			OutputMesh.polyhedra = poly1;
@@ -552,6 +553,8 @@ namespace detail {
 			double delta_p[3];
 			vec2 vf[3]; // vector field projected into triangle plane
 			vec2 e[3]; // edge vectors in triangle space
+			double theta;
+			double phi;
 		};
 
 		struct per_vert {
