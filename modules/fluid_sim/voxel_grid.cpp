@@ -42,7 +42,21 @@ namespace fluid_sim
 		m_porigin[1] = m_py.value();
 		m_porigin[2] = m_pz.value();
 
-		m_grid = new array_type(boost::extents[m_rows.value()][m_cols.value()][m_slices.value()]);
+		//m_grid = new array_type(boost::extents[m_rows.value()][m_cols.value()][m_slices.value()]);
+		
+		m_num_rows = m_rows.value();
+		m_num_cols = m_cols.value();
+		m_num_slices = m_slices.value();
+		
+		m_velocity_x = new float[m_rows.value()*m_cols.value()*m_slices.value()];
+		m_velocity_y = new float[m_rows.value()*m_cols.value()*m_slices.value()];
+		m_velocity_z = new float[m_rows.value()*m_cols.value()*m_slices.value()];
+		m_density = new float[m_rows.value()*m_cols.value()*m_slices.value()];
+
+
+
+
+	
 	}
 
 	k3d::iplugin_factory& voxel_grid::get_factory()
