@@ -62,6 +62,29 @@ public:
 	k3d::vector3 velocity(const k3d::point3& pos); // trilinearly interpolated velocity at pos
 	const cell& get_cell(const k3d::point3& pos);
 
+	// should NOT be doing this, but arrays are needed in the fluid solver in order to use POIS3D from FISHPAK
+	float* get_velocity_x() { return m_velocity_x; }
+	float* get_velocity_y() { return m_velocity_y; }
+	float* get_velocity_z() { return m_velocity_z; }
+
+	/* i = rows, j = columns, k = slice */
+	float get_velocity_i(int i, int j, int k) { return m_velocity_x[m_num_rows*m_num_cols*k + m_num_cols*i + j]; }
+	float get_velocity_j(int i, int j, int k) { return m_velocity_y[m_num_rows*m_num_cols*k + m_num_cols*i + j]; }
+	float get_velocity_k(int i, int j, int k) { return m_velocity_y[m_num_rows*m_num_cols*k + m_num_cols*i + j]; }
+
+
+	// return the location of the specified velocity component for voxel (i,j,k)
+	k3d::vector3 get_velocity_i_pos(int i, int j, int k) { }
+	k3d::vector3 get_velocity_j_pos(int i, int j, int k) { }
+	k3d::vector3 get_velocity_k_pos(int i, int j, int k) { }
+
+	int number_of_voxels() { return m_num_rows * m_num_cols * m_num_slices; }
+	int num_rows() { return m_num_rows; }
+	int num_cols() { return m_num_cols; }
+	int num_slices() { return m_num_slices; }
+
+
+
 	
 private:
 	typedef boost::multi_array<cell, 3> array_type;
@@ -95,33 +118,27 @@ private:
 	k3d::vector3 m_porigin; // <px, py, pz>
 	
 	// voxel grid
-	array_type* m_grid;
+	//array_type* m_grid;
+
+	// voxel grid  - must be changed again to just float* m_velocity which has the size of m_rows*m_cols*m_slices in order to work with
+	// FISHPAK's pois3d function when converted from Fortran to C with f2c
+	float* m_velocity_x;
+	float* m_velocity_y;
+	float* m_velocity_z;
+
+	float* m_density;
+
+	float m_visc;
+
+	int m_num_rows;
+	int m_num_cols;
+	int m_num_slices;
 
 
 	double lerp(double fx, double v0, double v1) { return v0 + fx*(v1-v0); }
 
 	// (nx, ny, nz) of the voxel (i,j,k)
 	k3d::vector3 n_coord(int i, int j, int k) { return m_norigin + k3d::vector3(i, j, k) * m_vox_width.value(); }
-
-	const cell& get_voxel(int i, int j, int k) { return (*m_grid)[i][j][k]; };
-
-	// boost's [i][j][k] performs range checking by default - can be disabled
-	// convenience function for getting velocities stored in individual voxels
-	// more efficient to just call get_voxel, and use cell's accessor methods to access velocities
-	double get_velocity_i(int i, int j, int k) { return ((*m_grid)[i][j][k]).velocity_x(); }
-	double get_velocity_j(int i, int j, int k) { return ((*m_grid)[i][j][k]).velocity_y(); }
-	double get_velocity_k(int i, int j, int k) { return ((*m_grid)[i][j][k]).velocity_z(); }
-
-	// return the location of the specified velocity component for voxel (i,j,k)
-	k3d::vector3 get_velocity_i_pos(int i, int j, int k) { }
-	k3d::vector3 get_velocity_j_pos(int i, int j, int k) { }
-	k3d::vector3 get_velocity_k_pos(int i, int j, int k) { }
-
-	
-
-
-
-
 
 };
 
