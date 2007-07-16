@@ -131,7 +131,7 @@ namespace libk3dquadremesh
 			base_t::document().pipeline_profiler().finish_execution(*this, "PGP solve");
 
 			base_t::document().pipeline_profiler().start_execution(*this, "PGP extract");
-			pgp.extract();
+			pgp.extract(m_omega.value());
 			base_t::document().pipeline_profiler().finish_execution(*this, "PGP extract");
 
 			base_t::document().pipeline_profiler().start_execution(*this, "PGP remesh");

@@ -95,11 +95,12 @@ namespace detail {
 			face_poly.resize(num_faces);
 			vert_edge.resize(num_verts);
 			edge_vert.resize(num_edges);
-			
+			vert_edge_cw.resize(num_verts);
 			// face->edge is missing
 			calc_edge_face_adj(*mesh->polyhedra, edge_face);
 			calc_edge_ccw_adj(*mesh->polyhedra, edge_ccw);
 			calc_edge_companion_adj(*mesh->polyhedra, edge_comp);
+			calc_vert_edge_adj(*mesh->polyhedra, vert_edge_cw);
 			calc_vert_edge_ccw_adj(*mesh->polyhedra, vert_edge);
 			calc_edge_vert_ccw_adj(*mesh->polyhedra, edge_vert);
 			
@@ -278,6 +279,7 @@ namespace detail {
 		indices_t face_poly;
 		indices_t vert_edge;
 		indices_t poly_face;
+		indices_t vert_edge_cw;
 	};
 };
 }; // namespace pgp_module
