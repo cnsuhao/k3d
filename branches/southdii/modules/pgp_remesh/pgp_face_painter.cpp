@@ -29,6 +29,7 @@
 #include <k3dsdk/painter_selection_state_gl.h>
 #include <k3dsdk/persistent.h>
 #include <k3dsdk/selection.h>
+#include <utility>
 
 namespace libk3dquadremesh
 {
@@ -42,9 +43,38 @@ class pgp_face_painter :
 	typedef k3d::gl::mesh_painter base;
 
 public:
+	GLubyte iso_tex [512][512][3];
+
 	pgp_face_painter(k3d::iplugin_factory& Factory, k3d::idocument& Document) :
 		base(Factory, Document)
 	{
+		
+		glEnable(GL_TEXTURE_2D);
+
+		for(int i = 0; i < 512; i++) {
+			for(int j = 0; j < 512; j++) {
+				int I = i % (512);
+				int J = j % (512);
+				int X = 512;// % IPIX/4;
+				int w = 8;
+				iso_tex[i][j][0] = iso_tex[i][j][1] = iso_tex[i][j][2] = 255;
+				if(J < X/w ||  J > X-X/w)
+					iso_tex[i][j][0] = iso_tex[i][j][1] = 0;
+				if(I < X/w ||  I > X-X/w)
+					iso_tex[i][j][1] = iso_tex[i][j][2] = 0;
+				if((I < X/w ||  I > X-X/w) && (J < X/w || J > X-X/w))
+					iso_tex[i][j][0] = iso_tex[i][j][2] = 255;
+			}
+		}
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); 
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT); 
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+
+		glTexImage2D(GL_TEXTURE_2D, 0, 3, 512, 512, 0, GL_RGB, GL_UNSIGNED_BYTE, iso_tex);
+		glDisable(GL_TEXTURE_2D);
+
 	}
 
 	void on_paint_mesh(const k3d::mesh& Mesh, const k3d::gl::painter_render_state& RenderState)
@@ -59,6 +89,8 @@ public:
 			return;
 		if(Mesh.polyhedra->face_varying_data.find("PGP_pre_phi_color") == Mesh.polyhedra->face_varying_data.end())
 			return;
+		if(Mesh.polyhedra->face_varying_data.find("PGP_uv") == Mesh.polyhedra->face_varying_data.end())
+			return;
 
 		const k3d::mesh::indices_t& face_first_loops = *Mesh.polyhedra->face_first_loops;
 		const k3d::mesh::selection_t& face_selection = *Mesh.polyhedra->face_selection;
@@ -68,6 +100,7 @@ public:
 		const k3d::mesh::points_t& points = *Mesh.points;
 		const k3d::typed_array < k3d::color > & c_theta = dynamic_cast<const k3d::typed_array < k3d::color > & >(*((*(Mesh.polyhedra->face_varying_data.find("PGP_pre_theta_color"))).second)); 
 		const k3d::typed_array < k3d::color > & c_phi   = dynamic_cast<const k3d::typed_array < k3d::color > & >(*((*(Mesh.polyhedra->face_varying_data.find("PGP_pre_phi_color"))).second)); 
+		const k3d::typed_array < std::pair<double, double> > & uv   = dynamic_cast<const k3d::typed_array < std::pair<double, double> > & >(*((*(Mesh.polyhedra->face_varying_data.find("PGP_uv"))).second)); 
 
 		const size_t face_count = face_first_loops.size();
 
@@ -88,25 +121,35 @@ public:
 
 		glEnable(GL_POLYGON_OFFSET_FILL);
 		glPolygonOffset(1.0, 1.0);
+		glEnable(GL_TEXTURE_2D);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); 
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT); 
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+
+		glTexImage2D(GL_TEXTURE_2D, 0, 3, 512, 512, 0, GL_RGB, GL_UNSIGNED_BYTE, iso_tex);
 
 		for(size_t face = 0; face != face_count; ++face)
 		{
 			k3d::gl::normal3d(normals[face]);
-			k3d::gl::material(GL_FRONT_AND_BACK, GL_DIFFUSE, face_selection[face] ? selected_color : color);
+			//k3d::gl::material(GL_FRONT_AND_BACK, GL_DIFFUSE, face_selection[face] ? selected_color : color);
 
 			glBegin(GL_POLYGON);
 			const size_t first_edge = loop_first_edges[face_first_loops[face]];
 			for(size_t edge = first_edge; ; )
 			{
-				k3d::gl::material(GL_FRONT_AND_BACK, GL_DIFFUSE, c_theta[edge]);
+				//k3d::gl::material(GL_FRONT_AND_BACK, GL_DIFFUSE, c_theta[edge]);
+				glTexCoord2d(uv[edge].first, uv[edge].second);
 				k3d::gl::vertex3d(points[edge_points[edge]]);
-
+				
 				edge = clockwise_edges[edge];
 				if(edge == first_edge)
 					break;
 			}
 			glEnd();
 		}
+		glDisable(GL_TEXTURE_2D);
 	}
 	
 	void on_select_mesh(const k3d::mesh& Mesh, const k3d::gl::painter_render_state& RenderState, const k3d::gl::painter_selection_state& SelectionState)
@@ -157,7 +200,7 @@ public:
 	static k3d::iplugin_factory& get_factory()
 	{
 		static k3d::document_plugin_factory<pgp_face_painter, k3d::interface_list<k3d::gl::imesh_painter > > factory(
-			k3d::uuid(0xa8f9e6e8, 0x59b14fa4, 0x8dde0fad, 0x89cea90d),
+			k3d::uuid(0xa8f9e6e1, 0x59b14fa1, 0x8dde0fa1, 0x89cea901),
 			"OpenGLPGPFacePainter",
 			_("Renders mesh faces with PGP"),
 			"OpenGL Painters",
