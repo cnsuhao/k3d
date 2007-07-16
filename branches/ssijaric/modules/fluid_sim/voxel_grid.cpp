@@ -145,6 +145,25 @@ namespace fluid_sim
 		return voxel_grid::get_factory();
 	}
 
+	// tri-linear interpolation for different velcoity components
+	
+	float voxel_grid::velocity_x(const k3d::point3& pos)
+	{
+		return velocity(pos)[0];
+	}
+
+	float voxel_grid::velocity_y(const k3d::point3& pos)
+	{
+		return velocity(pos)[1];
+	}
+
+	float voxel_grid::velocity_z(const k3d::point3& pos)
+	{
+		return velocity(pos)[2];
+	}
+
+
+
 	// tri-linear interpolation - adapted from Graphics Gems IV
 	k3d::vector3 voxel_grid::velocity(const k3d::point3& pos)
 	{
