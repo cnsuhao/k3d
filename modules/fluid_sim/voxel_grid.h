@@ -11,6 +11,11 @@
 
 #include <boost/multi_array.hpp>
 
+// The grid doesn't use multi_array to represent voxels anymore
+// rather, each velocity component is stored in a float* array, so that it can be passed onto pois3d to handle
+// dissipation and projection steps
+
+
 namespace fluid_sim
 {
 
@@ -60,12 +65,23 @@ public:
 	sigc::slot<void, k3d::iunknown*> vgrid_modified_slot();
 
 	k3d::vector3 velocity(const k3d::point3& pos); // trilinearly interpolated velocity at pos
-	const cell& get_cell(const k3d::point3& pos);
+	//const cell& get_cell(const k3d::point3& pos);
+	int get_i(const k3d::point3& pos) { return (int)(pos[0] - m_nx.value())/m_num_cols; }
+	int get_j(const k3d::point3& pos) { return (int)(pos[1] - m_ny.value())/m_num_rows; }
+	int get_k(const k3d::point3& pos) { return (int)(pos[2] - m_nz.value())/m_num_slices; }
 
 	// should NOT be doing this, but arrays are needed in the fluid solver in order to use POIS3D from FISHPAK
 	float* get_velocity_x() { return m_velocity_x; }
 	float* get_velocity_y() { return m_velocity_y; }
 	float* get_velocity_z() { return m_velocity_z; }
+
+	float nx() { return m_nx.value(); }
+	float ny() { return m_ny.value(); }
+	float nz() { return m_nz.value(); }
+
+	float px() { return m_px.value(); }
+	float py() { return m_py.value(); }
+	float pz() { return m_pz.value(); }
 
 	/* i = rows, j = columns, k = slice */
 	float get_velocity_i(int i, int j, int k) { return m_velocity_x[m_num_rows*m_num_cols*k + m_num_cols*i + j]; }
@@ -74,18 +90,33 @@ public:
 
 
 	// return the location of the specified velocity component for voxel (i,j,k)
-	k3d::vector3 get_velocity_i_pos(int i, int j, int k) { }
-	k3d::vector3 get_velocity_j_pos(int i, int j, int k) { }
-	k3d::vector3 get_velocity_k_pos(int i, int j, int k) { }
+	k3d::point3 get_velocity_i_pos(int i, int j, int k) { }
+	k3d::point3 get_velocity_j_pos(int i, int j, int k) { }
+	k3d::point3 get_velocity_k_pos(int i, int j, int k) { }
 
 	int number_of_voxels() { return m_num_rows * m_num_cols * m_num_slices; }
 	int num_rows() { return m_num_rows; }
 	int num_cols() { return m_num_cols; }
 	int num_slices() { return m_num_slices; }
 
+	int indexof(int i, int j, int k) { 
+		if (i < 0) i = 0;
+		else if (i > m_num_rows) i = m_num_rows;
+		if (j < 0) j = 0;
+		else if (j > m_num_cols) j = m_num_cols;
+		if (k < 0) k = 0;
+		else if (k > m_num_slices) k = m_num_slices;
 
+		return m_num_rows*m_num_cols*k + m_num_cols*i + j; 
+	}
 
-	
+	// interpolate different velocity components
+	float velocity_x(const k3d::point3& pos);
+	float velocity_y(const k3d::point3& pos);
+	float velocity_z(const k3d::point3& pos);
+
+	float voxel_width() { return m_vox_width.value(); }
+
 private:
 	typedef boost::multi_array<cell, 3> array_type;
 
