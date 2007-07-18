@@ -1,3 +1,0 @@
-FILE(GLOB LS_FILES *.ls)
-INSTALL(FILES ${LS_FILES} DESTINATION share/k3d/lsystem)
-

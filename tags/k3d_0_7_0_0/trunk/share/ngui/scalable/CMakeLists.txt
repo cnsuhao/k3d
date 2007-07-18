@@ -1,3 +1,0 @@
-FILE(GLOB SVG_FILES *.svg)
-INSTALL(FILES ${SVG_FILES} DESTINATION share/k3d/ngui/scalable)
-
