@@ -44,11 +44,28 @@ class pgp_face_painter :
 
 public:
 	GLubyte iso_tex [512][512][3];
+	GLubyte check_tex [512][512][3];
+	GLuint texture[2];
 
 	pgp_face_painter(k3d::iplugin_factory& Factory, k3d::idocument& Document) :
-		base(Factory, Document)
+		base(Factory, Document),
+		m_draw_pre_theta(init_owner(*this) + init_name("draw_pre_theta") + init_label(_("Draw Pre-Optimization Theta")) + init_description(_("Draw Pre-Optimization Theta")) + init_value(false)),
+		m_draw_pre_phi(init_owner(*this) + init_name("draw_pre_phi") + init_label(_("Draw Pre-Optimization Phi")) + init_description(_("Draw Pre-Optimization Phi")) + init_value(false)),
+		m_draw_theta(init_owner(*this) + init_name("draw_theta") + init_label(_("Draw Optimized Theta")) + init_description(_("Draw Optimized Theta")) + init_value(false)),
+		m_draw_phi(init_owner(*this) + init_name("draw_phi") + init_label(_("Draw Optimized Theta")) + init_description(_("Draw Optimized Theta")) + init_value(false)),
+		m_draw_iso(init_owner(*this) + init_name("draw_iso") + init_label(_("Draw Iso-line Texture")) + init_description(_("Draw Iso-line Texture")) + init_value(true)),
+		m_draw_check(init_owner(*this) + init_name("draw_check") + init_label(_("Draw Checkerboard Texture")) + init_description(_("Draw Checkerboard Texture")) + init_value(false)),
+		m_tex_scale(init_owner(*this) + init_name("tex_scale") + init_label(_("Texture Scaling")) + init_description(_("Texture Scaling")) + init_value(1))
 	{
+		m_draw_pre_theta.changed_signal().connect(make_async_redraw_slot());
+		m_draw_pre_phi.changed_signal().connect(make_async_redraw_slot());
+		m_draw_theta.changed_signal().connect(make_async_redraw_slot());
+		m_draw_phi.changed_signal().connect(make_async_redraw_slot());
+		m_draw_iso.changed_signal().connect(make_async_redraw_slot());
+		m_draw_check.changed_signal().connect(make_async_redraw_slot());
+		m_tex_scale.changed_signal().connect(make_async_redraw_slot());
 		
+		glGenTextures( 2, texture );	
 		glEnable(GL_TEXTURE_2D);
 
 		for(int i = 0; i < 512; i++) {
@@ -56,27 +73,50 @@ public:
 				int I = i % (512);
 				int J = j % (512);
 				int X = 512;// % IPIX/4;
-				int w = 8;
+				int w = 32;
 				iso_tex[i][j][0] = iso_tex[i][j][1] = iso_tex[i][j][2] = 255;
+				check_tex[i][j][0] = check_tex[i][j][1] = check_tex[i][j][2] = 255;
 				if(J < X/w ||  J > X-X/w)
 					iso_tex[i][j][0] = iso_tex[i][j][1] = 0;
 				if(I < X/w ||  I > X-X/w)
 					iso_tex[i][j][1] = iso_tex[i][j][2] = 0;
 				if((I < X/w ||  I > X-X/w) && (J < X/w || J > X-X/w))
 					iso_tex[i][j][0] = iso_tex[i][j][2] = 255;
+
+				if(J <= X/2 && I >= X/2)
+					check_tex[i][j][0] = check_tex[i][j][1] = check_tex[i][j][2] = 0;
+				if(J >= X/2 && I <= X/2)
+					check_tex[i][j][0] = check_tex[i][j][1] = check_tex[i][j][2] = 0;
+
 			}
 		}
+		
+		glBindTexture( GL_TEXTURE_2D, texture[0] );
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); 
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT); 
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 
 		glTexImage2D(GL_TEXTURE_2D, 0, 3, 512, 512, 0, GL_RGB, GL_UNSIGNED_BYTE, iso_tex);
+		
+		glBindTexture( GL_TEXTURE_2D, texture[1] );
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); 
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT); 
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+
+		glTexImage2D(GL_TEXTURE_2D, 0, 3, 512, 512, 0, GL_RGB, GL_UNSIGNED_BYTE, check_tex);
+				
 		glDisable(GL_TEXTURE_2D);
 
 	}
 
+	
+	~pgp_face_painter() {
+		glDeleteTextures( 2, texture);
+	}
 	void on_paint_mesh(const k3d::mesh& Mesh, const k3d::gl::painter_render_state& RenderState)
 	{
 		if(!k3d::validate_polyhedra(Mesh))
@@ -101,7 +141,6 @@ public:
 		const k3d::typed_array < k3d::color > & c_theta = dynamic_cast<const k3d::typed_array < k3d::color > & >(*((*(Mesh.polyhedra->face_varying_data.find("PGP_pre_theta_color"))).second)); 
 		const k3d::typed_array < k3d::color > & c_phi   = dynamic_cast<const k3d::typed_array < k3d::color > & >(*((*(Mesh.polyhedra->face_varying_data.find("PGP_pre_phi_color"))).second)); 
 		const k3d::typed_array < std::pair<double, double> > & uv   = dynamic_cast<const k3d::typed_array < std::pair<double, double> > & >(*((*(Mesh.polyhedra->face_varying_data.find("PGP_uv"))).second)); 
-
 		const size_t face_count = face_first_loops.size();
 
 		// Calculate face normals ...
@@ -112,6 +151,12 @@ public:
 		k3d::gl::store_attributes attributes;
 		glEnable(GL_LIGHTING);
 
+		double scale = (double)m_tex_scale.value();
+		if(scale == 0.0) scale = 1.0;
+		if(scale < 0.0) {
+			scale = -1.0/(scale); 
+		}
+
 		const k3d::color color = k3d::color(0.8, 0.8, 0.8);
 		const k3d::color selected_color = RenderState.show_component_selection ? k3d::color(1, 0, 0) : color;
 
@@ -121,26 +166,31 @@ public:
 
 		glEnable(GL_POLYGON_OFFSET_FILL);
 		glPolygonOffset(1.0, 1.0);
-		glEnable(GL_TEXTURE_2D);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); 
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT); 
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+		
+		bool draw_texture = m_draw_iso.value() || m_draw_check.value();
+		
+		if(draw_texture) {
+			glEnable(GL_TEXTURE_2D);
+			if(m_draw_iso.value())
+				glBindTexture( GL_TEXTURE_2D, texture[0] );
+			else
+				glBindTexture( GL_TEXTURE_2D, texture[1] );
+		}
 
-		glTexImage2D(GL_TEXTURE_2D, 0, 3, 512, 512, 0, GL_RGB, GL_UNSIGNED_BYTE, iso_tex);
-
-		for(size_t face = 0; face != face_count; ++face)
-		{
+		for(size_t face = 0; face != face_count; ++face) {
 			k3d::gl::normal3d(normals[face]);
-			//k3d::gl::material(GL_FRONT_AND_BACK, GL_DIFFUSE, face_selection[face] ? selected_color : color);
 
 			glBegin(GL_POLYGON);
 			const size_t first_edge = loop_first_edges[face_first_loops[face]];
 			for(size_t edge = first_edge; ; )
 			{
-				//k3d::gl::material(GL_FRONT_AND_BACK, GL_DIFFUSE, c_theta[edge]);
-				glTexCoord2d(uv[edge].first, uv[edge].second);
+				if(draw_texture) 
+					glTexCoord2d(scale*uv[edge].first, scale*uv[edge].second);
+				else if(m_draw_theta.value())
+					k3d::gl::material(GL_FRONT_AND_BACK, GL_DIFFUSE, c_theta[edge]);
+				else
+					k3d::gl::material(GL_FRONT_AND_BACK, GL_DIFFUSE, c_phi[edge]);
+
 				k3d::gl::vertex3d(points[edge_points[edge]]);
 				
 				edge = clockwise_edges[edge];
@@ -149,7 +199,8 @@ public:
 			}
 			glEnd();
 		}
-		glDisable(GL_TEXTURE_2D);
+		if(draw_texture)
+			glDisable(GL_TEXTURE_2D);
 	}
 	
 	void on_select_mesh(const k3d::mesh& Mesh, const k3d::gl::painter_render_state& RenderState, const k3d::gl::painter_selection_state& SelectionState)
@@ -200,7 +251,7 @@ public:
 	static k3d::iplugin_factory& get_factory()
 	{
 		static k3d::document_plugin_factory<pgp_face_painter, k3d::interface_list<k3d::gl::imesh_painter > > factory(
-			k3d::uuid(0xa8f9e6e1, 0x59b14fa1, 0x8dde0fa1, 0x89cea901),
+			k3d::uuid(0x1d35ab47, 0x4ed0c54b, 0xfa5ccc89, 0xe1f683d3),
 			"OpenGLPGPFacePainter",
 			_("Renders mesh faces with PGP"),
 			"OpenGL Painters",
@@ -208,6 +259,16 @@ public:
 
 		return factory;
 	}
+
+private:
+	k3d_data(bool, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, with_serialization) m_draw_pre_theta;
+	k3d_data(bool, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, with_serialization) m_draw_pre_phi;
+	k3d_data(bool, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, with_serialization) m_draw_theta;
+	k3d_data(bool, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, with_serialization) m_draw_phi;
+	k3d_data(bool, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, with_serialization) m_draw_iso;
+	k3d_data(bool, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, with_serialization) m_draw_check;
+	k3d_data(int, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, with_serialization) m_tex_scale;
+
 };
 
 /////////////////////////////////////////////////////////////////////////////

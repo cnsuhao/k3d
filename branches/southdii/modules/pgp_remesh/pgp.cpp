@@ -256,7 +256,6 @@ namespace detail {
 				bool constrain0 = (mapping[face_data[f].vert[v0]] < 0);
 				bool constrain1 = (mapping[face_data[f].vert[v1]] < 0);
 
-
 				// Taken care of in seperate loop
 				//if(!constrain0) {
 				//	A(i + 0, i + 0) += face_data[f].lamda[e];
@@ -278,31 +277,31 @@ namespace detail {
 				double sin_dt = face_data[f].lamda[e]*std::sin(face_data[f].delta_p[e]);
 				if(f == 0) {
 
-					std::cout << cos_d << " " << cos_dt << " " << sin_d << " "<< sin_dt << " " << std::endl;
-					std::cout << D << std::endl;
+//					std::cout << cos_d << " " << cos_dt << " " << sin_d << " "<< sin_dt << " " << std::endl;
+//					std::cout << D << std::endl;
 				}
 				gmm::clear(D);
-				if(f == 0) std::cout << "0 " << D << std::endl;
+//				if(f == 0) std::cout << "0 " << D << std::endl;
 				D(0,0) = -cos_d;
-				if(f == 0) std::cout << "1 " << D << std::endl;
+//				if(f == 0) std::cout << "1 " << D << std::endl;
 				D(1,1) = -cos_d;
-				if(f == 0) std::cout << "2 " << D << std::endl;
+//				if(f == 0) std::cout << "2 " << D << std::endl;
 				D(0,1) = sin_d;
-				if(f == 0) std::cout << "3 " << D << std::endl;
+//				if(f == 0) std::cout << "3 " << D << std::endl;
 				D(1,0) = -sin_d;
-				if(f == 0) std::cout << "4 " << D << std::endl;
+//				if(f == 0) std::cout << "4 " << D << std::endl;
 
 				D(2,2) = -cos_dt;
-				if(f == 0) std::cout << "5 " << D << std::endl;
+//				if(f == 0) std::cout << "5 " << D << std::endl;
 				D(3,3) = -cos_dt;
-				if(f == 0) std::cout << "6 " << D << std::endl;
+//				if(f == 0) std::cout << "6 " << D << std::endl;
 				D(2,3) = sin_dt;
-				if(f == 0) std::cout << "7 " << D << std::endl;
+//				if(f == 0) std::cout << "7 " << D << std::endl;
 				D(3,2) = -sin_dt;
-				if(f == 0) std::cout << "8 " << D << std::endl;
+//				if(f == 0) std::cout << "8 " << D << std::endl;
 //					std::cout << D << std::endl;
 				if(f == 0) {
-					std::cout << "8 " << D << std::endl;
+//					std::cout << "8 " << D << std::endl;
 				}
 				
 				int r0 = face_data[f].rot[v0];
@@ -432,7 +431,7 @@ namespace detail {
 				if(vert_data[v].phi < 0) vert_data[v].phi += k3d::pi_times_2();
 			}
 
-			std::cout << v << ": (" << vert_data[v].theta << ", " << vert_data[v].phi << ")" << std::endl;
+			//std::cout << v << ": (" << vert_data[v].theta << ", " << vert_data[v].phi << ")" << std::endl;
 			
 		}
 		
