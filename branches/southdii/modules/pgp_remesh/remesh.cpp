@@ -49,7 +49,7 @@ namespace libk3dquadremesh
 			m_smooth(init_owner(*this) + init_name("use_smooth") + init_label(_("Smooth Curvature")) + init_description(_("Smooth Curvature")) + init_value(true)),
 			m_symmetry(init_owner(*this) + init_name("smooth_4") + init_label(_("Smooth as 4-symmetry")) + init_description(_("Smooth as 4-symmetry")) + init_value(false)),
 			m_steps(init_owner(*this) + init_name("steps") + init_label(_("Smoothing steps")) + init_description(_("Smoothing steps")) + init_value(1) + init_constraint(constraint::minimum(0))),
-			m_h(init_owner(*this) + init_name("h") + init_label(_("Smoothing timestep")) + init_description(_("Smoothing timesteps")) + init_value(100.0) + init_constraint(constraint::minimum(0.0001))),
+			m_h(init_owner(*this) + init_name("h") + init_label(_("Smoothing timestep")) + init_description(_("Smoothing timesteps")) + init_value(1000.0) + init_constraint(constraint::minimum(0.0001))),
 			m_omega(init_owner(*this) + init_name("h") + init_label(_("Omega parameter")) + init_description(_("Omega parameter")) + init_value(10.0) + init_constraint(constraint::minimum(0.1))),
 			prev_steps(0),
 			smoothed(false)
@@ -122,6 +122,14 @@ namespace libk3dquadremesh
 
 			pgp = detail::PGP(&info, &geom);
 
+			base_t::document().pipeline_profiler().start_execution(*this, "PGP Setup VF");
+			pgp.setup_vf(true);
+			base_t::document().pipeline_profiler().finish_execution(*this, "PGP Setup VF");
+			
+			base_t::document().pipeline_profiler().start_execution(*this, "PGP Curl Correction");
+			pgp.curl_correction();
+			base_t::document().pipeline_profiler().finish_execution(*this, "PGP Curl Correction");
+			
 			base_t::document().pipeline_profiler().start_execution(*this, "PGP Setup");
 			pgp.setup(m_omega.value());
 			base_t::document().pipeline_profiler().finish_execution(*this, "PGP Setup");

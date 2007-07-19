@@ -96,7 +96,8 @@ namespace detail {
 		{
 
 		}
-
+		void setup_vf(bool align);
+		void curl_correction() ;
 		void setup(double omega);
 		void solve();
 
@@ -116,8 +117,10 @@ namespace detail {
 			double delta_p[3];
 			vec2 vf[3]; // vector field projected into triangle plane
 			vec2 e[3]; // edge vectors in triangle space
+			vec2 v[3]; // vertex positions in triangle space
 			double theta[3];
 			double phi[3];
+			double angle[3];
 		};
 
 		struct per_vert {
@@ -127,6 +130,8 @@ namespace detail {
 
 			double theta;
 			double phi;
+			vec2 U;
+			vec2 V;
 		};
 		std::vector<per_face> face_data;
 		std::vector<per_vert> vert_data;
