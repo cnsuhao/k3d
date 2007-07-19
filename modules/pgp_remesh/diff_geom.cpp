@@ -217,8 +217,8 @@ namespace detail {
 
 
 	
-		//gmm::diagonal_precond<gmm::csr_matrix<double> > PR(M);
-		gmm::identity_matrix PR;
+		gmm::diagonal_precond<gmm::csr_matrix<double> > PR(M);
+		//gmm::identity_matrix PR;
 		int i = 0;
 		for(i = 0; i < steps; ++i) {
 			gmm::iteration iter(1E-8);

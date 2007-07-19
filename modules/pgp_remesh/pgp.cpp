@@ -42,7 +42,7 @@ namespace libk3dquadremesh
 {
 
 namespace detail {
-	void PGP::setup(double omega) 
+	void PGP::setup_vf(bool align) 
 	{
 		face_data.resize(mesh->num_faces);
 		vert_data.resize(mesh->num_verts);
@@ -59,12 +59,9 @@ namespace detail {
 			vert_data[v].dir = temp_i + temp_j;
 		}
 
-		// Fill face data with edge and vert indices, and project vf into triangle
 		for(face_t f = 0; f < mesh->num_faces; ++f) {
 			mesh_info::Face face = mesh->getFace(f);
-
 			per_face &pf = face_data[f];
-
 			pf.edge[0] = face[0]();
 			pf.edge[1] = face[1]();
 			pf.edge[2] = face[2]();
@@ -113,6 +110,81 @@ namespace detail {
 			pf.vf[2].first  = temp*i;
 			pf.vf[2].second = temp*j;
 
+			pf.angle[0] = atan2(pf.vf[0].second, pf.vf[0].first);
+			pf.angle[1] = atan2(pf.vf[1].second, pf.vf[1].first);
+			pf.angle[2] = atan2(pf.vf[2].second, pf.vf[2].first);
+			if(pf.angle[0] < 0) pf.angle[0] += k3d::pi_times_2();
+			if(pf.angle[1] < 0) pf.angle[1] += k3d::pi_times_2();
+			if(pf.angle[2] < 0) pf.angle[2] += k3d::pi_times_2();
+
+		}
+	}
+
+	void PGP::curl_correction() 
+	{
+		const double test = 1.0;
+		const double test0 = -1.0;
+		gmm::row_matrix< gmm::wsvector<double> > G(2*mesh->num_faces, mesh->num_verts);
+		std::vector<double> B(2*mesh->num_faces,0.0);
+		std::vector<double> X(mesh->num_verts,0.0);
+		for(face_t f = 0; f < mesh->num_faces; ++f) {
+			mesh_info::Face face = mesh->getFace(f);
+			per_face &pf = face_data[f];
+
+			
+			G(2*f + 0, pf.vert[0]) = test0 * -1.0*pf.e[0].second;
+			G(2*f + 1, pf.vert[0]) = test0 * pf.e[0].first;
+
+			G(2*f + 0, pf.vert[1]) = test0 * -1.0*pf.e[1].second;
+			G(2*f + 1, pf.vert[1]) = test0 * pf.e[1].first;
+
+			G(2*f + 0, pf.vert[2]) = test0 * -1.0*pf.e[2].second;
+			G(2*f + 1, pf.vert[2]) = test0 * pf.e[2].first;
+
+			B[2*f + 0] = test * -1.0*(pf.e[0].first*pf.angle[0] + pf.e[1].first*pf.angle[1] + pf.e[2].first*pf.angle[2]);
+			B[2*f + 1] = test * -1.0*(pf.e[0].second*pf.angle[0] + pf.e[1].second*pf.angle[1] + pf.e[2].second*pf.angle[2]);
+		}
+
+		gmm::row_matrix< gmm::wsvector<double> > G2(mesh->num_verts, mesh->num_verts);
+		std::vector<double> B2(mesh->num_verts,0.0);
+
+		gmm::mult(gmm::transposed(G), B, B2);
+		gmm::mult(gmm::transposed(G), G, G2);
+		
+		gmm::csr_matrix<double> Gc;
+		gmm::clean(G2, 1E-8);
+		gmm::copy(G2, Gc);
+
+		gmm::diagonal_precond<gmm::csr_matrix<double> > PR(Gc);
+		gmm::iteration iter(1E-10);
+		iter.set_noisy(0);
+		gmm::bicgstab(Gc, X, B2, PR, iter);
+		
+		double max = 0;
+		for(vert_t v = 0; v < mesh->num_verts; ++v) {
+			X[v] = exp(X[v]);
+			if(X[v] > max) max = X[v];
+		}
+
+		for(face_t f = 0; f < mesh->num_faces; ++f) {
+			mesh_info::Face face = mesh->getFace(f);
+			per_face &pf = face_data[f];
+			pf.vf[0] =	(X[pf.vert[0]]/max)*pf.vf[0];
+			pf.vf[1] =	(X[pf.vert[1]]/max)*pf.vf[1];
+			pf.vf[2] =	(X[pf.vert[2]]/max)*pf.vf[2];
+		}
+	}
+
+	void PGP::setup(double omega) 
+	{
+		// Fill face data with edge and vert indices, and project vf into triangle
+		for(face_t f = 0; f < mesh->num_faces; ++f) {
+			mesh_info::Face face = mesh->getFace(f);
+
+			per_face &pf = face_data[f];
+
+
+
 			std::vector<double> x(3);
 			std::vector<double> b(3);
 			b[0] = 1.0;
@@ -136,9 +208,9 @@ namespace detail {
 			pf.lamda[1] = x[1];
 			pf.lamda[2] = x[2];
 			
-			pf.lamda[0] = 1;
-			pf.lamda[1] = 1;
-			pf.lamda[2] = 1;
+			//pf.lamda[0] = 1;
+			//pf.lamda[1] = 1;
+			//pf.lamda[2] = 1;
 
 			//std::cout << "t = " << f << " L = " << "(" << x[0] << ", " << x[1] << ", " << x[2] << ")\n";
 
@@ -233,6 +305,7 @@ namespace detail {
 				vert_t j = face_data[f].vert[(e+2)%3];
 				sum_lamba[i] += face_data[f].lamda[e];
 				sum_lamba[j] += face_data[f].lamda[e];
+				vec2 f; 
 			}								
 		}
 		
@@ -255,7 +328,7 @@ namespace detail {
 				int j = 4*mapping[face_data[f].vert[v1]];
 				bool constrain0 = (mapping[face_data[f].vert[v0]] < 0);
 				bool constrain1 = (mapping[face_data[f].vert[v1]] < 0);
-
+				
 				// Taken care of in seperate loop
 				//if(!constrain0) {
 				//	A(i + 0, i + 0) += face_data[f].lamda[e];
@@ -423,12 +496,21 @@ namespace detail {
 			if(mapping[v] < 0) {
 				vert_data[v].theta = 0;
 				vert_data[v].phi   = 0;
+				vert_data[v].U.first  = 1;
+				vert_data[v].U.second = 0;
+				vert_data[v].V.first  = 1;
+				vert_data[v].V.second = 0;
+
 			} else {
 				vert_t vm = 4*mapping[v];
 				vert_data[v].theta = atan2(X[vm + 1], X[vm + 0]);
 				vert_data[v].phi   = atan2(X[vm + 3], X[vm + 2]);
 				if(vert_data[v].theta < 0) vert_data[v].theta += k3d::pi_times_2();
 				if(vert_data[v].phi < 0) vert_data[v].phi += k3d::pi_times_2();
+				vert_data[v].U.first  = X[vm + 0];
+				vert_data[v].U.second = X[vm + 1];
+				vert_data[v].V.first  = X[vm + 2];
+				vert_data[v].V.second = X[vm + 3];
 			}
 
 			//std::cout << v << ": (" << vert_data[v].theta << ", " << vert_data[v].phi << ")" << std::endl;
@@ -440,6 +522,8 @@ namespace detail {
 
 	void PGP::extract(double omega) 
 	{
+		std::vector<double> UV(4);
+		std::vector<double> M_UV(4);
 		for(face_t f = 0; f < mesh->num_faces; ++f) {
 			per_face &pf = face_data[f];
 
@@ -476,10 +560,22 @@ namespace detail {
 				}
 
 				pf.vf[j] = rotate90(pf.vf[j], r);
+				
 				vec2 param = vec2(pf.theta[j], pf.phi[j]);
 				param = rotate90(param, r);
 				pf.theta[j] = param.first;
 				pf.phi[j] = param.second;
+
+				//UV[0] = vert_data[pf.vert[j]].U.first;
+				//UV[1] = vert_data[pf.vert[j]].U.second;
+				//UV[2] = vert_data[pf.vert[j]].V.first;
+				//UV[3] = vert_data[pf.vert[j]].V.second;
+
+				//gmm::mult(M[r], UV, M_UV);
+				//pf.theta[j] = atan2(M_UV[1], M_UV[0]);
+				//pf.phi[j] = atan2(M_UV[3], M_UV[2]);
+				//if(pf.theta[j] < 0) pf.theta[j] += k3d::pi_times_2();
+				//if(pf.phi[j]   < 0) pf.phi[j] += k3d::pi_times_2();
 
 				s = (int)floor(-1*(pf.theta[i] - (k3d::pi()/omega)*(n*(pf.vf[i] + pf.vf[j])) - pf.theta[j])/k3d::pi_times_2() + 0.5);
 				t = (int)floor(-1*(pf.phi[i] - (k3d::pi()/omega)*(n*(rotate90(pf.vf[i], 1) + rotate90(pf.vf[j], 1))) - pf.phi[j])/k3d::pi_times_2() + 0.5);
