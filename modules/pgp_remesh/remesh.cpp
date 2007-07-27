@@ -126,10 +126,10 @@ namespace libk3dquadremesh
 			pgp.setup_vf(true);
 			base_t::document().pipeline_profiler().finish_execution(*this, "PGP Setup VF");
 			
-			base_t::document().pipeline_profiler().start_execution(*this, "PGP Curl Correction");
+/*			base_t::document().pipeline_profiler().start_execution(*this, "PGP Curl Correction");
 			pgp.curl_correction();
 			base_t::document().pipeline_profiler().finish_execution(*this, "PGP Curl Correction");
-			
+	*/	
 			base_t::document().pipeline_profiler().start_execution(*this, "PGP Setup");
 			pgp.setup(m_omega.value());
 			base_t::document().pipeline_profiler().finish_execution(*this, "PGP Setup");

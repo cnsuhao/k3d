@@ -40,6 +40,7 @@
 #include <fstream>
 #include <map>
 #include <utility>
+#include <functional>
 #include "mesh_info.h"
 #include "diff_geom.h"
 #include <gmm/gmm.h>
@@ -101,7 +102,7 @@ namespace detail {
 		void setup(double omega);
 		void solve();
 
-		void extract(double omega);
+		void extract(double omega, int divisions = 1);
 
 		void remesh(k3d::mesh& OutputMesh);
 
@@ -133,8 +134,44 @@ namespace detail {
 			vec2 U;
 			vec2 V;
 		};
+
+		struct per_edge {
+			std::vector<std::pair<double, edge_t> > iso;
+			
+			std::vector<double> alpha;
+			std::vector<edge_t> conn;
+
+			double theta;
+			double phi;
+			vec2 U;
+			vec2 V;
+		};
+
+		struct new_edge {
+			new_edge() : index(-1), face(-1)  {}
+			new_edge(edge_t _index) : index(_index), face(-1) {}
+			int index;
+			int v;  // -1 implies starts at non existant vertex
+			int next; // -2 implies pointing at triangle edge
+			edge_t comp; // companion edge
+			vec2 start; // local start of vertex
+			Vec3 world;
+			int face;
+		};
+
+		struct new_vert {
+			new_vert() {}
+			Vec3 world;
+			vec2 local;
+		};
+
+		int num_faces;
 		std::vector<per_face> face_data;
 		std::vector<per_vert> vert_data;
+		std::vector<per_edge> edge_data;
+
+		std::vector<new_edge> new_edges;
+		std::vector<new_vert> new_verts;
 
 		gmm::dense_matrix<double> M[3];
 	};
