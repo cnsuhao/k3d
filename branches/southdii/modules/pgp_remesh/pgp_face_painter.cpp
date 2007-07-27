@@ -117,20 +117,44 @@ public:
 	~pgp_face_painter() {
 		glDeleteTextures( 2, texture);
 	}
+	void bad_mesh(const k3d::mesh& Mesh, const k3d::gl::painter_render_state& RenderState)
+	{
+		const k3d::mesh::indices_t& edge_points = *Mesh.polyhedra->edge_points;
+		const k3d::mesh::indices_t& clockwise_edges = *Mesh.polyhedra->clockwise_edges;
+		const k3d::mesh::selection_t& edge_selection = *Mesh.polyhedra->edge_selection;
+		const k3d::mesh::points_t& points = *Mesh.points;
+		
+		k3d::gl::store_attributes attributes;
+		glDisable(GL_LIGHTING);
+
+		const k3d::color color = k3d::color(1, 0, 0);
+
+		glBegin(GL_LINES);
+		const size_t edge_count = edge_points.size();
+		for(size_t edge = 0; edge != edge_count; ++edge)
+		{
+			k3d::gl::color3d(color);
+			k3d::gl::vertex3d(points[edge_points[edge]]);
+			k3d::gl::vertex3d(points[edge_points[clockwise_edges[edge]]]);
+		}
+		glEnd();
+		
+	}
 	void on_paint_mesh(const k3d::mesh& Mesh, const k3d::gl::painter_render_state& RenderState)
 	{
+		bad_mesh(Mesh, RenderState);  return;
 		if(!k3d::validate_polyhedra(Mesh))
-			return;
+		{ bad_mesh(Mesh, RenderState);  return; }
 			
 		if (k3d::is_sds(Mesh))
 			return;
 		
 		if(Mesh.polyhedra->face_varying_data.find("PGP_pre_theta_color") == Mesh.polyhedra->face_varying_data.end())
-			return;
+		{bad_mesh(Mesh, RenderState);  return; }
 		if(Mesh.polyhedra->face_varying_data.find("PGP_pre_phi_color") == Mesh.polyhedra->face_varying_data.end())
-			return;
+		{bad_mesh(Mesh, RenderState);  return; }
 		if(Mesh.polyhedra->face_varying_data.find("PGP_uv") == Mesh.polyhedra->face_varying_data.end())
-			return;
+		{bad_mesh(Mesh, RenderState);  return; }
 
 		const k3d::mesh::indices_t& face_first_loops = *Mesh.polyhedra->face_first_loops;
 		const k3d::mesh::selection_t& face_selection = *Mesh.polyhedra->face_selection;
