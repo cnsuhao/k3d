@@ -48,9 +48,10 @@ namespace libk3dquadremesh
 			base_t(Factory, Document),
 			m_smooth(init_owner(*this) + init_name("use_smooth") + init_label(_("Smooth Curvature")) + init_description(_("Smooth Curvature")) + init_value(true)),
 			m_symmetry(init_owner(*this) + init_name("smooth_4") + init_label(_("Smooth as 4-symmetry")) + init_description(_("Smooth as 4-symmetry")) + init_value(false)),
-			m_steps(init_owner(*this) + init_name("steps") + init_label(_("Smoothing steps")) + init_description(_("Smoothing steps")) + init_value(1) + init_constraint(constraint::minimum(0))),
+			m_steps(init_owner(*this) + init_name("steps") + init_label(_("Smoothing steps")) + init_description(_("Smoothing steps")) + init_value(4) + init_constraint(constraint::minimum(0))),
 			m_h(init_owner(*this) + init_name("h") + init_label(_("Smoothing timestep")) + init_description(_("Smoothing timesteps")) + init_value(1000.0) + init_constraint(constraint::minimum(0.0001))),
 			m_omega(init_owner(*this) + init_name("h") + init_label(_("Omega parameter")) + init_description(_("Omega parameter")) + init_value(10.0) + init_constraint(constraint::minimum(0.1))),
+			m_divides(init_owner(*this) + init_name("h") + init_label(_("Iso line divisions")) + init_description(_("Iso line divisions")) + init_value(4) + init_constraint(constraint::minimum(1))),
 			prev_steps(0),
 			smoothed(false)
 		{
@@ -62,6 +63,7 @@ namespace libk3dquadremesh
 			m_h.changed_signal().connect(make_reset_mesh_slot());
 			m_symmetry.changed_signal().connect(make_reset_mesh_slot());
 			m_omega.changed_signal().connect(make_reset_mesh_slot());
+			m_divides.changed_signal().connect(make_reset_mesh_slot());
 			std::cout << "end \n";
 		}
 
@@ -115,10 +117,10 @@ namespace libk3dquadremesh
 			geom.smooth(m_h.value(), m_steps.value(), m_symmetry.value());
 			base_t::document().pipeline_profiler().finish_execution(*this, "Smooth");
 
-			base_t::document().pipeline_profiler().start_execution(*this, "Output");
-			OutputMesh = InputMesh;
-			geom.dump_draw_data(OutputMesh);
-			base_t::document().pipeline_profiler().finish_execution(*this, "Output");
+			//base_t::document().pipeline_profiler().start_execution(*this, "Output");
+			//OutputMesh = InputMesh;
+			//geom.dump_draw_data(OutputMesh);
+			//base_t::document().pipeline_profiler().finish_execution(*this, "Output");
 
 			pgp = detail::PGP(&info, &geom);
 
@@ -139,7 +141,7 @@ namespace libk3dquadremesh
 			base_t::document().pipeline_profiler().finish_execution(*this, "PGP solve");
 
 			base_t::document().pipeline_profiler().start_execution(*this, "PGP extract");
-			pgp.extract(m_omega.value());
+			pgp.extract(m_omega.value(), m_divides.value());
 			base_t::document().pipeline_profiler().finish_execution(*this, "PGP extract");
 
 			base_t::document().pipeline_profiler().start_execution(*this, "PGP remesh");
@@ -167,6 +169,7 @@ namespace libk3dquadremesh
 		k3d_data(int,    immutable_name, change_signal, with_undo, local_storage, with_constraint, writable_property, with_serialization) m_steps;
 		k3d_data(double, immutable_name, change_signal, with_undo, local_storage, with_constraint, writable_property, with_serialization) m_h;
 		k3d_data(double, immutable_name, change_signal, with_undo, local_storage, with_constraint, writable_property, with_serialization) m_omega;
+		k3d_data(int,    immutable_name, change_signal, with_undo, local_storage, with_constraint, writable_property, with_serialization) m_divides;
 		int prev_steps;
 		bool smoothed;
 		detail::mesh_info info;

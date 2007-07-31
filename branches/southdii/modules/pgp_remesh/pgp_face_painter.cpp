@@ -119,16 +119,50 @@ public:
 	}
 	void bad_mesh(const k3d::mesh& Mesh, const k3d::gl::painter_render_state& RenderState)
 	{
+		std::cout << "d" << std::flush;
+		const k3d::mesh::indices_t& face_first_loops = *Mesh.polyhedra->face_first_loops;
+		const k3d::mesh::selection_t& face_selection = *Mesh.polyhedra->face_selection;
+		const k3d::mesh::indices_t& loop_first_edges = *Mesh.polyhedra->loop_first_edges;
 		const k3d::mesh::indices_t& edge_points = *Mesh.polyhedra->edge_points;
 		const k3d::mesh::indices_t& clockwise_edges = *Mesh.polyhedra->clockwise_edges;
-		const k3d::mesh::selection_t& edge_selection = *Mesh.polyhedra->edge_selection;
 		const k3d::mesh::points_t& points = *Mesh.points;
+		const size_t face_count = face_first_loops.size();
 		
+		k3d::typed_array<k3d::normal3> normals(face_count, k3d::normal3(0, 0, 1));
+		for(size_t face = 0; face != face_count; ++face) {
+			const size_t edge = loop_first_edges[face_first_loops[face]];
+			k3d::point3 a = points[edge_points[edge]];
+			k3d::point3 b = points[edge_points[clockwise_edges[edge]]];
+			normals[face] = k3d::normal3(a[1]*b[2]-b[1]*a[2], a[2]*b[0]-b[2]*a[0], a[0]*b[1]-b[0]*a[1]);
+			double n = normals[face].length;
+			normals[face] /= n;
+		}
+
+
 		k3d::gl::store_attributes attributes;
+
+		k3d::color color = k3d::color(0.7, 0.7, 0.7);	
+		glEnable(GL_LIGHTING);
+		k3d::gl::material(GL_FRONT_AND_BACK, GL_DIFFUSE, color);
+		for(size_t face = 0; face != face_count; ++face) {
+			int count = 0;
+			k3d::gl::normal3d(normals[face]);
+			glBegin(GL_POLYGON);
+			const size_t first_edge = loop_first_edges[face_first_loops[face]];
+			for(size_t edge = first_edge; ; )
+			{
+				k3d::gl::vertex3d(points[edge_points[edge]]);
+				edge = clockwise_edges[edge];
+				count++;
+				if(edge == first_edge || count > 15)
+					break;
+			}
+			glEnd();
+		}
+
+		color = k3d::color(1, 0, 0);
+		glLineWidth(2.0);
 		glDisable(GL_LIGHTING);
-
-		const k3d::color color = k3d::color(1, 0, 0);
-
 		glBegin(GL_LINES);
 		const size_t edge_count = edge_points.size();
 		for(size_t edge = 0; edge != edge_count; ++edge)
@@ -138,7 +172,7 @@ public:
 			k3d::gl::vertex3d(points[edge_points[clockwise_edges[edge]]]);
 		}
 		glEnd();
-		
+
 	}
 	void on_paint_mesh(const k3d::mesh& Mesh, const k3d::gl::painter_render_state& RenderState)
 	{
