@@ -134,7 +134,7 @@ public:
 			k3d::point3 a = points[edge_points[edge]];
 			k3d::point3 b = points[edge_points[clockwise_edges[edge]]];
 			normals[face] = k3d::normal3(a[1]*b[2]-b[1]*a[2], a[2]*b[0]-b[2]*a[0], a[0]*b[1]-b[0]*a[1]);
-			double n = normals[face].length;
+			double n = normals[face].length();
 			normals[face] /= n;
 		}
 
