@@ -138,13 +138,6 @@ namespace detail {
 		struct per_edge {
 			std::vector<std::pair<double, edge_t> > iso;
 			
-			std::vector<double> alpha;
-			std::vector<edge_t> conn;
-
-			double theta;
-			double phi;
-			vec2 U;
-			vec2 V;
 		};
 
 		struct new_edge {
