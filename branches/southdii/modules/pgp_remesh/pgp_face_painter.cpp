@@ -133,13 +133,18 @@ public:
 			const size_t edge = loop_first_edges[face_first_loops[face]];
 			k3d::point3 a = points[edge_points[edge]];
 			k3d::point3 b = points[edge_points[clockwise_edges[edge]]];
-			normals[face] = k3d::normal3(a[1]*b[2]-b[1]*a[2], a[2]*b[0]-b[2]*a[0], a[0]*b[1]-b[0]*a[1]);
+			k3d::point3 c = points[edge_points[clockwise_edges[clockwise_edges[edge]]]];
+			a -= b;
+			c -= b;
+			normals[face] = k3d::normal3(c[1]*a[2]-a[1]*c[2], c[2]*a[0]-a[2]*c[0], c[0]*a[1]-a[0]*c[1]);
 			double n = normals[face].length();
-			normals[face] /= n;
+			if(n > 0.00000001)
+				normals[face] /= n;
 		}
 
 
 		k3d::gl::store_attributes attributes;
+		glDisable(GL_POLYGON_OFFSET_FILL);
 
 		k3d::color color = k3d::color(0.7, 0.7, 0.7);	
 		glEnable(GL_LIGHTING);
@@ -161,8 +166,10 @@ public:
 		}
 
 		color = k3d::color(1, 0, 0);
-		glLineWidth(2.0);
+		glLineWidth(3.0);
 		glDisable(GL_LIGHTING);
+		glEnable(GL_POLYGON_OFFSET_LINE);
+		glPolygonOffset( 1.0, 1.0 );
 		glBegin(GL_LINES);
 		const size_t edge_count = edge_points.size();
 		for(size_t edge = 0; edge != edge_count; ++edge)
@@ -172,6 +179,7 @@ public:
 			k3d::gl::vertex3d(points[edge_points[clockwise_edges[edge]]]);
 		}
 		glEnd();
+		glDisable(GL_POLYGON_OFFSET_LINE);
 
 	}
 	void on_paint_mesh(const k3d::mesh& Mesh, const k3d::gl::painter_render_state& RenderState)
@@ -222,8 +230,8 @@ public:
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		k3d::gl::set(GL_CULL_FACE, RenderState.draw_two_sided);
 
-		glEnable(GL_POLYGON_OFFSET_FILL);
-		glPolygonOffset(1.0, 1.0);
+		//glEnable(GL_POLYGON_OFFSET_FILL);
+		//glPolygonOffset(1.0, 1.0);
 		
 		bool draw_texture = m_draw_iso.value() || m_draw_check.value();
 		
@@ -263,6 +271,7 @@ public:
 	
 	void on_select_mesh(const k3d::mesh& Mesh, const k3d::gl::painter_render_state& RenderState, const k3d::gl::painter_selection_state& SelectionState)
 	{
+		return;
 		if(!SelectionState.select_faces)
 			return;
 

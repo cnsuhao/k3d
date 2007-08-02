@@ -604,7 +604,8 @@ namespace detail {
 			int s1 = (int)(max_t/trans);// + 2;
 			int t0 = (int)(min_p/trans);// - 2;
 			int t1 = (int)(max_p/trans);// + 2;
-			std::vector<edge_t> edges;
+			std::vector<edge_t> edges1;
+			std::vector<edge_t> edges2;
 
 			for(int s = s0; s <= s1; ++s) {
 				int intersect = -1;
@@ -619,7 +620,7 @@ namespace detail {
 						alpha /= den;
 					else 
 						alpha = -1.0;
-					if(0.0 <= alpha && alpha < 1.0) {
+					if(0.0 < alpha && alpha <= 1.0) {
 						if(intersect < 0) {
 							intersect = e;
 							prev_alpha = alpha;
@@ -631,7 +632,7 @@ namespace detail {
 							e1.comp = e2.index;
 							e2.comp = e1.index;
 
-							edges.push_back(e1.index);
+							edges1.push_back(e1.index);
 
 							e1.v = -1;
 							e2.v = -1;
@@ -686,7 +687,7 @@ namespace detail {
 						alpha /= den;
 					else 
 						alpha = -1.0;
-					if(0.0 <= alpha && alpha < 1.0) {
+					if(0.0 < alpha && alpha <= 1.0) {
 						if(intersect < 0) {
 							intersect = e;
 							prev_alpha = alpha;
@@ -698,7 +699,7 @@ namespace detail {
 							e1.comp = e2.index;
 							e2.comp = e1.index;
 
-							edges.push_back(e1.index);
+							edges1.push_back(e1.index);
 
 							e1.v = -1;
 							e2.v = -1;
@@ -740,12 +741,12 @@ namespace detail {
 				}
 			}
 
-			for(edge_t p = 0; p < edges.size(); ++p) {
-				for(edge_t q = p+1; q < edges.size(); ++q) {
+			for(edge_t p = 0; p < edges1.size(); ++p) {
+				for(edge_t q = p+1; q < edges1.size(); ++q) {
 					//std::cout << "!(" << p << ", " << q << ") ";
-					new_edge& p0 = new_edges[edges[p]];
+					new_edge& p0 = new_edges[edges1[p]];
 					new_edge& p1 = new_edges[p0.comp];
-					new_edge& q0 = new_edges[edges[q]];
+					new_edge& q0 = new_edges[edges1[q]];
 					new_edge& q1 = new_edges[q0.comp];
 					//std::cout << "p0 = (" << p0.start.first << ", " << p0.start.second << ") ";
 					//std::cout << "p1 = (" << p1.start.first << ", " << p1.start.second << ") ";
@@ -769,12 +770,11 @@ namespace detail {
 					double alpha = ((x4-x3)*(y1-y3) - (y4-y3)*(x1-x3))/det;
 					double beta  = ((x2-x1)*(y1-y3) - (y2-y1)*(x1-x3))/det;
 //					std::cout << "(" << alpha << ", " << beta << ") " << std::endl;
-					if(0.0 <= alpha && alpha <= 1.0  &&  0.0 <= beta && beta <= 1.0) {
+						if(0.0 <= alpha && alpha <= 1.0  &&  0.0 <= beta && beta <= 1.0) {
 						new_edge& A = p0;
 						new_edge& B = p1;
 						new_edge& C = q0;
 						new_edge& D = q1;
-						
 						new_edge _A(new_edges.size());
 						new_edge _B(new_edges.size()+1);
 						new_edge _C(new_edges.size()+2);
@@ -894,15 +894,29 @@ namespace detail {
 			}
 		}
 
-//std::cout << "remove hanging\n" << std::flush;
-//		// Remove edges connected to singularities
-//		for(edge_t e = 0; e < new_edges.size(); e++) {
-//			if(new_edges[e].index >= 0 && new_edges[new_edges[e].next].comp == new_edges[new_edges[e].next].next) {
-//				edge_t d = new_edges[e].next;
-//				new_edges[e].next = new_edges[new_edges[d].comp].next;
-//				new_edges[d].index = new_edges[new_edges[d].comp].index = -1;				
-//			}
-//		}
+std::cout << "remove hanging\n" << std::flush;
+		for(edge_t e = 0; e < new_edges.size(); e++) {
+			edge_t en = new_edges[e].next;
+			edge_t enn = new_edges[en].next;
+
+			if(new_edges[e].v >= 0 && new_edges[en].v >= 0 && new_edges[en].v == new_edges[enn].v) {
+				new_edges[e].next = enn;
+				new_edges[en].v = -1;
+				new_edges[en].next = en;
+			}
+
+		}
+
+std::cout << "remove faces with 2 edges\n" << std::flush;
+		for(edge_t e = 0; e < new_edges.size(); e++) {
+			edge_t en = new_edges[e].next;
+			if(new_edges[e].v >= 0 && new_edges[en].v >= 0 && new_edges[en].next == e) {
+				new_edges[e].v = -1;
+				new_edges[en].v = -1;
+				new_edges[new_edges[e].comp].comp = new_edges[en].comp;
+				new_edges[new_edges[en].comp].comp = new_edges[e].comp;
+			}
+		}
 
 std::cout << "fix indices\n" << std::flush;
 		int index = 0;
@@ -922,7 +936,7 @@ std::cout << "fix indices2\n" << std::flush;
 				new_edges[e].comp = new_edges[new_edges[e].comp].index;
 			}
 		}
-//
+
 		std::cout << "remove\n" << std::flush;
 		for(edge_t e = 0; e < new_edges.size(); e++) {
 			if(new_edges[e].index >= 0) {
@@ -932,9 +946,23 @@ std::cout << "fix indices2\n" << std::flush;
 		new_edges.resize(index);
 		face_t f=0;
 		for(edge_t e = 0; e < new_edges.size(); e++) {
-			if(new_edges[e].face < 0) {
+			if(new_edges[e].index >= 0 && new_edges[e].face < 0) {
+
 				edge_t en = e;
+				int c = 0;
+				
+				do {
+					c++;
+					new_edges[en].face = -10;
+					en = new_edges[en].next;
+				} while(en != e && new_edges[en].face != -10);
+				if(en != e) {
+					en = e;
+					c = 0;
+				}
+				if(c != 4) std::cout << f << "-" << c << "----------\n";
 				while(new_edges[en].face < 0) {
+					if(c != 4) std::cout << "(" << en << "|" << new_edges[en].comp << ")->" << new_edges[en].next << " (" << new_edges[en].v << ")" << std::endl;
 					new_edges[en].face = f;
 
 					en = new_edges[en].next;
