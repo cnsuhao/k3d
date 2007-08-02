@@ -48,10 +48,10 @@ namespace libk3dquadremesh
 			base_t(Factory, Document),
 			m_smooth(init_owner(*this) + init_name("use_smooth") + init_label(_("Smooth Curvature")) + init_description(_("Smooth Curvature")) + init_value(true)),
 			m_symmetry(init_owner(*this) + init_name("smooth_4") + init_label(_("Smooth as 4-symmetry")) + init_description(_("Smooth as 4-symmetry")) + init_value(false)),
-			m_steps(init_owner(*this) + init_name("steps") + init_label(_("Smoothing steps")) + init_description(_("Smoothing steps")) + init_value(4) + init_constraint(constraint::minimum(0))),
-			m_h(init_owner(*this) + init_name("h") + init_label(_("Smoothing timestep")) + init_description(_("Smoothing timesteps")) + init_value(1000.0) + init_constraint(constraint::minimum(0.0001))),
+			m_steps(init_owner(*this) + init_name("steps") + init_label(_("Smoothing steps")) + init_description(_("Smoothing steps")) + init_value(3) + init_constraint(constraint::minimum(0))),
+			m_h(init_owner(*this) + init_name("h") + init_label(_("Smoothing timestep")) + init_description(_("Smoothing timesteps")) + init_value(1500.0) + init_constraint(constraint::minimum(0.0001))),
 			m_omega(init_owner(*this) + init_name("h") + init_label(_("Omega parameter")) + init_description(_("Omega parameter")) + init_value(10.0) + init_constraint(constraint::minimum(0.1))),
-			m_divides(init_owner(*this) + init_name("h") + init_label(_("Iso line divisions")) + init_description(_("Iso line divisions")) + init_value(4) + init_constraint(constraint::minimum(1))),
+			m_divides(init_owner(*this) + init_name("h") + init_label(_("Iso line divisions")) + init_description(_("Iso line divisions")) + init_value(3) + init_constraint(constraint::minimum(1))),
 			prev_steps(0),
 			smoothed(false)
 		{
