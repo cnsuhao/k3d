@@ -59,7 +59,7 @@ public:
 			m_rows = boost::any_cast<int>(get_property(*(m_voxel_grid.value()), "rows")->property_value());
 			m_columns = boost::any_cast<int>(get_property(*(m_voxel_grid.value()), "cols")->property_value());
 			m_slices = boost::any_cast<int>(get_property(*(m_voxel_grid.value()), "slices")->property_value());
-			double voxel_width = boost::any_cast<double>(get_property(*(m_voxel_grid.value()), "voxel_width")->property_value());
+			float voxel_width = boost::any_cast<float>(get_property(*(m_voxel_grid.value()), "voxel_width")->property_value());
 			
 			unsigned long point_rows = m_rows + 1;
 			unsigned long point_columns = m_columns + 1;
@@ -206,13 +206,13 @@ public:
 		// create points here
 
 		if (m_voxel_grid.value() != 0) {
-			const double px = boost::any_cast<double>(get_property(*(m_voxel_grid.value()), "px")->property_value());
-			const double nx = boost::any_cast<double>(get_property(*(m_voxel_grid.value()), "nx")->property_value());
-			const double py = boost::any_cast<double>(get_property(*(m_voxel_grid.value()), "py")->property_value());
-			const double ny = boost::any_cast<double>(get_property(*(m_voxel_grid.value()), "ny")->property_value());
-			const double pz = boost::any_cast<double>(get_property(*(m_voxel_grid.value()), "pz")->property_value());
-			const double nz = boost::any_cast<double>(get_property(*(m_voxel_grid.value()), "nz")->property_value());
-			const double vw = boost::any_cast<double>(get_property(*(m_voxel_grid.value()), "voxel_width")->property_value());
+			const float px = boost::any_cast<float>(get_property(*(m_voxel_grid.value()), "px")->property_value());
+			const float nx = boost::any_cast<float>(get_property(*(m_voxel_grid.value()), "nx")->property_value());
+			const float py = boost::any_cast<float>(get_property(*(m_voxel_grid.value()), "py")->property_value());
+			const float ny = boost::any_cast<float>(get_property(*(m_voxel_grid.value()), "ny")->property_value());
+			const float pz = boost::any_cast<float>(get_property(*(m_voxel_grid.value()), "pz")->property_value());
+			const float nz = boost::any_cast<float>(get_property(*(m_voxel_grid.value()), "nz")->property_value());
+			const float vw = boost::any_cast<float>(get_property(*(m_voxel_grid.value()), "voxel_width")->property_value());
 
 			int rows = m_rows;
 			int columns = m_columns;
@@ -269,10 +269,10 @@ public:
 protected:
 	 k3d_data(voxel_grid*, immutable_name, change_signal, no_undo, node_storage, no_constraint, node_property, no_serialization) m_voxel_grid;
 	
-	 double m_width;
-	 double m_height;
-	 double m_length;
-	 double m_voxel_length;
+	 float m_width;
+	 float m_height;
+	 float m_length;
+	 float m_voxel_length;
 
 	 int m_rows;
 	 int m_columns;
