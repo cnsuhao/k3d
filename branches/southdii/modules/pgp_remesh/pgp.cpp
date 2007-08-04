@@ -262,6 +262,8 @@ namespace detail {
 		gmm::dense_matrix<double> D(4,4);
 		gmm::dense_matrix<double> Temp1(4,4);
 		gmm::dense_matrix<double> Temp2(4,4);
+		double c_a = cos(k3d::pi()/180.0);
+		double s_a = cos(k3d::pi()/180.0);
 		M[0].resize(4,4);
 		M[1].resize(4,4);
 		M[2].resize(4,4);
@@ -387,7 +389,6 @@ namespace detail {
 				int r0 = face_data[f].rot[v0];
 				int r1 = face_data[f].rot[v1];
 				if((r1 % 2) == 1) r1 = (r1+2)%4;
-
 				//k3d::log() << f << ": " << r0 << " " << r1 << std::endl;
 				if(r0 == 0 && r1 == 0) {
 					gmm::copy(D, Temp2);
@@ -412,10 +413,14 @@ namespace detail {
 					double den = 1.0/sum_lamba[face_data[f].vert[v0]];
 					//std::cout << "|";
 
-					B[j + 0] -= (Temp2(0,0) + Temp2(0,2))*den;
-					B[j + 1] -= (Temp2(1,0) + Temp2(1,2))*den;
-					B[j + 2] -= (Temp2(2,0) + Temp2(2,2))*den;
-					B[j + 3] -= (Temp2(3,0) + Temp2(3,2))*den;
+					//B[j + 0] -= (Temp2(0,0) + Temp2(0,2))*den;
+					//B[j + 1] -= (Temp2(1,0) + Temp2(1,2))*den;
+					//B[j + 2] -= (Temp2(2,0) + Temp2(2,2))*den;
+					//B[j + 3] -= (Temp2(3,0) + Temp2(3,2))*den;
+					B[j + 0] -= (c_a*Temp2(0,0) + s_a*Temp2(0,1) + c_a*Temp2(0,2) + s_a*Temp2(0,3))*den;
+					B[j + 1] -= (c_a*Temp2(1,0) + s_a*Temp2(1,1) + c_a*Temp2(1,2) + s_a*Temp2(1,3))*den;
+					B[j + 2] -= (c_a*Temp2(2,0) + s_a*Temp2(2,1) + c_a*Temp2(2,2) + s_a*Temp2(2,3))*den;
+					B[j + 3] -= (c_a*Temp2(3,0) + s_a*Temp2(3,1) + c_a*Temp2(3,2) + s_a*Temp2(3,3))*den;
 					//std::cout << "|" <<std::endl;
 					
 				} else if(!constrain0 && constrain1) {
@@ -423,10 +428,13 @@ namespace detail {
 					double den = 1.0/sum_lamba[face_data[f].vert[v1]];
 					//std::cout << "|";
 
-					B[i + 0] -= (Temp2(0,0) + Temp2(2,0))*den;
-					B[i + 1] -= (Temp2(0,1) + Temp2(2,1))*den;
-					B[i + 2] -= (Temp2(0,2) + Temp2(2,2))*den;
-					B[i + 3] -= (Temp2(0,3) + Temp2(2,3))*den;
+					B[i + 0] -= (c_a*Temp2(0,0) + s_a*Temp2(1,0) + c_a*Temp2(2,0) + s_a*Temp2(3,0))*den;
+					B[i + 1] -= (c_a*Temp2(0,1) + s_a*Temp2(1,1) + c_a*Temp2(2,1) + s_a*Temp2(3,1))*den;
+					B[i + 2] -= (c_a*Temp2(0,2) + s_a*Temp2(1,2) + c_a*Temp2(2,2) + s_a*Temp2(3,2))*den;
+					B[i + 3] -= (c_a*Temp2(0,3) + s_a*Temp2(1,3) + c_a*Temp2(2,3) + s_a*Temp2(3,3))*den;
+					//B[i + 1] -= (Temp2(0,1) + Temp2(2,1))*den;
+					//B[i + 2] -= (Temp2(0,2) + Temp2(2,2))*den;
+					//B[i + 3] -= (Temp2(0,3) + Temp2(2,3))*den;
 					//std::cout << "|" <<std::endl;
 
 				} else if(!constrain0 && !constrain1) {
@@ -501,12 +509,12 @@ namespace detail {
 		
 		for(vert_t v = 0; v < mapping.size(); ++v) {
 			if(mapping[v] < 0) {
-				vert_data[v].theta = 0;
-				vert_data[v].phi   = 0;
-				vert_data[v].U.first  = 1;
-				vert_data[v].U.second = 0;
-				vert_data[v].V.first  = 1;
-				vert_data[v].V.second = 0;
+				vert_data[v].theta = k3d::pi()/180.0;
+				vert_data[v].phi   = k3d::pi()/180.0;
+				vert_data[v].U.first  = c_a;
+				vert_data[v].U.second = s_a;
+				vert_data[v].V.first  = c_a;
+				vert_data[v].V.second = s_a;
 
 			} else {
 				vert_t vm = 4*mapping[v];
@@ -699,7 +707,7 @@ namespace detail {
 							e1.comp = e2.index;
 							e2.comp = e1.index;
 
-							edges1.push_back(e1.index);
+							edges2.push_back(e1.index);
 
 							e1.v = -1;
 							e2.v = -1;
@@ -740,13 +748,17 @@ namespace detail {
 					}
 				}
 			}
-
+			int inter = 0;
+			if(edges1.size() > 1 || edges2.size() > 1)
+				std::cout << "What_" << edges1.size() << " " << edges2.size() << std::endl;
 			for(edge_t p = 0; p < edges1.size(); ++p) {
-				for(edge_t q = p+1; q < edges1.size(); ++q) {
+				for(edge_t q = 0; q < edges2.size(); ++q) {
+					if(new_edges[edges1[p]].v > 0 && new_edges[edges2[q]].v == new_edges[edges1[p]].v)
+						continue;
 					//std::cout << "!(" << p << ", " << q << ") ";
 					new_edge& p0 = new_edges[edges1[p]];
 					new_edge& p1 = new_edges[p0.comp];
-					new_edge& q0 = new_edges[edges1[q]];
+					new_edge& q0 = new_edges[edges2[q]];
 					new_edge& q1 = new_edges[q0.comp];
 					//std::cout << "p0 = (" << p0.start.first << ", " << p0.start.second << ") ";
 					//std::cout << "p1 = (" << p1.start.first << ", " << p1.start.second << ") ";
@@ -770,7 +782,7 @@ namespace detail {
 					double alpha = ((x4-x3)*(y1-y3) - (y4-y3)*(x1-x3))/det;
 					double beta  = ((x2-x1)*(y1-y3) - (y2-y1)*(x1-x3))/det;
 //					std::cout << "(" << alpha << ", " << beta << ") " << std::endl;
-						if(0.0 <= alpha && alpha <= 1.0  &&  0.0 <= beta && beta <= 1.0) {
+						if(0 < alpha && alpha < 1.0  &&  0 < beta && beta < 1.0) {
 						new_edge& A = p0;
 						new_edge& B = p1;
 						new_edge& C = q0;
@@ -780,11 +792,14 @@ namespace detail {
 						new_edge _C(new_edges.size()+2);
 						new_edge _D(new_edges.size()+3);
 						new_vert V;
-						
+						inter++;
+						//edges1.push_back(_C.index);
+						//edges1.push_back(_D.index);
+
 						V.local = (p0.start + alpha*(p1.start - p0.start));
-						std::cout << "!(" << V.local.first << ", " << V.local.second << ") ";
+						//std::cout << "!(" << V.local.first << ", " << V.local.second << ") ";
 						V.local = q0.start + beta*(q1.start - q0.start);
-						std::cout << "!(" << V.local.first << ", " << V.local.second << ") ";
+						//std::cout << "!(" << V.local.first << ", " << V.local.second << ") ";
 						
 						Vec3 v_i = p0.world;
 						Vec3 v_j = p1.world;
@@ -799,6 +814,10 @@ namespace detail {
 						_B.world = V.world;
 						_C.world = V.world;
 						_D.world = V.world;
+						_A.start = V.local;
+						_B.start = V.local;
+						_C.start = V.local;
+						_D.start = V.local;
 						//A.world = V.world;
 						//B.world = V.world;
 						//C.world = V.world;
@@ -847,7 +866,11 @@ namespace detail {
 
 					}
 				}
+
 			}
+			if(inter > 1)
+				std::cout << inter << std::endl;
+
 		}
 
 		for(edge_t e = 0; e < edge_data.size(); e++) {
