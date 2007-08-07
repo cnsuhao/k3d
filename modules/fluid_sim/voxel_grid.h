@@ -9,7 +9,6 @@
 #include <k3dsdk/i18n.h>
 #include <k3dsdk/mesh_source.h>
 
-#include <boost/multi_array.hpp>
 
 #include "types.h"
 
