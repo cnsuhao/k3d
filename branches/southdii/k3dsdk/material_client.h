@@ -25,7 +25,7 @@
 */
 
 #include "data.h"
-#include "i18n.h"
+#include "k3d-i18n-config.h"
 #include "imaterial.h"
 #include "imaterial_client.h"
 #include "material.h"
@@ -55,7 +55,7 @@ public:
 
 	imaterial* material()
 	{
-		return m_material.value();
+		return m_material.pipeline_value();
 	}
 	
 	void set_material(imaterial* const Material)

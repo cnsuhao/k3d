@@ -21,9 +21,11 @@
 		\author Tim Shead <tshead@k-3d.com>
 */
 
+#include <k3d-i18n-config.h>
+
 #include <k3dsdk/document_plugin_factory.h>
 #include <k3dsdk/fstream.h>
-#include <k3dsdk/i18n.h>
+#include <k3dsdk/ipipeline.h>
 #include <k3dsdk/ipreview_render_engine.h>
 #include <k3dsdk/irender_farm.h>
 #include <k3dsdk/irender_frame.h>
@@ -161,7 +163,7 @@ private:
 		return_val_if_fail(stream.good(), false);
 
 		// Setup the frame for GraphViz rendering ...
-		Frame.add_render_operation("graphviz", m_render_engine.value(), filepath, false);
+		Frame.add_render_operation("graphviz", m_render_engine.pipeline_value(), filepath, false);
 
 		stream << "digraph \"" << boost::any_cast<k3d::ustring>(document().title().property_value()).raw() << "\"\n";
 		stream << "{\n\n";
@@ -203,8 +205,8 @@ private:
 
 		// Show property dependencies ...
 		stream << "\n";
-		const k3d::idag::dependencies_t dependencies = document().dag().dependencies();
-		for(k3d::idag::dependencies_t::const_iterator dependency = dependencies.begin(); dependency != dependencies.end(); ++dependency)
+		const k3d::ipipeline::dependencies_t dependencies = document().pipeline().dependencies();
+		for(k3d::ipipeline::dependencies_t::const_iterator dependency = dependencies.begin(); dependency != dependencies.end(); ++dependency)
 		{
 			if(dependency->first && dependency->second)
 			{

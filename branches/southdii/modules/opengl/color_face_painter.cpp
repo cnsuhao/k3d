@@ -22,7 +22,7 @@
 */
 
 #include <k3dsdk/document_plugin_factory.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/mesh_painter_gl.h>
 #include <k3dsdk/mesh.h>
 #include <k3dsdk/painter_render_state_gl.h>
@@ -95,7 +95,7 @@ public:
 		k3d::typed_array<k3d::color> default_color_array;
 
 		// Get the color array ...
-		const k3d::typed_array<k3d::color>* color_array_p = named_arrays(Mesh.polyhedra->uniform_data).get_array<k3d::typed_array<k3d::color> >(m_color_array.value());
+		const k3d::typed_array<k3d::color>* color_array_p = named_arrays(Mesh.polyhedra->uniform_data).get_array<k3d::typed_array<k3d::color> >(m_color_array.pipeline_value());
 		if(!color_array_p)
 		{
 			default_color_array.resize(face_count, k3d::color(0.9, 0.9, 0.9));
@@ -108,7 +108,7 @@ public:
 		k3d::gl::store_attributes attributes;
 		glEnable(GL_LIGHTING);
 
-		glFrontFace(GL_CW);
+		glFrontFace(RenderState.inside_out ? GL_CCW : GL_CW);
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		k3d::gl::set(GL_CULL_FACE, RenderState.draw_two_sided);
 
@@ -155,7 +155,7 @@ public:
 		k3d::gl::store_attributes attributes;
 		glDisable(GL_LIGHTING);
 
-		glFrontFace(GL_CW);
+		glFrontFace(RenderState.inside_out ? GL_CCW : GL_CW);
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		k3d::gl::set(GL_CULL_FACE, RenderState.draw_two_sided);
 

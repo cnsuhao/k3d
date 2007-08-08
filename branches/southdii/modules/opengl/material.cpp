@@ -24,7 +24,7 @@
 
 #include <k3dsdk/classes.h>
 #include <k3dsdk/document_plugin_factory.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/imaterial.h>
 #include <k3dsdk/imaterial_gl.h>
 #include <k3dsdk/node.h>
@@ -79,11 +79,11 @@ public:
 
 	void setup_gl_material()
 	{
-		k3d::gl::material(GL_FRONT_AND_BACK, GL_AMBIENT, m_ambient_color.value());
-		k3d::gl::material(GL_FRONT_AND_BACK, GL_DIFFUSE, m_diffuse_color.value());
-		k3d::gl::material(GL_FRONT_AND_BACK, GL_SPECULAR, m_specular_color.value());
-		k3d::gl::material(GL_FRONT_AND_BACK, GL_EMISSION, m_emission_color.value());
-		glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, m_shininess.value());
+		k3d::gl::material(GL_FRONT_AND_BACK, GL_AMBIENT, m_ambient_color.pipeline_value());
+		k3d::gl::material(GL_FRONT_AND_BACK, GL_DIFFUSE, m_diffuse_color.pipeline_value());
+		k3d::gl::material(GL_FRONT_AND_BACK, GL_SPECULAR, m_specular_color.pipeline_value());
+		k3d::gl::material(GL_FRONT_AND_BACK, GL_EMISSION, m_emission_color.pipeline_value());
+		glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, m_shininess.pipeline_value());
 
 		glDisable(GL_POLYGON_STIPPLE);
 	}

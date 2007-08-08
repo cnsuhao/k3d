@@ -23,7 +23,7 @@
 */
 
 #include <k3dsdk/document_plugin_factory.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/axis.h>
 #include <k3dsdk/imaterial.h>
 #include <k3dsdk/node.h>
@@ -54,15 +54,15 @@ public:
 		m_material.changed_signal().connect(make_update_mesh_slot());
 	}
 
-	void on_create_mesh(const k3d::legacy::mesh& InputMesh, k3d::legacy::mesh& Mesh)
+	void on_initialize_mesh(const k3d::legacy::mesh& InputMesh, k3d::legacy::mesh& Mesh)
 	{
 		k3d::legacy::deep_copy(InputMesh, Mesh);
-		k3d::replace_selection(m_mesh_selection.value(), Mesh);
+		k3d::replace_selection(m_mesh_selection.pipeline_value(), Mesh);
 	}
 
 	void on_update_mesh(const k3d::legacy::mesh& InputMesh, k3d::legacy::mesh& Mesh)
 	{
-		k3d::legacy::for_each_component(Mesh, set_material(m_material.value()));
+		k3d::legacy::for_each_component(Mesh, set_material(m_material.pipeline_value()));
 	}
 	
 	class set_material

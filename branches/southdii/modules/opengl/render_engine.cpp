@@ -29,7 +29,7 @@
 #include <k3dsdk/document_plugin_factory.h>
 #include <k3dsdk/geometry.h>
 #include <k3dsdk/gl.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/icamera.h>
 #include <k3dsdk/icrop_window.h>
 #include <k3dsdk/idrawable_gl.h>
@@ -179,10 +179,10 @@ void gl_draw_2d_widgets(k3d::icamera& Camera, const k3d::rectangle& WindowRect, 
 	// Optionally show the extents of the crop window
 	if(DrawCropWindow)
 	{
-		const double left = boost::any_cast<double>(k3d::get_value(Document.dag(), Camera.crop_window().crop_left()));
-		const double right = boost::any_cast<double>(k3d::get_value(Document.dag(), Camera.crop_window().crop_right()));
-		const double bottom = boost::any_cast<double>(k3d::get_value(Document.dag(), Camera.crop_window().crop_bottom()));
-		const double top = boost::any_cast<double>(k3d::get_value(Document.dag(), Camera.crop_window().crop_top()));
+		const double left = boost::any_cast<double>(k3d::property::pipeline_value(Camera.crop_window().crop_left()));
+		const double right = boost::any_cast<double>(k3d::property::pipeline_value(Camera.crop_window().crop_right()));
+		const double bottom = boost::any_cast<double>(k3d::property::pipeline_value(Camera.crop_window().crop_bottom()));
+		const double top = boost::any_cast<double>(k3d::property::pipeline_value(Camera.crop_window().crop_top()));
 
 		glColor4d(0, 0, 0.5, 1);
 		glDisable(GL_LIGHTING);
@@ -332,18 +332,18 @@ public:
 		{
 			Orthographic = false;
 
-			CameraRect.left = boost::any_cast<double>(k3d::get_value(document().dag(), perspective->left()));
-			CameraRect.right = boost::any_cast<double>(k3d::get_value(document().dag(), perspective->right()));
+			CameraRect.left = boost::any_cast<double>(k3d::property::pipeline_value(perspective->left()));
+			CameraRect.right = boost::any_cast<double>(k3d::property::pipeline_value(perspective->right()));
 			if(CameraRect.right < CameraRect.left)
 				std::swap(CameraRect.left, CameraRect.right);
 
-			CameraRect.top = boost::any_cast<double>(k3d::get_value(document().dag(), perspective->top()));
-			CameraRect.bottom = boost::any_cast<double>(k3d::get_value(document().dag(), perspective->bottom()));
+			CameraRect.top = boost::any_cast<double>(k3d::property::pipeline_value(perspective->top()));
+			CameraRect.bottom = boost::any_cast<double>(k3d::property::pipeline_value(perspective->bottom()));
 			if(CameraRect.top < CameraRect.bottom)
 				std::swap(CameraRect.top, CameraRect.bottom);
 
-			Near = boost::any_cast<double>(k3d::get_value(document().dag(), perspective->near()));
-			Far = boost::any_cast<double>(k3d::get_value(document().dag(), perspective->far()));
+			Near = boost::any_cast<double>(k3d::property::pipeline_value(perspective->near()));
+			Far = boost::any_cast<double>(k3d::property::pipeline_value(perspective->far()));
 
 			return_if_fail(CameraRect.left != CameraRect.right && CameraRect.top != CameraRect.bottom);
 
@@ -375,18 +375,18 @@ public:
 		{
 			Orthographic = true;
 
-			CameraRect.left = boost::any_cast<double>(k3d::get_value(document().dag(), orthographic->left()));
-			CameraRect.right = boost::any_cast<double>(k3d::get_value(document().dag(), orthographic->right()));
+			CameraRect.left = boost::any_cast<double>(k3d::property::pipeline_value(orthographic->left()));
+			CameraRect.right = boost::any_cast<double>(k3d::property::pipeline_value(orthographic->right()));
 			if(CameraRect.right < CameraRect.left)
 				std::swap(CameraRect.left, CameraRect.right);
 
-			CameraRect.top = boost::any_cast<double>(k3d::get_value(document().dag(), orthographic->top()));
-			CameraRect.bottom = boost::any_cast<double>(k3d::get_value(document().dag(), orthographic->bottom()));
+			CameraRect.top = boost::any_cast<double>(k3d::property::pipeline_value(orthographic->top()));
+			CameraRect.bottom = boost::any_cast<double>(k3d::property::pipeline_value(orthographic->bottom()));
 			if(CameraRect.top < CameraRect.bottom)
 				std::swap(CameraRect.top, CameraRect.bottom);
 
-			Near = boost::any_cast<double>(k3d::get_value(document().dag(), orthographic->near()));
-			Far = boost::any_cast<double>(k3d::get_value(document().dag(), orthographic->far()));
+			Near = boost::any_cast<double>(k3d::property::pipeline_value(orthographic->near()));
+			Far = boost::any_cast<double>(k3d::property::pipeline_value(orthographic->far()));
 
 			return_if_fail(CameraRect.left != CameraRect.right && CameraRect.top != CameraRect.bottom);
 
@@ -438,9 +438,9 @@ public:
 			return;
 
 		// Setup fog ...
-		if(m_fog.value())
+		if(m_fog.pipeline_value())
 		{
-			const k3d::color background_color(m_background_color.value());
+			const k3d::color background_color(m_background_color.pipeline_value());
 
 			GLfloat fogdata[4];
 			fogdata[0] = background_color.red;
@@ -449,8 +449,8 @@ public:
 			fogdata[3] = 1.0f;
 
 			glFogfv(GL_FOG_COLOR, fogdata);
-			glFogf(GL_FOG_START, static_cast<GLfloat>(m_fog_near.value()));
-			glFogf(GL_FOG_END, static_cast<GLfloat>(m_fog_far.value()));
+			glFogf(GL_FOG_START, static_cast<GLfloat>(m_fog_near.pipeline_value()));
+			glFogf(GL_FOG_END, static_cast<GLfloat>(m_fog_far.pipeline_value()));
 			glHint(GL_FOG_HINT, GL_NICEST);
 			glFogi(GL_FOG_MODE, GL_LINEAR);
 			glEnable(GL_FOG);
@@ -460,7 +460,7 @@ public:
 			glDisable(GL_FOG);
 		}
 
-		if(m_show_lights.value())
+		if(m_show_lights.pipeline_value())
 			std::for_each(document().nodes().collection().begin(), document().nodes().collection().end(), detail::light_setup());
 
 		std::for_each(document().nodes().collection().begin(), document().nodes().collection().end(), detail::draw(state));
@@ -498,7 +498,7 @@ private:
 			return false;
 
 		if(!Select)
-			detail::gl_reset(m_background_color.value(), m_point_size.value());
+			detail::gl_reset(m_background_color.pipeline_value(), m_point_size.pipeline_value());
 
 		// Setup culling ...
 		glFrontFace(GL_CW);
@@ -538,7 +538,7 @@ private:
 
 		// Setup viewport ...
 		glViewport(0, 0, PixelWidth, PixelHeight);
-		glGetIntegerv(GL_VIEWPORT, RenderState.gl_viewport);
+		glGetIntegerv(GL_VIEWPORT, static_cast<GLint*>(RenderState.gl_viewport));
 		glGetIntegerv(GL_VIEWPORT, Viewport);
 
 		k3d::rectangle window_rect(0, 0, 0, 0);
@@ -549,14 +549,14 @@ private:
 		calculate_projection(Camera, PixelWidth, PixelHeight, window_rect, camera_rect, near, far, orthographic);
 
 		if(!Select)
-			detail::gl_draw_2d_widgets(Camera, window_rect, camera_rect, m_draw_frustum.value(), m_draw_crop_window.value(), m_draw_safe_zone.value(), m_draw_aimpoint.value(), document());
+			detail::gl_draw_2d_widgets(Camera, window_rect, camera_rect, m_draw_frustum.pipeline_value(), m_draw_crop_window.pipeline_value(), m_draw_safe_zone.pipeline_value(), m_draw_aimpoint.pipeline_value(), document());
 
 		// Setup projection ...
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
 		if(orthographic)
 		{
-			const k3d::matrix4 transform_matrix = boost::any_cast<k3d::matrix4>(get_value(document().dag(), Camera.transformation().transform_source_output()));
+			const k3d::matrix4 transform_matrix = boost::any_cast<k3d::matrix4>(k3d::property::pipeline_value(Camera.transformation().transform_source_output()));
 			const k3d::point3 world_position = transform_matrix * k3d::point3(0, 0, 0);
 			const k3d::point3 world_target = boost::any_cast<k3d::point3>(Camera.world_target().property_value());
 			const double distance = k3d::distance(world_position, world_target);
@@ -566,7 +566,7 @@ private:
 			const double window_size = distance * window_tan_fov;
 
 			RenderState.orthographic = true;
-			RenderState.draw_two_sided = m_draw_two_sided.value();
+			RenderState.draw_two_sided = m_draw_two_sided.pipeline_value();
 			
 			RenderState.gl_window_frustum_left = -window_size * window_aspect;
 			RenderState.gl_window_frustum_right = window_size * window_aspect;
@@ -605,7 +605,7 @@ private:
 
 				const double width  = SelectionRegion.width();
 				const double height = SelectionRegion.height();
-				gluPickMatrix(SelectionRegion.left + (width * 0.5), RenderState.gl_viewport[3] - (SelectionRegion.top + (height * 0.5)), width, height, RenderState.gl_viewport);
+				gluPickMatrix(SelectionRegion.left + (width * 0.5), RenderState.gl_viewport[3] - (SelectionRegion.top + (height * 0.5)), width, height, static_cast<GLint*>(RenderState.gl_viewport));
 
 				glOrtho(-window_size * window_aspect, window_size * window_aspect, -window_size, window_size, near, far);
 			}
@@ -637,7 +637,7 @@ private:
 
 				const double width  = SelectionRegion.width();
 				const double height = SelectionRegion.height();
-				gluPickMatrix(SelectionRegion.left + (width * 0.5), RenderState.gl_viewport[3] - (SelectionRegion.top + (height * 0.5)), width, height, RenderState.gl_viewport);
+				gluPickMatrix(SelectionRegion.left + (width * 0.5), RenderState.gl_viewport[3] - (SelectionRegion.top + (height * 0.5)), width, height, static_cast<GLint*>(RenderState.gl_viewport));
 
 				glFrustum(window_rect.left, window_rect.right, window_rect.bottom, window_rect.top, near, far);
 			}
@@ -651,9 +651,9 @@ private:
 		glLoadIdentity();
 
 		if(!Select)
-			detail::gl_setup_lights(m_headlight.value());
+			detail::gl_setup_lights(m_headlight.pipeline_value());
 
-		const k3d::matrix4 transform_matrix = boost::any_cast<k3d::matrix4>(get_value(document().dag(), Camera.transformation().transform_source_output()));
+		const k3d::matrix4 transform_matrix = boost::any_cast<k3d::matrix4>(k3d::property::pipeline_value(Camera.transformation().transform_source_output()));
 		const k3d::angle_axis orientation(k3d::euler_angles(transform_matrix, k3d::euler_angles::ZXYstatic));
 		const k3d::point3 position(k3d::position(transform_matrix));
 

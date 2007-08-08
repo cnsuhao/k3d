@@ -21,15 +21,16 @@
 		\author Tim Shead (tshead@k-3d.com)
 */
 
+#include "k3d-platform-config.h"
 #include "result.h"
 #include "system.h"
 #include "uuid.h"
 
-#ifdef K3D_PLATFORM_WIN32
-	#include <windows.h>
-#else // K3D_PLATFORM_WIN32
+#ifdef K3D_API_WIN32
+	#include "win32.h"
+#else // K3D_API_WIN32
 	#include <uuid/uuid.h>
-#endif // !K3D_PLATFORM_WIN32
+#endif // !K3D_API_WIN32
 
 #include <iomanip>
 #include <iostream>
@@ -45,7 +46,7 @@ uuid::uuid() :
 {
 }
 
-uuid::uuid(const uint32_t Data1, const uint32_t Data2, const uint32_t Data3, const uint32_t Data4) :
+uuid::uuid(const boost::uint32_t Data1, const boost::uint32_t Data2, const boost::uint32_t Data3, const boost::uint32_t Data4) :
 	data1(Data1),
 	data2(Data2),
 	data3(Data3),
@@ -62,13 +63,13 @@ const uuid uuid::random()
 {
 	uuid result;
 
-#ifdef K3D_PLATFORM_WIN32
+#ifdef K3D_API_WIN32
 	CoCreateGuid(reinterpret_cast<UUID*>(&result));
-#else // K3D_PLATFORM_WIN32
+#else // K3D_API_WIN32
 	uuid_t temp;
 	uuid_generate(temp);
 	memcpy(&result, temp, sizeof(result));
-#endif // !K3D_PLATFORM_WIN32
+#endif // !K3D_API_WIN32
 
 	return result;
 }

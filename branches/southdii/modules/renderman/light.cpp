@@ -25,7 +25,7 @@
 #include <k3dsdk/document_plugin_factory.h>
 #include <k3dsdk/classes.h>
 #include <k3dsdk/drawable_gl.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/ilight_gl.h>
 #include <k3dsdk/ilight_ri.h>
 #include <k3dsdk/ilight_shader_ri.h>
@@ -105,7 +105,7 @@ public:
 		glEnd();
 	}
 
-	void setup_gl_light(unsigned long Light)
+	void setup_gl_light(const unsigned long Light)
 	{
 		// Setup our own transformation matrix ...
 		glMatrixMode(GL_MODELVIEW);
@@ -160,7 +160,7 @@ public:
 			return;
 
 		// If the user hasn't selected a shader, we're done ...
-		k3d::ri::ilight_shader* const shader = m_shader.value();
+		k3d::ri::ilight_shader* const shader = m_shader.pipeline_value();
 		if(!shader)
 			return;
 

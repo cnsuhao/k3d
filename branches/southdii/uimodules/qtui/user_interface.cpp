@@ -29,9 +29,9 @@
 #include <k3dsdk/classes.h>
 #include <k3dsdk/create_plugins.h>
 #include <k3dsdk/high_res_timer.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/iapplication.h>
-#include <k3dsdk/idocument_read_format.h>
+#include <k3dsdk/idocument_importer.h>
 #include <k3dsdk/module.h>
 #include <k3dsdk/share.h>
 
@@ -109,11 +109,11 @@ void viewport::initializeGL()
 void viewport::paintGL()
 {
 	glViewport(0, 0, width(), height());
-	if(m_gl_engine.value() && m_camera.value())
+	if(m_gl_engine.internal_value() && m_camera.internal_value())
 	{
 		k3d::timer timer;
 
-		m_gl_engine.value()->redraw(*m_camera.value(), width(), height(), m_font_begin, m_gl_view_matrix, m_gl_projection_matrix, m_gl_viewport);
+		m_gl_engine.internal_value()->redraw(*m_camera.internal_value(), width(), height(), m_font_begin, m_gl_view_matrix, m_gl_projection_matrix, m_gl_viewport);
 
 		const double elapsed = timer.elapsed();
 		if(elapsed)
@@ -202,7 +202,7 @@ main_window::main_window(QApplication& Application) :
 
 void main_window::on_file_open()
 {
-	k3d::auto_ptr<k3d::idocument_read_format> filter(k3d::create_plugin<k3d::idocument_read_format>(k3d::classes::DocumentReader()));
+	k3d::auto_ptr<k3d::idocument_importer> filter(k3d::create_plugin<k3d::idocument_importer>(k3d::classes::DocumentImporter()));
 	if(!filter.get())
 	{
 		QMessageBox::warning(this, _("Open K-3D Document:"), _("Document reader plugin not installed."), QMessageBox::Ok, QMessageBox::NoButton, QMessageBox::NoButton);

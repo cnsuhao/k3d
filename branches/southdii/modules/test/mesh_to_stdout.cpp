@@ -22,7 +22,7 @@
 */
 
 #include <k3dsdk/document_plugin_factory.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/imesh_sink.h>
 #include <k3dsdk/mesh.h>
 #include <k3dsdk/node.h>
@@ -50,7 +50,7 @@ public:
 
 	void mesh_changed(iunknown* const Hint)
 	{
-		if(const k3d::mesh* const input_mesh = m_input_mesh.value())
+		if(const k3d::mesh* const input_mesh = m_input_mesh.pipeline_value())
 			std::cout << *input_mesh << std::endl;
 	}
 	

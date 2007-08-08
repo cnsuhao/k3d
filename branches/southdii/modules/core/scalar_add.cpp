@@ -23,7 +23,7 @@
 */
 
 #include <k3dsdk/document_plugin_factory.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/node.h>
 #include <k3dsdk/persistent.h>
 
@@ -47,7 +47,7 @@ public:
 
 	double get_value()
 	{
-		return m_input1.value() + m_input2.value();
+		return m_input1.pipeline_value() + m_input2.pipeline_value();
 	}
 
 	static k3d::iplugin_factory& get_factory()

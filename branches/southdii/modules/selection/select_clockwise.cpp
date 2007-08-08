@@ -24,7 +24,7 @@
 
 #include <k3dsdk/document_plugin_factory.h>
 #include <k3dsdk/basic_math.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/node.h>
 #include <k3dsdk/persistent.h>
 #include <k3dsdk/measurement.h>
@@ -58,11 +58,11 @@ public:
 		m_number.changed_signal().connect(make_reset_mesh_slot());
 	}
 
-	void on_create_mesh(const k3d::legacy::mesh& InputMesh, k3d::legacy::mesh& Mesh)
+	void on_initialize_mesh(const k3d::legacy::mesh& InputMesh, k3d::legacy::mesh& Mesh)
 	{
 		// Create output geometry ...
 		k3d::legacy::deep_copy(InputMesh, Mesh);
-		k3d::replace_selection(m_mesh_selection.value(), Mesh);
+		k3d::replace_selection(m_mesh_selection.pipeline_value(), Mesh);
 
 		// For each polyhedron ...
 		for(k3d::legacy::mesh::polyhedra_t::iterator polyhedron = Mesh.polyhedra.begin(); polyhedron != Mesh.polyhedra.end(); ++polyhedron)
@@ -85,7 +85,7 @@ public:
 			{
 				(*it)->selection_weight = 0.0;
 			}
-			unsigned long number = m_number.value();
+			unsigned long number = m_number.pipeline_value();
 			k3d::legacy::split_edge* edge = *(selected_edges.begin());
 			for (unsigned long i = 0; i <= number; ++i)
 				edge = edge->face_clockwise;

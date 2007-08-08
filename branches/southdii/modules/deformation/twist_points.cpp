@@ -25,7 +25,7 @@
 #include <k3dsdk/algebra.h>
 #include <k3dsdk/axis.h>
 #include <k3dsdk/document_plugin_factory.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/measurement.h>
 #include <k3dsdk/mesh_simple_deformation_modifier.h>
 
@@ -55,8 +55,8 @@ public:
 	{
 		const k3d::bounding_box3 bounds = k3d::bounds(InputPoints);
 
-		const k3d::axis axis = m_axis.value();
-		const double angle = m_angle.value();
+		const k3d::axis axis = m_axis.pipeline_value();
+		const double angle = m_angle.pipeline_value();
 
 		double size = 0.0;
 		k3d::point3 angles;

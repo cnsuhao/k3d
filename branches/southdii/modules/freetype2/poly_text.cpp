@@ -24,7 +24,7 @@
 #include <k3dsdk/axis.h>
 #include <k3dsdk/document_plugin_factory.h>
 #include <k3dsdk/geometry.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/imaterial.h>
 #include <k3dsdk/material.h>
 #include <k3dsdk/material_client.h>
@@ -359,18 +359,18 @@ public:
 		m_orientation.changed_signal().connect(make_reset_mesh_slot());
 	}
 
-	void on_create_mesh(k3d::legacy::mesh& Mesh)
+	void on_initialize_mesh(k3d::legacy::mesh& Mesh)
 	{
-		const k3d::filesystem::path font_path = m_font_path.value();
-		const std::string text = m_text.value();
-		const unsigned long curve_divisions = m_curve_divisions.value();
-		const double height = m_height.value();
-		k3d::imaterial* const material = m_material.value();
+		const k3d::filesystem::path font_path = m_font_path.pipeline_value();
+		const std::string text = m_text.pipeline_value();
+		const unsigned long curve_divisions = m_curve_divisions.pipeline_value();
+		const double height = m_height.pipeline_value();
+		k3d::imaterial* const material = m_material.pipeline_value();
 
 		k3d::matrix4 char_orientation;
 		k3d::vector3 offset_direction;
 
-		switch(m_orientation.value())
+		switch(m_orientation.pipeline_value())
 		{
 			case k3d::PX:
 				char_orientation = k3d::rotation3D(k3d::angle_axis(k3d::radians(-90), k3d::vector3(0, 0, 1))) *

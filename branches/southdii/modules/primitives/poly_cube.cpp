@@ -23,7 +23,7 @@
 */
 #include <k3dsdk/document_plugin_factory.h>
 
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/imaterial.h>
 #include <k3dsdk/node.h>
 #include <k3dsdk/persistent.h>
@@ -64,18 +64,18 @@ public:
 		m_depth.changed_signal().connect(make_reset_mesh_slot());
 	}
 
-	void on_create_mesh(k3d::legacy::mesh& Mesh)
+	void on_initialize_mesh(k3d::legacy::mesh& Mesh)
 	{
 		Mesh.polyhedra.push_back(new k3d::legacy::polyhedron());
 		k3d::legacy::polyhedron& polyhedron = *Mesh.polyhedra.back();
 
-		const unsigned long rows = m_rows.value();
-		const unsigned long cols = m_columns.value();
-		const unsigned long slices = m_slices.value();
-		const double width = m_width.value();
-		const double height = m_height.value();
-		const double depth = m_depth.value();
-		k3d::imaterial* const material = m_material.value();
+		const unsigned long rows = m_rows.pipeline_value();
+		const unsigned long cols = m_columns.pipeline_value();
+		const unsigned long slices = m_slices.pipeline_value();
+		const double width = m_width.pipeline_value();
+		const double height = m_height.pipeline_value();
+		const double depth = m_depth.pipeline_value();
+		k3d::imaterial* const material = m_material.pipeline_value();
 
 		// First plane
 		unsigned long point_rows = rows + 1;

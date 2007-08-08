@@ -22,7 +22,7 @@
 */
 
 #include <k3dsdk/document_plugin_factory.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/imesh_painter_ri.h>
 #include <k3dsdk/mesh.h>
 #include <k3dsdk/node.h>
@@ -55,7 +55,7 @@ public:
 			k3d::iproperty& property = **prop;
 			if(property.property_type() == typeid(k3d::inode*))
 			{
-				if(k3d::ri::imesh_painter* const painter = dynamic_cast<k3d::ri::imesh_painter*>(boost::any_cast<k3d::inode*>(k3d::get_value(document().dag(), property))))
+				if(k3d::ri::imesh_painter* const painter = dynamic_cast<k3d::ri::imesh_painter*>(boost::any_cast<k3d::inode*>(k3d::property::pipeline_value(property))))
 				{
 					painter->paint_mesh(Mesh, RenderState);
 				}
@@ -71,7 +71,7 @@ public:
 			k3d::iproperty& property = **prop;
 			if(property.property_type() == typeid(k3d::inode*))
 			{
-				if(k3d::ri::imesh_painter* const painter = dynamic_cast<k3d::ri::imesh_painter*>(boost::any_cast<k3d::inode*>(k3d::get_value(document().dag(), property))))
+				if(k3d::ri::imesh_painter* const painter = dynamic_cast<k3d::ri::imesh_painter*>(boost::any_cast<k3d::inode*>(k3d::property::pipeline_value(property))))
 				{
 					painter->paint_complete(Mesh, RenderState);
 				}

@@ -21,8 +21,9 @@
 	\author Timothy M. Shead (tshead@k-3d.com)
 */
 
+#include <k3d-i18n-config.h>
+
 #include <k3dsdk/document_plugin_factory.h>
-#include <k3dsdk/i18n.h>
 #include <k3dsdk/mesh_painter_gl.h>
 #include <k3dsdk/mesh.h>
 #include <k3dsdk/painter_render_state_gl.h>
@@ -217,7 +218,7 @@ public:
 		k3d::gl::store_attributes attributes;
 		glEnable(GL_LIGHTING);
 
-		double scale = (double)m_tex_scale.value();
+		double scale = (double)m_tex_scale.pipeline_value();
 		if(scale == 0.0) scale = 1.0;
 		if(scale < 0.0) {
 			scale = -1.0/(scale); 
@@ -233,11 +234,11 @@ public:
 		//glEnable(GL_POLYGON_OFFSET_FILL);
 		//glPolygonOffset(1.0, 1.0);
 		
-		bool draw_texture = m_draw_iso.value() || m_draw_check.value();
+		bool draw_texture = m_draw_iso.pipeline_value() || m_draw_check.pipeline_value();
 		
 		if(draw_texture) {
 			glEnable(GL_TEXTURE_2D);
-			if(m_draw_iso.value())
+			if(m_draw_iso.pipeline_value())
 				glBindTexture( GL_TEXTURE_2D, texture[0] );
 			else
 				glBindTexture( GL_TEXTURE_2D, texture[1] );
@@ -252,7 +253,7 @@ public:
 			{
 				if(draw_texture) 
 					glTexCoord2d(scale*uv[edge].first, scale*uv[edge].second);
-				else if(m_draw_theta.value())
+				else if(m_draw_theta.pipeline_value())
 					k3d::gl::material(GL_FRONT_AND_BACK, GL_DIFFUSE, c_theta[edge]);
 				else
 					k3d::gl::material(GL_FRONT_AND_BACK, GL_DIFFUSE, c_phi[edge]);

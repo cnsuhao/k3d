@@ -22,7 +22,7 @@
 */
 
 #include <k3dsdk/document_plugin_factory.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/geometry.h>
 #include <k3dsdk/imaterial.h>
 #include <k3dsdk/node.h>
@@ -58,12 +58,12 @@ public:
 		m_thetamax.changed_signal().connect(make_reset_mesh_slot());
 	}
 
-	void on_create_mesh(k3d::legacy::mesh& Mesh)
+	void on_initialize_mesh(k3d::legacy::mesh& Mesh)
 	{
-		const double radius = m_radius.value();
-		const double zmax = m_zmax.value();
-		const double zmin = std::max(0.0, std::min(zmax, m_zmin.value()));
-		const double thetamax = m_thetamax.value();
+		const double radius = m_radius.pipeline_value();
+		const double zmax = m_zmax.pipeline_value();
+		const double zmin = std::max(0.0, std::min(zmax, m_zmin.pipeline_value()));
+		const double thetamax = m_thetamax.pipeline_value();
 
 		const double z1 = zmax ? zmin / zmax : 0.0;
 		const double z3 = 1.0;
@@ -86,7 +86,7 @@ public:
 		k3d::legacy::nupatch* const nupatch = new k3d::legacy::nupatch();
 		Mesh.nupatches.push_back(nupatch);
 		
-		nupatch->material = m_material.value();
+		nupatch->material = m_material.pipeline_value();
 		nupatch->u_order = 3;
 		nupatch->v_order = 3;
 

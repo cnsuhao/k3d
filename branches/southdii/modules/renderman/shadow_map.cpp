@@ -23,7 +23,7 @@
 
 #include <k3dsdk/document_plugin_factory.h>
 #include <k3dsdk/basic_math.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/icamera.h>
 #include <k3dsdk/iprojection.h>
 #include <k3dsdk/irender_engine_ri.h>
@@ -69,7 +69,7 @@ public:
 
 	void on_resolution_changed(k3d::iunknown*)
 	{
-		const std::string new_resolution = m_resolution.value();
+		const std::string new_resolution = m_resolution.pipeline_value();
 
 		const k3d::resolutions_t& resolutions = k3d::resolutions();
 		for(k3d::resolutions_t::const_iterator resolution = resolutions.begin(); resolution != resolutions.end(); ++resolution)
@@ -89,10 +89,10 @@ public:
 	{
 		m_shadow_map_path = k3d::filesystem::path();
 
-		if(!m_create_shadow_map.value())
+		if(!m_create_shadow_map.pipeline_value())
 			return;
 
-		k3d::icamera* const camera = m_camera.value();
+		k3d::icamera* const camera = m_camera.pipeline_value();
 		return_if_fail(camera);
 
 		Engine.RiFrameBegin(0);
@@ -101,10 +101,10 @@ public:
 
 		Engine.RiDisplayV(m_shadow_map_path.native_filesystem_string(), "shadow", k3d::ri::RI_Z());
 
-		if(m_view_shadow_map.value())
+		if(m_view_shadow_map.pipeline_value())
 			Engine.RiDisplayV("+" + name(), "zframebuffer", k3d::ri::RI_Z());
 
-		Engine.RiFormat(m_pixel_width.value(), m_pixel_height.value(), 1);
+		Engine.RiFormat(m_pixel_width.pipeline_value(), m_pixel_height.pipeline_value(), 1);
 		Engine.RiPixelSamples(1, 1);
 		Engine.RiPixelFilter(k3d::ri::RI_BOX(), 1, 1);
 
@@ -117,12 +117,12 @@ public:
 
 		if(k3d::iperspective* const perspective = dynamic_cast<k3d::iperspective*>(&camera->projection()))
 		{
-			const double left = boost::any_cast<double>(k3d::get_value(document().dag(), perspective->left()));
-			const double right = boost::any_cast<double>(k3d::get_value(document().dag(), perspective->right()));
-			const double top = boost::any_cast<double>(k3d::get_value(document().dag(), perspective->top()));
-			const double bottom = boost::any_cast<double>(k3d::get_value(document().dag(), perspective->bottom()));
-			const double near = boost::any_cast<double>(k3d::get_value(document().dag(), perspective->near()));
-			const double far = boost::any_cast<double>(k3d::get_value(document().dag(), perspective->far()));
+			const double left = boost::any_cast<double>(k3d::property::pipeline_value(perspective->left()));
+			const double right = boost::any_cast<double>(k3d::property::pipeline_value(perspective->right()));
+			const double top = boost::any_cast<double>(k3d::property::pipeline_value(perspective->top()));
+			const double bottom = boost::any_cast<double>(k3d::property::pipeline_value(perspective->bottom()));
+			const double near = boost::any_cast<double>(k3d::property::pipeline_value(perspective->near()));
+			const double far = boost::any_cast<double>(k3d::property::pipeline_value(perspective->far()));
 			return_if_fail(near > 0);
 
 			Engine.RiProjectionV("perspective");
@@ -131,15 +131,15 @@ public:
 		}
 		else if(k3d::iorthographic* const orthographic = dynamic_cast<k3d::iorthographic*>(&camera->projection()))
 		{
-			const double left = boost::any_cast<double>(k3d::get_value(document().dag(), orthographic->left()));
-			const double right = boost::any_cast<double>(k3d::get_value(document().dag(), orthographic->right()));
-			const double top = boost::any_cast<double>(k3d::get_value(document().dag(), orthographic->top()));
-			const double bottom = boost::any_cast<double>(k3d::get_value(document().dag(), orthographic->bottom()));
-			const double near = boost::any_cast<double>(k3d::get_value(document().dag(), orthographic->near()));
-			const double far = boost::any_cast<double>(k3d::get_value(document().dag(), orthographic->far()));
+			const double left = boost::any_cast<double>(k3d::property::pipeline_value(orthographic->left()));
+			const double right = boost::any_cast<double>(k3d::property::pipeline_value(orthographic->right()));
+			const double top = boost::any_cast<double>(k3d::property::pipeline_value(orthographic->top()));
+			const double bottom = boost::any_cast<double>(k3d::property::pipeline_value(orthographic->bottom()));
+			const double near = boost::any_cast<double>(k3d::property::pipeline_value(orthographic->near()));
+			const double far = boost::any_cast<double>(k3d::property::pipeline_value(orthographic->far()));
 			return_if_fail(near > 0);
 
-			const k3d::matrix4 transform_matrix = boost::any_cast<k3d::matrix4>(get_value(document().dag(), camera->transformation().transform_source_output()));
+			const k3d::matrix4 transform_matrix = boost::any_cast<k3d::matrix4>(k3d::property::pipeline_value(camera->transformation().transform_source_output()));
 			const k3d::point3 world_position = transform_matrix * k3d::point3(0, 0, 0);
 			const k3d::point3 world_target = boost::any_cast<k3d::point3>(camera->world_target().property_value());
 
@@ -157,7 +157,7 @@ public:
 		}
 
 		// Setup the camera viewing transform ...
-		const k3d::matrix4 transform_matrix = boost::any_cast<k3d::matrix4>(get_value(document().dag(), camera->transformation().transform_source_output()));
+		const k3d::matrix4 transform_matrix = boost::any_cast<k3d::matrix4>(k3d::property::pipeline_value(camera->transformation().transform_source_output()));
 		Engine.RiTransform(k3d::ri::convert(k3d::inverse(transform_matrix)));
 
 		Engine.RiWorldBegin();

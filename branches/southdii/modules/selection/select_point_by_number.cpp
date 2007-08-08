@@ -23,7 +23,7 @@
 */
 
 #include <k3dsdk/document_plugin_factory.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/measurement.h>
 #include <k3dsdk/mesh_selection_modifier.h>
 #include <k3dsdk/shared_pointer.h>
@@ -55,7 +55,7 @@ public:
 			k3d::mesh::selection_t& point_selection = *k3d::make_unique(Output.point_selection);
 			std::fill(point_selection.begin(), point_selection.end(), 0.0);
 
-			const unsigned long index = m_index.value();
+			const unsigned long index = m_index.pipeline_value();
 			if(index < point_selection.size())
 				point_selection[index] = 1.0;
 		}

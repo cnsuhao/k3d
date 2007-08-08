@@ -18,26 +18,28 @@
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 /** \file
-		\brief Implements the public interface for the K-3D Next Generation User Interface (NGUI) plugin
-		\author Tim Shead (tshead@k-3d.com)
+	\author Tim Shead (tshead@k-3d.com)
 */
 
-#include "application_state.h"
-#include "application_window.h"
-#include "button.h"
-#include "document.h"
-#include "document_state.h"
-#include "file_chooser_dialog.h"
-#include "main_document_window.h"
-#include "messages.h"
-#include "module.h"
-#include "open_uri.h"
-#include "options.h"
+#include <k3d-i18n-config.h>
+#include <k3d-version-config.h>
+
 #include "splash_box.h"
-#include "tutorial_menu.h"
-#include "tutorial_message.h"
-#include "tutorial_recorder.h"
-#include "utility.h"
+
+#include <k3dsdk/ngui/application_state.h>
+#include <k3dsdk/ngui/application_window.h>
+#include <k3dsdk/ngui/button.h>
+#include <k3dsdk/ngui/document.h>
+#include <k3dsdk/ngui/document_state.h>
+#include <k3dsdk/ngui/file_chooser_dialog.h>
+#include <k3dsdk/ngui/learning_menu.h>
+#include <k3dsdk/ngui/main_document_window.h>
+#include <k3dsdk/ngui/messages.h>
+#include <k3dsdk/ngui/open_uri.h>
+#include <k3dsdk/ngui/options.h>
+#include <k3dsdk/ngui/tutorial_message.h>
+#include <k3dsdk/ngui/tutorial_recorder.h>
+#include <k3dsdk/ngui/utility.h>
 
 #include <k3dsdk/application.h>
 #include <k3dsdk/application_plugin_factory.h>
@@ -47,11 +49,10 @@
 #include <k3dsdk/classes.h>
 #include <k3dsdk/create_plugins.h>
 #include <k3dsdk/data.h>
-#include <k3dsdk/i18n.h>
 #include <k3dsdk/iapplication.h>
 #include <k3dsdk/icommand_tree.h>
 #include <k3dsdk/ideletable.h>
-#include <k3dsdk/idocument_read_format.h>
+#include <k3dsdk/idocument_importer.h>
 #include <k3dsdk/iscript_engine.h>
 #include <k3dsdk/iuser_interface.h>
 #include <k3dsdk/iuser_interface_plugin.h>
@@ -62,7 +63,6 @@
 #include <k3dsdk/share.h>
 #include <k3dsdk/string_cast.h>
 #include <k3dsdk/system.h>
-#include <k3dsdk/version.h>
 
 #include <glibmm/main.h>
 
@@ -81,7 +81,13 @@
 
 #include <iostream>
 
-namespace libk3dngui
+// Temporary hack ...
+using namespace libk3dngui;
+
+namespace module
+{
+
+namespace ngui
 {
 
 namespace detail
@@ -180,7 +186,7 @@ class user_interface :
 public:
 	user_interface() :
 		base("ui", 0),
-		m_show_tutorials(options::nag("show_tutorials")),
+		m_show_learning_menu(options::nag("show_learning_menu")),
 		m_record_tutorials(false)
 	{
 		/// Redirect glib-based logging to our own standard logging mechanism
@@ -344,7 +350,7 @@ public:
 			}
 			else if(argument->string_key == "show-tutorials")
 			{
-				m_show_tutorials = true;
+				m_show_learning_menu = true;
 			}
 			else if(argument->string_key == "record-tutorials")
 			{
@@ -378,15 +384,23 @@ public:
 		k3d::log() << info << "Loading hotkeys from " << hotkey_path.native_console_string() << std::endl;
 		Gtk::AccelMap::load(hotkey_path.native_filesystem_string());
 
-        create_document();
+		m_splash_box.reset();
 
-		if(m_show_tutorials)
-			create_tutorial_menu();
+		const k3d::ustring message = k3d::ustring::from_utf8(k3d::string_cast(boost::format(_("Welcome to K-3D Version %1%")) % K3D_VERSION));
+		const k3d::ustring secondary_message = k3d::ustring::from_utf8(
+			"Note: this unstable preview release is not suitable for production use - "
+			"many features are incomplete or missing, existing documents may not load correctly, "
+			"and newly-saved documents may not be usable in the final release.");
+
+		nag_message("show_0_7_caveats", message, secondary_message);
+
+	        create_document();
+
+		if(m_show_learning_menu)
+			create_learning_menu();
 
 		if(m_record_tutorials)
 			create_tutorial_recorder();
-
-		m_splash_box.reset();
 	}
 
 	const arguments_t parse_runtime_arguments(const arguments_t& Arguments, bool& Quit, bool& Error)
@@ -507,7 +521,7 @@ public:
 	{
 		static k3d::application_plugin_factory<user_interface,
 			k3d::interface_list<k3d::iuser_interface_plugin> > factory(
-				get_class_id(),
+				k3d::uuid(0x444fbabf, 0x08164c85, 0x879751e7, 0x2d6d05b5),
 				"NextGenerationUI",
 				"Next Generation User Interface (NGUI)",
 				"");
@@ -517,7 +531,7 @@ public:
 
 private:
 	/// Set to true iff we should display the tutorial menu at startup
-	bool m_show_tutorials;
+	bool m_show_learning_menu;
 	/// Set to true iff we should begin recording a tutorial immediately at startup
 	bool m_record_tutorials;
 	/// Stores the path where tutorials should be displayed
@@ -536,5 +550,11 @@ k3d::iplugin_factory& user_interface_factory()
 	return user_interface::get_factory();
 }
 
-} // namespace libk3dngui
+} // namespace ngui
+
+} // namespace module
+
+K3D_MODULE_START(Registry)
+	Registry.register_factory(module::ngui::user_interface_factory());
+K3D_MODULE_END
 

@@ -26,7 +26,7 @@
 #include <k3dsdk/file_range.h>
 #include <k3dsdk/fstream.h>
 #include <k3dsdk/gl.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/icamera.h>
 #include <k3dsdk/icamera_animation_render_engine.h>
 #include <k3dsdk/icamera_preview_render_engine.h>
@@ -62,7 +62,7 @@
 #include <k3dsdk/time_source.h>
 #include <k3dsdk/user_interface.h>
 #include <k3dsdk/utility_gl.h>
-#include <k3dsdk/version.h>
+#include <k3d-version-config.h>
 
 #include <iomanip>
 
@@ -251,7 +251,7 @@ public:
 
 	void on_resolution_changed(k3d::iunknown*)
 	{
-		const std::string new_resolution = m_resolution.value();
+		const std::string new_resolution = m_resolution.pipeline_value();
 
 		const k3d::resolutions_t& resolutions = k3d::resolutions();
 		for(k3d::resolutions_t::const_iterator resolution = resolutions.begin(); resolution != resolutions.end(); ++resolution)
@@ -341,9 +341,9 @@ public:
 		return_val_if_fail(start_time_property && end_time_property && frame_rate_property && time_property, false);
 
 		// Test the output images filepath to make sure it can hold all the frames we're going to generate ...
-		const double start_time = boost::any_cast<double>(k3d::get_value(document().dag(), *start_time_property));
-		const double end_time = boost::any_cast<double>(k3d::get_value(document().dag(), *end_time_property));
-		const double frame_rate = boost::any_cast<double>(k3d::get_value(document().dag(), *frame_rate_property));
+		const double start_time = boost::any_cast<double>(k3d::property::pipeline_value(*start_time_property));
+		const double end_time = boost::any_cast<double>(k3d::property::pipeline_value(*end_time_property));
+		const double frame_rate = boost::any_cast<double>(k3d::property::pipeline_value(*frame_rate_property));
 
 		const size_t start_frame = static_cast<size_t>(k3d::round(frame_rate * start_time));
 		const size_t end_frame = static_cast<size_t>(k3d::round(frame_rate * end_time));
@@ -422,8 +422,8 @@ private:
 		k3d::iwritable_property* const writable_time_property = dynamic_cast<k3d::iwritable_property*>(time_property);
 		return_val_if_fail(frame_rate_property && time_property && writable_time_property, false);
 
-		const double frame_delta = 1.0 / boost::any_cast<double>(k3d::get_value(document().dag(), *frame_rate_property));
-		const double frame_time = boost::any_cast<double>(k3d::get_value(document().dag(), *time_property));
+		const double frame_delta = 1.0 / boost::any_cast<double>(k3d::property::pipeline_value(*frame_rate_property));
+		const double frame_time = boost::any_cast<double>(k3d::property::pipeline_value(*time_property));
 
 		// Start our RIB file ...
 		const std::string ribfilename("world.rib");
@@ -435,7 +435,7 @@ private:
 		return_val_if_fail(ribfile.good(), false);
 
 		// Setup the frame for RI rendering with the user's preferred engine ...
-		Frame.add_render_operation("ri", m_render_engine.value(), k3d::filesystem::native_path(k3d::ustring::from_utf8(ribfilename)), VisibleRender);
+		Frame.add_render_operation("ri", m_render_engine.pipeline_value(), k3d::filesystem::native_path(k3d::ustring::from_utf8(ribfilename)), VisibleRender);
 
 		// Create the Ri render engine object ...
 		k3d::ri::render_engine engine(ribfile);
@@ -464,7 +464,7 @@ private:
 		engine.RiNewline();
 		engine.RiFrameBegin(1);
 
-		const std::string hider = m_hider.value();
+		const std::string hider = m_hider.pipeline_value();
 		if(!hider.empty())
 		    engine.RiHiderV(hider);
 
@@ -473,14 +473,14 @@ private:
 		engine.RiComment("Setup options");
 
 		k3d::typed_array<k3d::ri::integer>* const bucketsize = new k3d::typed_array<k3d::ri::integer>();
-		bucketsize->push_back(m_bucket_width.value());
-		bucketsize->push_back(m_bucket_height.value());
+		bucketsize->push_back(m_bucket_width.pipeline_value());
+		bucketsize->push_back(m_bucket_height.pipeline_value());
 
 		k3d::ri::parameter_list limits;
-		limits.push_back(k3d::ri::parameter("gridsize", k3d::ri::UNIFORM, 1, static_cast<k3d::ri::integer>(m_grid_size.value())));
+		limits.push_back(k3d::ri::parameter("gridsize", k3d::ri::UNIFORM, 1, static_cast<k3d::ri::integer>(m_grid_size.pipeline_value())));
 		limits.push_back(k3d::ri::parameter("bucketsize", k3d::ri::UNIFORM, 2, bucketsize));
-		limits.push_back(k3d::ri::parameter("eyesplits", k3d::ri::UNIFORM, 1, static_cast<k3d::ri::integer>(m_eye_splits.value())));
-		limits.push_back(k3d::ri::parameter("texturememory", k3d::ri::UNIFORM, 1, static_cast<k3d::ri::integer>(m_texture_memory.value())));
+		limits.push_back(k3d::ri::parameter("eyesplits", k3d::ri::UNIFORM, 1, static_cast<k3d::ri::integer>(m_eye_splits.pipeline_value())));
+		limits.push_back(k3d::ri::parameter("texturememory", k3d::ri::UNIFORM, 1, static_cast<k3d::ri::integer>(m_texture_memory.pipeline_value())));
 		engine.RiOptionV("limits", limits);
 
 		// Setup custom options ...
@@ -498,49 +498,49 @@ private:
 			engine.RiDisplayV(outputimage.leaf().raw(), k3d::ri::RI_FRAMEBUFFER(), k3d::ri::RI_RGB());
 		else
 		{
-			if(m_render_alpha.value())
+			if(m_render_alpha.pipeline_value())
 				engine.RiDisplayV(outputimage.leaf().raw(), k3d::ri::RI_FILE(), k3d::ri::RI_RGBA());
 			else
 				engine.RiDisplayV(outputimage.leaf().raw(), k3d::ri::RI_FILE(), k3d::ri::RI_RGB());
 		}
 
-		const k3d::ri::unsigned_integer pixel_width = m_pixel_width.value();
-		const k3d::ri::unsigned_integer pixel_height = m_pixel_height.value();
-		const k3d::ri::real pixel_aspect_ratio = m_pixel_aspect_ratio.value();
+		const k3d::ri::unsigned_integer pixel_width = m_pixel_width.pipeline_value();
+		const k3d::ri::unsigned_integer pixel_height = m_pixel_height.pipeline_value();
+		const k3d::ri::real pixel_aspect_ratio = m_pixel_aspect_ratio.pipeline_value();
 
 		engine.RiFormat(pixel_width, pixel_height, pixel_aspect_ratio);
 
 		// Set pixel sampling rates ...
-		engine.RiPixelSamples(m_pixel_xsamples.value(), m_pixel_ysamples.value());
-		engine.RiPixelFilter(m_pixel_filter.value(), m_pixel_filter_width.value(), m_pixel_filter_height.value());
+		engine.RiPixelSamples(m_pixel_xsamples.pipeline_value(), m_pixel_ysamples.pipeline_value());
+		engine.RiPixelFilter(m_pixel_filter.pipeline_value(), m_pixel_filter_width.pipeline_value(), m_pixel_filter_height.pipeline_value());
 
 		// Set gain & gamma ...
-		engine.RiExposure(m_exposure.value(), m_gamma.value());
+		engine.RiExposure(m_exposure.pipeline_value(), m_gamma.pipeline_value());
 
 		// Set depth-of-field options ...
-		if(m_dof.value())
+		if(m_dof.pipeline_value())
 			engine.RiDepthOfField(
-				m_fstop.value(),
-				m_focal_length.value(),
-				m_focus_plane.value());
+				m_fstop.pipeline_value(),
+				m_focal_length.pipeline_value(),
+				m_focus_plane.pipeline_value());
 
 		// Set global shading rate ...
-		engine.RiShadingRate(m_shading_rate.value());
+		engine.RiShadingRate(m_shading_rate.pipeline_value());
 
 		// Set global shading interpolation ...
-		engine.RiShadingInterpolation(m_shading_interpolation.value());
+		engine.RiShadingInterpolation(m_shading_interpolation.pipeline_value());
 
 		// We use LH orientation, the way Our Lord Who Art In Heaven wants us to ...
 		engine.RiOrientation(k3d::ri::RI_LH());
 
 		// Double-sided surfaces ...
-		engine.RiSides(m_two_sided.value() ? 2 : 1);
+		engine.RiSides(m_two_sided.pipeline_value() ? 2 : 1);
 
 		// Crop window ...
-		const double crop_left = boost::any_cast<double>(get_value(document().dag(), Camera.crop_window().crop_left()));
-		const double crop_right = boost::any_cast<double>(get_value(document().dag(), Camera.crop_window().crop_right()));
-		const double crop_top = boost::any_cast<double>(get_value(document().dag(), Camera.crop_window().crop_top()));
-		const double crop_bottom = boost::any_cast<double>(get_value(document().dag(), Camera.crop_window().crop_bottom()));
+		const double crop_left = boost::any_cast<double>(k3d::property::pipeline_value(Camera.crop_window().crop_left()));
+		const double crop_right = boost::any_cast<double>(k3d::property::pipeline_value(Camera.crop_window().crop_right()));
+		const double crop_top = boost::any_cast<double>(k3d::property::pipeline_value(Camera.crop_window().crop_top()));
+		const double crop_bottom = boost::any_cast<double>(k3d::property::pipeline_value(Camera.crop_window().crop_bottom()));
 
 		if(crop_left >= crop_right || crop_top >= crop_bottom)
 			k3d::user_interface().message("Current crop window settings will produce an empty image");
@@ -549,10 +549,10 @@ private:
 
 		// Setup our motion-blur sampling loop ...
 		k3d::ri::sample_times_t samples(1, 0.0);
-		if(m_render_motion_blur.value())
+		if(m_render_motion_blur.pipeline_value())
 			samples.push_back(1.0);
 
-		const bool motion_blur_camera = m_motion_blur.value();
+		const bool motion_blur_camera = m_motion_blur.pipeline_value();
 		std::vector<k3d::point3> motion_blur_camera_position_samples;
 		std::vector<k3d::angle_axis> motion_blur_camera_orientation_samples;
 
@@ -564,7 +564,7 @@ private:
 
 			writable_time_property->property_set_value(sample_time);
 
-			const k3d::matrix4 transform_matrix = boost::any_cast<k3d::matrix4>(get_value(document().dag(), Camera.transformation().transform_source_output()));
+			const k3d::matrix4 transform_matrix = boost::any_cast<k3d::matrix4>(k3d::property::pipeline_value(Camera.transformation().transform_source_output()));
 			const k3d::angle_axis orientation(k3d::euler_angles(transform_matrix, k3d::euler_angles::ZXYstatic));
 			const k3d::point3 position(k3d::position(transform_matrix));
 
@@ -581,12 +581,12 @@ private:
 
 				if(k3d::iperspective* const perspective = dynamic_cast<k3d::iperspective*>(&Camera.projection()))
 				{
-					const double left = boost::any_cast<double>(k3d::get_value(document().dag(), perspective->left()));
-					const double right = boost::any_cast<double>(k3d::get_value(document().dag(), perspective->right()));
-					const double top = boost::any_cast<double>(k3d::get_value(document().dag(), perspective->top()));
-					const double bottom = boost::any_cast<double>(k3d::get_value(document().dag(), perspective->bottom()));
-					const double near = boost::any_cast<double>(k3d::get_value(document().dag(), perspective->near()));
-					const double far = boost::any_cast<double>(k3d::get_value(document().dag(), perspective->far()));
+					const double left = boost::any_cast<double>(k3d::property::pipeline_value(perspective->left()));
+					const double right = boost::any_cast<double>(k3d::property::pipeline_value(perspective->right()));
+					const double top = boost::any_cast<double>(k3d::property::pipeline_value(perspective->top()));
+					const double bottom = boost::any_cast<double>(k3d::property::pipeline_value(perspective->bottom()));
+					const double near = boost::any_cast<double>(k3d::property::pipeline_value(perspective->near()));
+					const double far = boost::any_cast<double>(k3d::property::pipeline_value(perspective->far()));
 					return_val_if_fail(near > 0, false);
 
 					engine.RiProjectionV("perspective");
@@ -595,15 +595,15 @@ private:
 				}
 				else if(k3d::iorthographic* const orthographic = dynamic_cast<k3d::iorthographic*>(&Camera.projection()))
 				{
-					const double left = boost::any_cast<double>(k3d::get_value(document().dag(), orthographic->left()));
-					const double right = boost::any_cast<double>(k3d::get_value(document().dag(), orthographic->right()));
-					const double top = boost::any_cast<double>(k3d::get_value(document().dag(), orthographic->top()));
-					const double bottom = boost::any_cast<double>(k3d::get_value(document().dag(), orthographic->bottom()));
-					const double near = boost::any_cast<double>(k3d::get_value(document().dag(), orthographic->near()));
-					const double far = boost::any_cast<double>(k3d::get_value(document().dag(), orthographic->far()));
+					const double left = boost::any_cast<double>(k3d::property::pipeline_value(orthographic->left()));
+					const double right = boost::any_cast<double>(k3d::property::pipeline_value(orthographic->right()));
+					const double top = boost::any_cast<double>(k3d::property::pipeline_value(orthographic->top()));
+					const double bottom = boost::any_cast<double>(k3d::property::pipeline_value(orthographic->bottom()));
+					const double near = boost::any_cast<double>(k3d::property::pipeline_value(orthographic->near()));
+					const double far = boost::any_cast<double>(k3d::property::pipeline_value(orthographic->far()));
 					return_val_if_fail(near > 0, false);
 
-					const k3d::matrix4 transform_matrix = boost::any_cast<k3d::matrix4>(get_value(document().dag(), Camera.transformation().transform_source_output()));
+					const k3d::matrix4 transform_matrix = boost::any_cast<k3d::matrix4>(k3d::property::pipeline_value(Camera.transformation().transform_source_output()));
 					const k3d::point3 world_position = transform_matrix * k3d::point3(0, 0, 0);
 					const k3d::point3 world_target = boost::any_cast<k3d::point3>(Camera.world_target().property_value());
 
@@ -672,14 +672,14 @@ private:
 				}
 
 				// Default shaders ...
-				if(m_default_atmosphere_shader.value())
-					m_default_atmosphere_shader.value()->setup_renderman_atmosphere_shader(state);
-				if(m_default_interior_shader.value())
-					m_default_interior_shader.value()->setup_renderman_interior_shader(state);
-				if(m_default_exterior_shader.value())
-					m_default_exterior_shader.value()->setup_renderman_exterior_shader(state);
-				if(m_imager_shader.value())
-					m_imager_shader.value()->setup_renderman_imager_shader(state);
+				if(m_default_atmosphere_shader.pipeline_value())
+					m_default_atmosphere_shader.pipeline_value()->setup_renderman_atmosphere_shader(state);
+				if(m_default_interior_shader.pipeline_value())
+					m_default_interior_shader.pipeline_value()->setup_renderman_interior_shader(state);
+				if(m_default_exterior_shader.pipeline_value())
+					m_default_exterior_shader.pipeline_value()->setup_renderman_exterior_shader(state);
+				if(m_imager_shader.pipeline_value())
+					m_imager_shader.pipeline_value()->setup_renderman_imager_shader(state);
 
 				// Begin the world ...
 				engine.RiNewline();
@@ -718,7 +718,7 @@ private:
 		for(k3d::ri::shader_collection::shaders_t::const_iterator shader = shaders.begin(); shader != shaders.end(); ++shader)
 		{
 			// Compile that bad-boy!
-			if(!k3d::compile_shader(*shader, "ri", m_render_engine.value()))
+			if(!k3d::compile_shader(*shader, "ri", m_render_engine.pipeline_value()))
 				k3d::log() << error << k3d::string_cast(boost::format(_("Error compiling shader %1%")) % shader->native_utf8_string().raw()) << std::endl;
 		}
 	}

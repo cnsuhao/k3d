@@ -27,8 +27,8 @@
 #include <k3dsdk/classes.h>
 #include <k3dsdk/document_plugin_factory.h>
 #include <k3dsdk/file_filter.h>
-#include <k3dsdk/i18n.h>
-#include <k3dsdk/ibitmap_write_format.h>
+#include <k3d-i18n-config.h>
+#include <k3dsdk/ibitmap_exporter.h>
 #include <k3dsdk/irender_engine_ri.h>
 #include <k3dsdk/irender_farm.h>
 #include <k3dsdk/irender_frame.h>
@@ -79,7 +79,7 @@ public:
 		m_ri_image_path = k3d::filesystem::path();
 		m_ri_texture_path = k3d::filesystem::path();
 
-		const k3d::bitmap* const texture = m_output_bitmap.value();
+		const k3d::bitmap* const texture = m_output_bitmap.pipeline_value();
 		if(!texture)
 			return;
 
@@ -93,13 +93,13 @@ public:
 		{
 			m_refresh_cache = false;
 
-			k3d::ibitmap_write_format* const filter = k3d::file_filter<k3d::ibitmap_write_format>(k3d::classes::TIFFWriter());
+			k3d::ibitmap_exporter* const filter = k3d::file_filter<k3d::ibitmap_exporter>(k3d::classes::TIFFBitmapExporter());
 			return_if_fail(filter);
 			return_if_fail(filter->write_file(m_cache_path, *texture));
 		}
 
 		k3d::filesystem::copy_file(m_cache_path, m_ri_image_path);
-		Engine.RiMakeTextureV(m_ri_image_path.native_filesystem_string(), m_ri_texture_path.native_filesystem_string(), m_swrap.value(), m_twrap.value(), m_filter.value(), m_swidth.value(), m_twidth.value());
+		Engine.RiMakeTextureV(m_ri_image_path.native_filesystem_string(), m_ri_texture_path.native_filesystem_string(), m_swrap.pipeline_value(), m_twrap.pipeline_value(), m_filter.pipeline_value(), m_swidth.pipeline_value(), m_twidth.pipeline_value());
 	}
 
 	const k3d::filesystem::path renderman_texture_path(const k3d::ri::render_state& State)

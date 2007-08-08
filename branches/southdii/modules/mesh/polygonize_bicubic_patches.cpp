@@ -22,7 +22,7 @@
 */
 
 #include <k3dsdk/document_plugin_factory.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/imaterial.h>
 #include <k3dsdk/material.h>
 #include <k3dsdk/material_client.h>
@@ -57,9 +57,9 @@ public:
 		return 0;
 	}
 
-	void on_create_mesh(const k3d::legacy::mesh& InputMesh, k3d::legacy::mesh& Mesh)
+	void on_initialize_mesh(const k3d::legacy::mesh& InputMesh, k3d::legacy::mesh& Mesh)
 	{
-		const unsigned long subdivisions = m_subdivisions.value();
+		const unsigned long subdivisions = m_subdivisions.pipeline_value();
 
 		// Polygonize each bicubic patch ...
 		for(k3d::legacy::mesh::bicubic_patches_t::const_iterator patch = InputMesh.bicubic_patches.begin(); patch != InputMesh.bicubic_patches.end(); patch++)

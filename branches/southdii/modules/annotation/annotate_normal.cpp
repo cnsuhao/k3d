@@ -24,7 +24,7 @@
 #include <k3dsdk/basic_math.h>
 #include <k3dsdk/document_plugin_factory.h>
 #include <k3dsdk/drawable_gl.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/measurement.h>
 #include <k3dsdk/node.h>
 #include <k3dsdk/persistent.h>
@@ -57,7 +57,7 @@ public:
 
 	void on_gl_draw(const k3d::gl::render_state& State)
 	{
-		k3d::gl::color3d(get_selection_weight() ? k3d::color(1, 1, 1) : m_color.value());
+		k3d::gl::color3d(get_selection_weight() ? k3d::color(1, 1, 1) : m_color.pipeline_value());
 		draw(State);
 	}
 
@@ -75,7 +75,7 @@ public:
 		glDisable(GL_TEXTURE_2D);
 		glDisable(GL_BLEND);
 
-		const k3d::vector3 normal = m_normal.value();
+		const k3d::vector3 normal = m_normal.pipeline_value();
 
 		glBegin(GL_LINES);
 		k3d::gl::vertex3d(k3d::point3(0, 0, 0));

@@ -24,7 +24,7 @@
 
 #include <k3dsdk/algebra.h>
 #include <k3dsdk/document_plugin_factory.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/measurement.h>
 #include <k3dsdk/mesh_simple_deformation_modifier.h>
 
@@ -50,7 +50,7 @@ public:
 
 	void on_deform_mesh(const k3d::mesh::points_t& InputPoints, const k3d::mesh::selection_t& PointSelection, k3d::mesh::points_t& OutputPoints)
 	{
-		const double sphere_factor = m_sphere_factor.value();
+		const double sphere_factor = m_sphere_factor.pipeline_value();
 
 		const size_t point_begin = 0;
 		const size_t point_end = point_begin + OutputPoints.size();

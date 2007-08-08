@@ -23,7 +23,7 @@
 
 #include <k3dsdk/document_plugin_factory.h>
 #include <k3dsdk/basic_math.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/imaterial.h>
 #include <k3dsdk/node.h>
 #include <k3dsdk/persistent.h>
@@ -82,26 +82,26 @@ public:
 		m_wrap.changed_signal().connect(make_reset_mesh_slot());
 	}
 
-	void on_create_mesh(k3d::legacy::mesh& Mesh)
+	void on_initialize_mesh(k3d::legacy::mesh& Mesh)
 	{
-		const unsigned long edges = m_edge_count.value();
-		const double mamp = m_mamp.value();
-		const double mfreq = m_mfreq.value();
-		const double mphase = m_mphase.value();
-		const double xamp = m_xamp.value();
-		const double xfreq = m_xfreq.value();
-		const double xphase = m_xphase.value();
-		const double yamp = m_yamp.value();
-		const double yfreq = m_yfreq.value();
-		const double yphase = m_yphase.value();
-		const double zamp = m_zamp.value();
-		const double zfreq = m_zfreq.value();
-		const double zphase = m_zphase.value();
-		const double width = m_width.value();
-		const double wrap = m_wrap.value();
+		const unsigned long edges = m_edge_count.pipeline_value();
+		const double mamp = m_mamp.pipeline_value();
+		const double mfreq = m_mfreq.pipeline_value();
+		const double mphase = m_mphase.pipeline_value();
+		const double xamp = m_xamp.pipeline_value();
+		const double xfreq = m_xfreq.pipeline_value();
+		const double xphase = m_xphase.pipeline_value();
+		const double yamp = m_yamp.pipeline_value();
+		const double yfreq = m_yfreq.pipeline_value();
+		const double yphase = m_yphase.pipeline_value();
+		const double zamp = m_zamp.pipeline_value();
+		const double zfreq = m_zfreq.pipeline_value();
+		const double zphase = m_zphase.pipeline_value();
+		const double width = m_width.pipeline_value();
+		const double wrap = m_wrap.pipeline_value();
 
 		k3d::legacy::linear_curve_group* const group = new k3d::legacy::linear_curve_group();
-		group->material = m_material.value();
+		group->material = m_material.pipeline_value();
 		group->wrap = wrap;
 		group->constant_data["width"] = width;
 

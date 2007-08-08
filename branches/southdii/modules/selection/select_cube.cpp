@@ -24,7 +24,7 @@
 
 #include <k3dsdk/document_plugin_factory.h>
 #include <k3dsdk/drawable_gl.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/measurement.h>
 #include <k3dsdk/legacy_mesh.h>
 #include <k3dsdk/legacy_mesh_modifier.h>
@@ -61,7 +61,7 @@ class select_cube :
 		m_z2.changed_signal().connect(make_update_mesh_slot());
 	}
 
-	void on_create_mesh(const k3d::legacy::mesh& InputMesh, k3d::legacy::mesh& Mesh)
+	void on_initialize_mesh(const k3d::legacy::mesh& InputMesh, k3d::legacy::mesh& Mesh)
 	{
 		k3d::legacy::deep_copy(InputMesh, Mesh);
 	}
@@ -69,12 +69,12 @@ class select_cube :
 	void on_update_mesh(const k3d::legacy::mesh& InputMesh, k3d::legacy::mesh& Mesh)
 	{
 		const k3d::bounding_box3 cube(
-				m_x1.value(),
-				m_x2.value(),
-				m_y1.value(),
-				m_y2.value(),
-				m_z1.value(),
-				m_z2.value());
+				m_x1.pipeline_value(),
+				m_x2.pipeline_value(),
+				m_y1.pipeline_value(),
+				m_y2.pipeline_value(),
+				m_z1.pipeline_value(),
+				m_z2.pipeline_value());
 
 		k3d::legacy::for_each_component(Mesh, select_volume(cube));
 	}
@@ -84,7 +84,7 @@ class select_cube :
 		glDisable(GL_LIGHTING);
 		glColor3d(1, 0, 0);
 
-		const k3d::bounding_box3 cube(m_x1.value(), m_x2.value(), m_y1.value(), m_y2.value(), m_z1.value(), m_z2.value());
+		const k3d::bounding_box3 cube(m_x1.pipeline_value(), m_x2.pipeline_value(), m_y1.pipeline_value(), m_y2.pipeline_value(), m_z1.pipeline_value(), m_z2.pipeline_value());
 		if(cube.empty())
 			return;
 

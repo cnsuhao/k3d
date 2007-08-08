@@ -23,7 +23,7 @@
 
 #include <k3dsdk/color.h>
 #include <k3dsdk/document_plugin_factory.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/bitmap_source.h>
 #include <k3dsdk/persistent.h>
 #include <k3dsdk/measurement.h>
@@ -54,9 +54,9 @@ public:
 
 	void on_create_bitmap(k3d::bitmap& Bitmap)
 	{
-		const k3d::pixel_size_t width = m_width.value();
-		const k3d::pixel_size_t height = m_height.value();
-		const k3d::color color = m_color.value();
+		const k3d::pixel_size_t width = m_width.pipeline_value();
+		const k3d::pixel_size_t height = m_height.pipeline_value();
+		const k3d::color color = m_color.pipeline_value();
 
 		Bitmap.recreate(width, height);
 

@@ -22,7 +22,7 @@
 */
 
 #include <k3dsdk/document_plugin_factory.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/imaterial.h>
 #include <k3dsdk/material.h>
 #include <k3dsdk/material_client.h>
@@ -970,13 +970,13 @@ public:
 		m_size.changed_signal().connect(make_reset_mesh_slot());
 	}
 
-	void on_create_mesh(k3d::legacy::mesh& Mesh)
+	void on_initialize_mesh(k3d::legacy::mesh& Mesh)
 	{
-		const double size = m_size.value();
-		k3d::imaterial* const material = m_material.value();
+		const double size = m_size.pipeline_value();
+		k3d::imaterial* const material = m_material.pipeline_value();
 
 		// Creates Newell's primitives using his bezier patches ...
-		switch(m_type.value())
+		switch(m_type.pipeline_value())
 		{
 			case TEAPOT:
 			{

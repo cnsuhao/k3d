@@ -23,7 +23,7 @@
 
 #include <k3dsdk/algebra.h>
 #include <k3dsdk/document_plugin_factory.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/itransform_source.h>
 #include <k3dsdk/measurement.h>
 #include <k3dsdk/node.h>
@@ -61,9 +61,9 @@ public:
 
 	k3d::matrix4 output_value()
 	{
-		const k3d::point3 look_position = m_look.value() * k3d::point3();
-		const k3d::point3 up_position = m_up.value() * k3d::point3();
-		const k3d::point3 position = m_position.value() * k3d::point3();
+		const k3d::point3 look_position = m_look.pipeline_value() * k3d::point3();
+		const k3d::point3 up_position = m_up.pipeline_value() * k3d::point3();
+		const k3d::point3 position = m_position.pipeline_value() * k3d::point3();
 
 		return k3d::view_matrix(
 			k3d::to_vector(look_position - position),

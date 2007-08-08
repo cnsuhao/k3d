@@ -23,7 +23,7 @@
 */
 
 #include <k3dsdk/document_plugin_factory.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/node.h>
 #include <k3dsdk/persistent.h>
 #include <k3dsdk/property_collection.h>
@@ -54,7 +54,7 @@ public:
 		if(!k3d::ri::last_sample(State))
 			return;
 
-		const k3d::filesystem::path file = m_file.value();
+		const k3d::filesystem::path file = m_file.pipeline_value();
 		if(!k3d::filesystem::exists(file))
 			return;
 

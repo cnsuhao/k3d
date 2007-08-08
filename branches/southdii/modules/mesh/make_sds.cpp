@@ -22,7 +22,7 @@
 */
 
 #include <k3dsdk/document_plugin_factory.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/node.h>
 #include <k3dsdk/persistent.h>
 #include <k3dsdk/mesh_modifier.h>
@@ -51,7 +51,7 @@ public:
 
 	void on_create_mesh(const k3d::mesh& Input, k3d::mesh& Output)
 	{
-		const bool interpolateboundary = m_interpolateboundary.value();
+		const bool interpolateboundary = m_interpolateboundary.pipeline_value();
 
 		Output = Input;
 

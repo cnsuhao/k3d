@@ -23,7 +23,7 @@
 */
 
 #include <k3dsdk/document_plugin_factory.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/node.h>
 #include <k3dsdk/persistent.h>
 #include <k3dsdk/renderable_ri.h>
@@ -57,7 +57,7 @@ public:
 		if(!k3d::ri::last_sample(State))
 			return;
 
-		k3d::ri::irenderable* const renderable = m_instance.value();
+		k3d::ri::irenderable* const renderable = m_instance.pipeline_value();
 		if(!renderable)
 			return;
 

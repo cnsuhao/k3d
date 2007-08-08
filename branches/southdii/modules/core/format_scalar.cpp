@@ -23,7 +23,7 @@
 */
 #include <k3dsdk/document_plugin_factory.h>
 
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/node.h>
 #include <k3dsdk/persistent.h>
 
@@ -51,7 +51,7 @@ public:
 	{
 		try
 			{
-				return (boost::format(m_format.value()) % m_input.value()).str();
+				return (boost::format(m_format.pipeline_value()) % m_input.pipeline_value()).str();
 			}
 		catch(std::exception& e)
 			{

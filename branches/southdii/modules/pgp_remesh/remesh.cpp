@@ -79,12 +79,12 @@ namespace libk3dquadremesh
 			if(!geom.valid) return;
 			if(k3d::mesh* const output = m_output_mesh.internal_value())
 			{
-				int steps = m_steps.value()-prev_steps;
+				int steps = m_steps.pipeline_value()-prev_steps;
 				if(steps < 0)
-					geom.smooth(m_h.value(), m_steps.value(), m_symmetry.value());
+					geom.smooth(m_h.pipeline_value(), m_steps.pipeline_value(), m_symmetry.pipeline_value());
 				else
-					geom.smooth(m_h.value(), steps, m_symmetry.value());
-				prev_steps = m_steps.value();
+					geom.smooth(m_h.pipeline_value(), steps, m_symmetry.pipeline_value());
+				prev_steps = m_steps.pipeline_value();
 				geom.dump_draw_data(*output);
 			}
 
@@ -114,7 +114,7 @@ namespace libk3dquadremesh
 			base_t::document().pipeline_profiler().finish_execution(*this, "Calc Diff Geom");
 
 			base_t::document().pipeline_profiler().start_execution(*this, "Smooth");
-			geom.smooth(m_h.value(), m_steps.value(), m_symmetry.value());
+			geom.smooth(m_h.pipeline_value(), m_steps.pipeline_value(), m_symmetry.pipeline_value());
 			base_t::document().pipeline_profiler().finish_execution(*this, "Smooth");
 
 			//base_t::document().pipeline_profiler().start_execution(*this, "Output");
@@ -133,7 +133,7 @@ namespace libk3dquadremesh
 			base_t::document().pipeline_profiler().finish_execution(*this, "PGP Curl Correction");
 	*/	
 			base_t::document().pipeline_profiler().start_execution(*this, "PGP Setup");
-			pgp.setup(m_omega.value());
+			pgp.setup(m_omega.pipeline_value());
 			base_t::document().pipeline_profiler().finish_execution(*this, "PGP Setup");
 
 			base_t::document().pipeline_profiler().start_execution(*this, "PGP solve");
@@ -141,7 +141,7 @@ namespace libk3dquadremesh
 			base_t::document().pipeline_profiler().finish_execution(*this, "PGP solve");
 
 			base_t::document().pipeline_profiler().start_execution(*this, "PGP extract");
-			pgp.extract(m_omega.value(), m_divides.value());
+			pgp.extract(m_omega.pipeline_value(), m_divides.pipeline_value());
 			base_t::document().pipeline_profiler().finish_execution(*this, "PGP extract");
 
 			base_t::document().pipeline_profiler().start_execution(*this, "PGP remesh");

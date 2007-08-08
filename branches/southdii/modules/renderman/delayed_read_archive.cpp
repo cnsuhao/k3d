@@ -25,7 +25,7 @@
 #include <k3dsdk/document_plugin_factory.h>
 #include <k3dsdk/bounding_box.h>
 #include <k3dsdk/drawable_gl.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/node.h>
 #include <k3dsdk/persistent.h>
 #include <k3dsdk/renderable_ri.h>
@@ -53,7 +53,7 @@ public:
 
 	void on_gl_draw(const k3d::gl::render_state& State)
 	{
-		const k3d::bounding_box3 bounding_box = m_bounding_box.value();
+		const k3d::bounding_box3 bounding_box = m_bounding_box.pipeline_value();
 
 		glDisable(GL_LIGHTING);
 		glColor3d(1, 1, 0);
@@ -71,11 +71,11 @@ public:
 		if(!k3d::ri::last_sample(State))
 			return;
 
-		const k3d::filesystem::path file = m_file.value();
+		const k3d::filesystem::path file = m_file.pipeline_value();
 		if(!k3d::filesystem::exists(file))
 			return;
 
-		const k3d::bounding_box3 bounding_box = m_bounding_box.value();
+		const k3d::bounding_box3 bounding_box = m_bounding_box.pipeline_value();
 
 		State.engine.RiProcDelayedReadArchive(file, bounding_box);
 	}

@@ -67,6 +67,14 @@ rectangle::rectangle(const point2& TopLeft, const point2& BottomRight) :
 {
 }
 
+rectangle::rectangle(const point2& Center, const double Width, const double Height) :
+	left(Center[0] - (Width / 2)),
+	right(Center[0] + (Width / 2)),
+	top(Center[1] - (Height / 2)),
+	bottom(Center[1] + (Height / 2))
+{
+}
+
 double rectangle::width() const
 {
 	return std::fabs(right - left);
@@ -171,7 +179,7 @@ line2::line2(const vector2& Direction, const point2& Point) :
 }
 
 line2::line2(const point2& Point1, const point2& Point2) :
-	direction(to_vector(Point2 - Point1)),
+	direction(Point2 - Point1),
 	point(Point1)
 {
 }

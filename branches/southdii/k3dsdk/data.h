@@ -20,7 +20,6 @@
 // License along with this program; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-#include "idag.h"
 #include "idocument.h"
 #include "ienumeration_property.h"
 #include "ilist_property.h"
@@ -211,7 +210,7 @@ private:
 /** \brief Encapsulates the lookup process for connected properties
 	\note In the case of circular dependencies, returns the same value as the input property
 */
-iproperty* property_lookup(iproperty* const Source, idag& DAG);
+iproperty* property_lookup(iproperty* const Source);
 
 /////////////////////////////////////////////////////////////////////////////
 // no_property
@@ -222,11 +221,6 @@ class no_property :
 	public name_policy_t
 {
 public:
-	/// Returns the underlying value of the data
-	const value_t value()
-	{
-		return name_policy_t::internal_value();
-	}
 
 protected:
 	template<typename init_t>
@@ -246,9 +240,9 @@ class read_only_property :
 	public iproperty
 {
 public:
-	const value_t value()
+	const value_t pipeline_value()
 	{
-		iproperty* const source = property_lookup(this, m_dag);
+		iproperty* const source = property_lookup(this);
 		if(source != this)
 			return boost::any_cast<value_t>(source->property_value());
 
@@ -285,7 +279,7 @@ public:
 		return m_node;
 	}
 
-	changed_signal_t& property_changed_signal()
+	typename name_policy_t::changed_signal_t& property_changed_signal()
 	{
 		return name_policy_t::changed_signal();
 	}
@@ -295,14 +289,24 @@ public:
 		return m_deleted_signal;
 	}
 
+	iproperty* property_dependency()
+	{
+		return m_dependency;
+	}
+
+	void property_set_dependency(iproperty* Dependency)
+	{
+		m_dependency = Dependency;
+	}
+
 protected:
 	template<typename init_t>
 	read_only_property(const init_t& Init) :
 		name_policy_t(Init),
-		m_dag(Init.document().dag()),
 		m_node(Init.node()),
 		m_label(Init.label()),
-		m_description(Init.description())
+		m_description(Init.description()),
+		m_dependency(0)
 	{
 		Init.property_collection().register_property(*this);
 	}
@@ -313,11 +317,11 @@ protected:
 	}
 
 private:
-	idag& m_dag;
 	inode* const m_node;
 	const char* const m_label;
 	const char* const m_description;
 	deleted_signal_t m_deleted_signal;
+	iproperty* m_dependency;
 };
 
 /////////////////////////////////////////////////////////////////////////////
@@ -331,9 +335,9 @@ class writable_property :
 	public iwritable_property
 {
 public:
-	const value_t value()
+	const value_t pipeline_value()
 	{
-		iproperty* const source = property_lookup(this, m_dag);
+		iproperty* const source = property_lookup(this);
 		if(source != this)
 			return boost::any_cast<value_t>(source->property_value());
 
@@ -370,7 +374,7 @@ public:
 		return m_node;
 	}
 
-	changed_signal_t& property_changed_signal()
+	typename name_policy_t::changed_signal_t& property_changed_signal()
 	{
 		return name_policy_t::changed_signal();
 	}
@@ -390,14 +394,24 @@ public:
 		return true;
 	}
 
+	iproperty* property_dependency()
+	{
+		return m_dependency;
+	}
+
+	void property_set_dependency(iproperty* Dependency)
+	{
+		m_dependency = Dependency;
+	}
+
 protected:
 	template<typename init_t>
 	writable_property(const init_t& Init) :
 		name_policy_t(Init),
-		m_dag(Init.document().dag()),
 		m_node(Init.node()),
 		m_label(Init.label()),
-		m_description(Init.description())
+		m_description(Init.description()),
+		m_dependency(0)
 	{
 		Init.property_collection().register_property(*this);
 	}
@@ -408,11 +422,11 @@ protected:
 	}
 
 private:
-	idag& m_dag;
 	inode* const m_node;
 	const char* const m_label;
 	const char* const m_description;
 	deleted_signal_t m_deleted_signal;
+	iproperty* m_dependency;
 };
 
 /////////////////////////////////////////////////////////////////////////////
@@ -426,9 +440,9 @@ class string_property :
 	public iwritable_property
 {
 public:
-	const value_t value()
+	const value_t pipeline_value()
 	{
-		iproperty* const source = property_lookup(this, m_dag);
+		iproperty* const source = property_lookup(this);
 		if(source != this)
 			return boost::any_cast<value_t>(source->property_value());
 
@@ -473,7 +487,7 @@ public:
 		return m_node;
 	}
 
-	changed_signal_t& property_changed_signal()
+	typename name_policy_t::changed_signal_t& property_changed_signal()
 	{
 		return name_policy_t::changed_signal();
 	}
@@ -481,6 +495,16 @@ public:
 	deleted_signal_t& property_deleted_signal()
 	{
 		return m_deleted_signal;
+	}
+
+	iproperty* property_dependency()
+	{
+		return m_dependency;
+	}
+
+	void property_set_dependency(iproperty* Dependency)
+	{
+		m_dependency = Dependency;
 	}
 
 	bool property_set_value(const boost::any Value, iunknown* const Hint)
@@ -505,10 +529,10 @@ protected:
 	template<typename init_t>
 	string_property(const init_t& Init) :
 		name_policy_t(Init),
-		m_dag(Init.document().dag()),
 		m_node(Init.node()),
 		m_label(Init.label()),
-		m_description(Init.description())
+		m_description(Init.description()),
+		m_dependency(0)
 	{
 		Init.property_collection().register_property(*this);
 	}
@@ -519,11 +543,11 @@ protected:
 	}
 
 private:
-	idag& m_dag;
 	inode* const m_node;
 	const char* const m_label;
 	const char* const m_description;
 	deleted_signal_t m_deleted_signal;
+	iproperty* m_dependency;
 };
 
 /////////////////////////////////////////////////////////////////////////////
@@ -538,9 +562,9 @@ class path_property :
 	public ipath_property
 {
 public:
-	const value_t value()
+	const value_t pipeline_value()
 	{
-		iproperty* const source = property_lookup(this, m_dag);
+		iproperty* const source = property_lookup(this);
 		if(source != this)
 			return boost::any_cast<value_t>(source->property_value());
 
@@ -577,7 +601,7 @@ public:
 		return m_node;
 	}
 
-	changed_signal_t& property_changed_signal()
+	typename name_policy_t::changed_signal_t& property_changed_signal()
 	{
 		return name_policy_t::changed_signal();
 	}
@@ -585,6 +609,16 @@ public:
 	deleted_signal_t& property_deleted_signal()
 	{
 		return m_deleted_signal;
+	}
+
+	iproperty* property_dependency()
+	{
+		return m_dependency;
+	}
+
+	void property_set_dependency(iproperty* Dependency)
+	{
+		m_dependency = Dependency;
 	}
 
 	bool property_set_value(const boost::any Value, iunknown* const Hint)
@@ -640,13 +674,13 @@ protected:
 	template<typename init_t>
 	path_property(const init_t& Init) :
 		name_policy_t(Init),
-		m_dag(Init.document().dag()),
 		m_node(Init.node()),
 		m_label(Init.label()),
 		m_description(Init.description()),
 		m_mode(Init.path_mode()),
 		m_type(Init.path_type()),
-		m_reference(RELATIVE_REFERENCE)
+		m_reference(RELATIVE_REFERENCE),
+		m_dependency(0)
 	{
 		Init.property_collection().register_property(*this);
 	}
@@ -657,7 +691,6 @@ protected:
 	}
 
 private:
-	idag& m_dag;
 	inode* const m_node;
 	const char* const m_label;
 	const char* const m_description;
@@ -667,6 +700,7 @@ private:
 	ipath_property::reference_t m_reference;
 	ipath_property::path_reference_changed_signal_t m_reference_changed_signal;
 	ipath_property::pattern_filters_t m_pattern_filters;
+	iproperty* m_dependency;
 };
 
 /////////////////////////////////////////////////////////////////////////////
@@ -681,9 +715,9 @@ class script_property :
 	public iscript_property
 {
 public:
-	const value_t value()
+	const value_t pipeline_value()
 	{
-		iproperty* const source = property_lookup(this, m_dag);
+		iproperty* const source = property_lookup(this);
 		if(source != this)
 			return boost::any_cast<value_t>(source->property_value());
 
@@ -728,7 +762,7 @@ public:
 		return m_node;
 	}
 
-	changed_signal_t& property_changed_signal()
+	typename name_policy_t::changed_signal_t& property_changed_signal()
 	{
 		return name_policy_t::changed_signal();
 	}
@@ -736,6 +770,16 @@ public:
 	deleted_signal_t& property_deleted_signal()
 	{
 		return m_deleted_signal;
+	}
+
+	iproperty* property_dependency()
+	{
+		return m_dependency;
+	}
+
+	void property_set_dependency(iproperty* Dependency)
+	{
+		m_dependency = Dependency;
 	}
 
 	bool property_set_value(const boost::any Value, iunknown* const Hint)
@@ -760,10 +804,10 @@ protected:
 	template<typename init_t>
 	script_property(const init_t& Init) :
 		name_policy_t(Init),
-		m_dag(Init.document().dag()),
 		m_node(Init.node()),
 		m_label(Init.label()),
-		m_description(Init.description())
+		m_description(Init.description()),
+		m_dependency(0)
 	{
 		Init.property_collection().register_property(*this);
 	}
@@ -774,11 +818,11 @@ protected:
 	}
 
 private:
-	idag& m_dag;
 	inode* const m_node;
 	const char* const m_label;
 	const char* const m_description;
 	deleted_signal_t m_deleted_signal;
+	iproperty* m_dependency;
 };
 
 /////////////////////////////////////////////////////////////////////////////
@@ -793,9 +837,9 @@ class enumeration_property :
 	public ienumeration_property
 {
 public:
-	const value_t value()
+	const value_t pipeline_value()
 	{
-		iproperty* const source = property_lookup(this, m_dag);
+		iproperty* const source = property_lookup(this);
 		if(source != this)
 			return boost::any_cast<value_t>(source->property_value());
 
@@ -840,7 +884,7 @@ public:
 		return m_node;
 	}
 
-	changed_signal_t& property_changed_signal()
+	typename name_policy_t::changed_signal_t& property_changed_signal()
 	{
 		return name_policy_t::changed_signal();
 	}
@@ -848,6 +892,16 @@ public:
 	deleted_signal_t& property_deleted_signal()
 	{
 		return m_deleted_signal;
+	}
+
+	iproperty* property_dependency()
+	{
+		return m_dependency;
+	}
+
+	void property_set_dependency(iproperty* Dependency)
+	{
+		m_dependency = Dependency;
 	}
 
 	bool property_set_value(const boost::any Value, iunknown* const Hint)
@@ -887,11 +941,11 @@ protected:
 	template<typename init_t>
 	enumeration_property(const init_t& Init) :
 		name_policy_t(Init),
-		m_dag(Init.document().dag()),
 		m_node(Init.node()),
 		m_label(Init.label()),
 		m_description(Init.description()),
-		m_values(Init.values())
+		m_values(Init.values()),
+		m_dependency(0)
 	{
 		Init.property_collection().register_property(*this);
 	}
@@ -902,13 +956,13 @@ protected:
 	}
 
 private:
-	idag& m_dag;
 	inode* const m_node;
 	const char* const m_label;
 	const char* const m_description;
 	const ienumeration_property::enumeration_values_t& m_values;
 	sigc::signal<void> m_values_changed_signal;
 	deleted_signal_t m_deleted_signal;
+	iproperty* m_dependency;
 };
 
 /////////////////////////////////////////////////////////////////////////////
@@ -923,9 +977,9 @@ class list_property :
 	public ilist_property<value_t>
 {
 public:
-	const value_t value()
+	const value_t pipeline_value()
 	{
-		iproperty* const source = property_lookup(this, m_dag);
+		iproperty* const source = property_lookup(this);
 		if(source != this)
 			return boost::any_cast<value_t>(source->property_value());
 
@@ -962,7 +1016,7 @@ public:
 		return m_node;
 	}
 
-	changed_signal_t& property_changed_signal()
+	typename name_policy_t::changed_signal_t& property_changed_signal()
 	{
 		return name_policy_t::changed_signal();
 	}
@@ -970,6 +1024,16 @@ public:
 	deleted_signal_t& property_deleted_signal()
 	{
 		return m_deleted_signal;
+	}
+
+	iproperty* property_dependency()
+	{
+		return m_dependency;
+	}
+
+	void property_set_dependency(iproperty* Dependency)
+	{
+		m_dependency = Dependency;
 	}
 
 	bool property_set_value(const boost::any Value, iunknown* const Hint)
@@ -991,11 +1055,11 @@ protected:
 	template<typename init_t>
 	list_property(const init_t& Init) :
 		name_policy_t(Init),
-		m_dag(Init.document().dag()),
 		m_node(Init.node()),
 		m_label(Init.label()),
 		m_description(Init.description()),
-		m_values(Init.values())
+		m_values(Init.values()),
+		m_dependency(0)
 	{
 		Init.property_collection().register_property(*this);
 	}
@@ -1006,12 +1070,12 @@ protected:
 	}
 
 private:
-	idag& m_dag;
 	inode* const m_node;
 	const char* const m_label;
 	const char* const m_description;
 	const typename ilist_property<value_t>::values_t& m_values;
 	deleted_signal_t m_deleted_signal;
+	iproperty* m_dependency;
 };
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1026,9 +1090,9 @@ class node_property :
 	public inode_property
 {
 public:
-	const value_t value()
+	const value_t pipeline_value()
 	{
-		iproperty* const source = property_lookup(this, m_dag);
+		iproperty* const source = property_lookup(this);
 		if(source != this)
 			return dynamic_cast<value_t>(boost::any_cast<inode*>(source->property_value()));
 
@@ -1065,7 +1129,7 @@ public:
 		return m_node;
 	}
 
-	changed_signal_t& property_changed_signal()
+	typename name_policy_t::changed_signal_t& property_changed_signal()
 	{
 		return name_policy_t::changed_signal();
 	}
@@ -1073,6 +1137,16 @@ public:
 	deleted_signal_t& property_deleted_signal()
 	{
 		return m_deleted_signal;
+	}
+
+	iproperty* property_dependency()
+	{
+		return m_dependency;
+	}
+
+	void property_set_dependency(iproperty* Dependency)
+	{
+		m_dependency = Dependency;
 	}
 
 	bool property_set_value(const boost::any Value, iunknown* const Hint)
@@ -1104,10 +1178,10 @@ protected:
 	template<typename init_t>
 	node_property(const init_t& Init) :
 		name_policy_t(Init),
-		m_dag(Init.document().dag()),
 		m_node(Init.node()),
 		m_label(Init.label()),
-		m_description(Init.description())
+		m_description(Init.description()),
+		m_dependency(0)
 	{
 		Init.property_collection().register_property(*this);
 	}
@@ -1118,11 +1192,11 @@ protected:
 	}
 
 private:
-	idag& m_dag;
 	inode* const m_node;
 	const char* const m_label;
 	const char* const m_description;
 	deleted_signal_t m_deleted_signal;
+	iproperty* m_dependency;
 };
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1137,9 +1211,9 @@ class measurement_property :
 	public imeasurement_property
 {
 public:
-	const value_t value()
+	const value_t pipeline_value()
 	{
-		iproperty* const source = property_lookup(this, m_dag);
+		iproperty* const source = property_lookup(this);
 		if(source != this)
 			return boost::any_cast<value_t>(source->property_value());
 
@@ -1176,7 +1250,7 @@ public:
 		return m_node;
 	}
 
-	changed_signal_t& property_changed_signal()
+	typename name_policy_t::changed_signal_t& property_changed_signal()
 	{
 		return name_policy_t::changed_signal();
 	}
@@ -1184,6 +1258,16 @@ public:
 	deleted_signal_t& property_deleted_signal()
 	{
 		return m_deleted_signal;
+	}
+
+	iproperty* property_dependency()
+	{
+		return m_dependency;
+	}
+
+	void property_set_dependency(iproperty* Dependency)
+	{
+		m_dependency = Dependency;
 	}
 
 	bool property_set_value(const boost::any Value, iunknown* const Hint)
@@ -1210,12 +1294,12 @@ protected:
 	template<typename init_t>
 	measurement_property(const init_t& Init) :
 		name_policy_t(Init),
-		m_dag(Init.document().dag()),
 		m_node(Init.node()),
 		m_label(Init.label()),
 		m_description(Init.description()),
 		m_step_increment(Init.step_increment()),
-		m_units(Init.units())
+		m_units(Init.units()),
+		m_dependency(0)
 	{
 		Init.property_collection().register_property(*this);
 	}
@@ -1226,13 +1310,13 @@ protected:
 	}
 
 private:
-	idag& m_dag;
 	inode* const m_node;
 	const char* const m_label;
 	const char* const m_description;
 	const double m_step_increment;
 	const std::type_info& m_units;
 	deleted_signal_t m_deleted_signal;
+	iproperty* m_dependency;
 };
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1747,6 +1831,7 @@ private:
 // demand_storage
 
 /// Read-only storage policy that stores a value by pointer, created on-demand
+/** \deprecated You should prefer to use pointer_storage, instead */
 template<typename value_t, typename signal_policy_t>
 class demand_storage :
 	public signal_policy_t
@@ -1764,6 +1849,10 @@ public:
 	/// Resets the underlying data so it will be created-again next read
 	void reset(value_t NewValue = 0, iunknown* const Hint = 0)
 	{
+		// Ensure that our value doesn't go out-of-scope while it's getting initialized ...
+		if(m_executing)
+			return;
+
 		m_cache.reset(NewValue);
 		signal_policy_t::set_value(Hint);
 	}
@@ -1773,10 +1862,14 @@ public:
 	{
 		if(!m_cache.get())
 		{
+			m_executing = true;
+
 			// Note: we create the value and update its state in two steps
 			// because m_data_slot() may cause this method to be executed in a loop
 			m_cache.reset(new typename boost::remove_pointer<value_t>::type());
 			m_data_slot(*m_cache);
+
+			m_executing = false;
 		}
 
 		return m_cache.get();
@@ -1786,7 +1879,8 @@ protected:
 	template<typename init_t>
 	demand_storage(const init_t& Init) :
 		signal_policy_t(Init),
-		m_data_slot(Init.slot())
+		m_data_slot(Init.slot()),
+		m_executing(false)
 	{
 	}
 
@@ -1794,12 +1888,136 @@ private:
 	/// Resets the underlying data so it will be created-again next read
 	void internal_reset(iunknown* const Hint = 0)
 	{
+		// Ensure that our value doesn't go out-of-scope while it's getting initialized ...
+		if(m_executing)
+			return;
+
 		m_cache.reset();
 		signal_policy_t::set_value(Hint);
 	}
 
-	sigc::slot<void, typename boost::remove_pointer<value_t>::type&> m_data_slot;
+	/// Storage for this policy's value
 	std::auto_ptr<typename boost::remove_pointer<value_t>::type> m_cache;
+	/// Stores a slot that will be executed to initialize this policy's value
+	sigc::slot<void, typename boost::remove_pointer<value_t>::type&> m_data_slot;
+	/// Set to true during initialization of the policy's value, to prevent problems with recursion
+	bool m_executing;
+};
+
+/////////////////////////////////////////////////////////////////////////////
+// pointer_storage
+
+/// Read-only storage policy that stores a value by pointer, created on-demand
+template<typename pointer_t, typename signal_policy_t>
+class pointer_storage :
+	public signal_policy_t
+{
+	// This policy only works for data stored by-pointer
+	BOOST_STATIC_ASSERT((boost::is_pointer<pointer_t>::value));
+
+public:
+	typedef typename boost::remove_pointer<pointer_t>::type value_t;
+	typedef pointer_storage<pointer_t, signal_policy_t> this_t;
+
+	/// Set a slot that will be called to initialize the value when first created
+	void set_initialize_slot(const sigc::slot<void, value_t&>& Slot)
+	{
+		m_initialize_slot = Slot;
+		reset();
+	}
+
+	/// Set the slot that will be called to update the value whenever it changes
+	void set_update_slot(const sigc::slot<void, value_t&>& Slot)
+	{
+		m_update_slot = Slot;
+		update();
+	}
+
+	/// Returns a slot that will invoke the reset() method
+	sigc::slot<void, iunknown*> make_reset_slot()
+	{
+		return sigc::bind<0>(sigc::mem_fun(*this, &this_t::reset), static_cast<pointer_t>(0));
+	}
+
+	/// Returns a slot that will invoke the update() method
+	sigc::slot<void, iunknown*> make_update_slot()
+	{
+		return sigc::mem_fun(*this, &this_t::update);
+	}
+
+	/// Store an object as the new value, taking control of its lifetime
+	void reset(pointer_t NewValue = 0, iunknown* const Hint = 0)
+	{
+		// Ensure that our value doesn't go out-of-scope while it's being modified
+		if(m_executing)
+			return;
+
+		m_value.reset(NewValue);
+		signal_policy_t::set_value(Hint);
+	}
+
+	/// Schedule an update for the value the next time it's read
+	void update(iunknown* const Hint = 0)
+	{
+		// Ensure that our value doesn't go out-of-scope while it's being modified
+		if(m_executing)
+			return;
+
+		m_update = true;
+		signal_policy_t::set_value(Hint);
+	}
+
+	/// Accesses the underlying value, creating it if it doesn't already exist
+	pointer_t internal_value()
+	{
+		if(!m_value.get())
+		{
+			m_executing = true;
+
+			// We can cancel pending updates since we're creating the value from scratch
+			m_update = false;
+
+			// Note: we create the value and update its state in two steps
+			// because m_data_slot() may cause this method to be executed in a loop
+			m_value.reset(new value_t());
+			m_initialize_slot(*m_value);
+
+			m_executing = false;
+		}
+		
+		if(m_update)
+		{
+			m_executing = true;
+
+			m_update = false;
+			m_update_slot(*m_value);
+
+			m_executing = false;
+		}
+
+		return m_value.get();
+	}
+
+protected:
+	template<typename init_t>
+	pointer_storage(const init_t& Init) :
+		signal_policy_t(Init),
+		m_update(false),
+		m_executing(false)
+	{
+	}
+
+private:
+	/// Storage for this policy's value
+	std::auto_ptr<value_t> m_value;
+	/// Set to true if this policy's value is stale and needs to be updated
+	bool m_update;
+	/// Stores a slot that will be executed to initialize this policy's value
+	sigc::slot<void, value_t&> m_initialize_slot;
+	/// Stores a slot that will be executed to update this policy's value
+	sigc::slot<void, value_t&> m_update_slot;
+	/// Set to true during initialization / update of the policy value, to prevent problems with recursion
+	bool m_executing;
 };
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1823,6 +2041,9 @@ public:
 	/// Resets the underlying data so it will be recalculated the next time it's read
 	void reset(iunknown* const Hint = 0)
 	{
+		if(m_executing)
+			return;
+
 		m_cache.reset();
 		signal_policy_t::set_value(0);
 	}
@@ -1832,10 +2053,14 @@ public:
 	{
 		if(!m_cache.get())
 		{
+			m_executing = true;
+
 			// Note: we create the cache and set its value in two steps
 			// because m_data_slot() may cause this method to be executed in a loop
 			m_cache.reset(new value_t());
 			*m_cache = m_data_slot();
+
+			m_executing = false;
 		}
 
 		return *m_cache;
@@ -1845,13 +2070,18 @@ protected:
 	template<typename init_t>
 	computed_storage(const init_t& Init) :
 		signal_policy_t(Init),
-		m_data_slot(Init.slot())
+		m_data_slot(Init.slot()),
+		m_executing(false)
 	{
 	}
 
 private:
-	sigc::slot<value_t> m_data_slot;
+	/// Storage for this policy's value
 	std::auto_ptr<value_t> m_cache;
+	/// Stores a slot that will be executed to initialize this policy's value
+	sigc::slot<value_t> m_data_slot;
+	/// Set to true during initialization of the policy value, to prevent problems with recursion
+	bool m_executing;
 };
 
 /////////////////////////////////////////////////////////////////////////////

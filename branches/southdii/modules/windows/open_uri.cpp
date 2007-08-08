@@ -22,15 +22,14 @@
 */
 
 #include <k3dsdk/application_plugin_factory.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/ideletable.h>
 #include <k3dsdk/iuri.h>
 #include <k3dsdk/log.h>
 #include <k3dsdk/result.h>
+#include <k3dsdk/win32.h>
 
 #include <iostream>
-
-#include <windows.h>
 
 namespace libk3dwindows
 {

@@ -22,7 +22,7 @@
 */
 
 #include <k3dsdk/document_plugin_factory.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/imaterial.h>
 #include <k3dsdk/node.h>
 #include <k3dsdk/persistent.h>
@@ -63,21 +63,21 @@ public:
 		m_v_power.changed_signal().connect(make_reset_mesh_slot());
 	}
 
-	void on_create_mesh(k3d::legacy::mesh& Mesh)
+	void on_initialize_mesh(k3d::legacy::mesh& Mesh)
 	{
-		const double majorradius = m_majorradius.value();
-		const double minorradius = m_minorradius.value();
-		const double u_power = m_u_power.value();
-		const double v_power = m_v_power.value();
+		const double majorradius = m_majorradius.pipeline_value();
+		const double minorradius = m_minorradius.pipeline_value();
+		const double u_power = m_u_power.pipeline_value();
+		const double v_power = m_v_power.pipeline_value();
 		const double inv_u_power = u_power ? 1.0 / u_power : 1.0;
 		const double inv_v_power = v_power ? 1.0 / v_power : 1.0;
-		k3d::imaterial* const material = m_material.value();
+		k3d::imaterial* const material = m_material.pipeline_value();
 
 		Mesh.polyhedra.push_back(new k3d::legacy::polyhedron());
 		k3d::legacy::polyhedron& polyhedron = *Mesh.polyhedra.back();
 
 		// Create the torus body ...
-		const k3d::legacy::grid_results_t grid = k3d::legacy::add_grid(Mesh, polyhedron, m_v_segments.value(), m_u_segments.value(), true, true, material);
+		const k3d::legacy::grid_results_t grid = k3d::legacy::add_grid(Mesh, polyhedron, m_v_segments.pipeline_value(), m_u_segments.pipeline_value(), true, true, material);
 		const boost::multi_array<k3d::legacy::point*, 2>& points = boost::get<0>(grid);
 
 		// Define the shape of the torus ...

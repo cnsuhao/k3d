@@ -1,5 +1,5 @@
 // K-3D
-// Copyright (c) 1995-2004, Timothy M. Shead
+// Copyright (c) 1995-2007, Timothy M. Shead
 //
 // Contact: tshead@k-3d.com
 //
@@ -18,24 +18,28 @@
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 /** \file
-		\author Romain Behar (romainbehar@yahoo.com)
+	\author Romain Behar (romainbehar@yahoo.com)
+	\author Timothy M. Shead (tshead@k-3d.com)
 */
 
 #include <k3dsdk/module.h>
 
 /// Namespace reserved for the gts plugin module, to protect public symbols from name clashes with other modules
-namespace libk3dgts
+namespace module
 {
 
-extern k3d::iplugin_factory& boolean_factory();
-extern k3d::iplugin_factory& coarsen_polyhedra_factory();
-extern k3d::iplugin_factory& poly_sphere_tessellation_factory();
+namespace gts
+{
 
-} // namespace libk3dgts
+extern k3d::iplugin_factory& mesh_area_factory();
+extern k3d::iplugin_factory& mesh_volume_factory();
+
+} // namespace gts
+
+} // namespace module
 
 K3D_MODULE_START(Registry)
-	Registry.register_factory(libk3dgts::boolean_factory());
-	Registry.register_factory(libk3dgts::coarsen_polyhedra_factory());
-	Registry.register_factory(libk3dgts::poly_sphere_tessellation_factory());
+	Registry.register_factory(module::gts::mesh_area_factory());
+	Registry.register_factory(module::gts::mesh_volume_factory());
 K3D_MODULE_END
 
