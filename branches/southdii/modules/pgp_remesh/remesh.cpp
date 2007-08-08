@@ -28,6 +28,7 @@
 #include <k3dsdk/material_client.h>
 #include <k3dsdk/measurement.h>
 #include <k3dsdk/mesh_modifier.h>
+#include <k3dsdk/mesh_operations.h>
 #include <k3dsdk/node.h>
 #include <k3dsdk/persistent.h>
 #include <k3dsdk/utility.h>
@@ -104,6 +105,14 @@ namespace libk3dquadremesh
 		}
 		void on_update_mesh(const k3d::mesh& InputMesh, k3d::mesh& OutputMesh)		  
 		{
+			// If our input isn't triangles, bail-out ...
+			if(!k3d::is_triangles(InputMesh))
+			{
+				OutputMesh = k3d::mesh();
+				k3d::log() << error << name() << " requires triangles as input" << std::endl;
+				return;
+			}
+
 			base_t::document().pipeline_profiler().start_execution(*this, "Process Mesh");
 			info = detail::mesh_info(&InputMesh);
 			base_t::document().pipeline_profiler().finish_execution(*this, "Process Mesh");
@@ -147,6 +156,14 @@ namespace libk3dquadremesh
 			base_t::document().pipeline_profiler().start_execution(*this, "PGP remesh");
 			pgp.remesh(OutputMesh);
 			base_t::document().pipeline_profiler().finish_execution(*this, "PGP remesh");
+
+			// If our output isn't valid, bail-out ...
+			if(!k3d::validate(OutputMesh))
+			{
+				OutputMesh = k3d::mesh();
+				k3d::log() << error << "internal error: produced invalid mesh" << std::endl;
+				return;
+			}
 		}
 
 		static k3d::iplugin_factory& get_factory()
