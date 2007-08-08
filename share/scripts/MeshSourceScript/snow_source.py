@@ -1,10 +1,11 @@
 #python
 
 import k3d
+k3d.check_node_environment(locals(), "MeshSourceScript")
 
 from random import uniform
 
-count = 100
+count = 200
 size = 10
 
 points = Output.create_points()
@@ -31,8 +32,4 @@ constantwidth.append(0.2)
 group_points = point_groups.create_points()
 for i in range(len(points)):
 	group_points.append(i)
-
-Cs = point_groups.writable_varying_data().create_array("Cs", "k3d::color")
-for i in range(len(points)):
-	Cs.append(k3d.color(uniform(0, 1), uniform(0, 1), uniform(0, 1)))
 
