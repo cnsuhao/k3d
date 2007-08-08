@@ -24,7 +24,7 @@
 #include "utility.h"
 
 #include <k3dsdk/document_plugin_factory.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/mesh_painter_gl.h>
 #include <k3dsdk/mesh.h>
 #include <k3dsdk/painter_render_state_gl.h>
@@ -93,8 +93,8 @@ public:
 
 	void on_paint_mesh(const k3d::mesh& Mesh, const k3d::gl::painter_render_state& RenderState)
 	{
-		const bool draw_selected = m_draw_selected.value() && RenderState.show_component_selection;
-		const bool draw_unselected = m_draw_unselected.value();
+		const bool draw_selected = m_draw_selected.pipeline_value() && RenderState.show_component_selection;
+		const bool draw_unselected = m_draw_unselected.pipeline_value();
 		if(!draw_selected && !draw_unselected)
 			return;
 
@@ -118,10 +118,10 @@ public:
 		glDisable(GL_LIGHTING);
 
 		if(draw_selected)
-			draw(Mesh, centers, m_selected_color.value(), selected_faces(Mesh));
+			draw(Mesh, centers, m_selected_color.pipeline_value(), selected_faces(Mesh));
 
 		if(draw_unselected)
-			draw(Mesh, centers, m_unselected_color.value(), unselected_faces(Mesh));
+			draw(Mesh, centers, m_unselected_color.pipeline_value(), unselected_faces(Mesh));
 	}
 	
 	static k3d::iplugin_factory& get_factory()

@@ -27,7 +27,7 @@
 #include <k3dsdk/algebra.h>
 #include <k3dsdk/axis.h>
 #include <k3dsdk/document_plugin_factory.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/measurement.h>
 #include <k3dsdk/mesh_simple_deformation_modifier.h>
 
@@ -166,18 +166,18 @@ public:
 	{
 		const k3d::bounding_box3 bounds = k3d::bounds(InputPoints);
 
-		const double bulge_factor = m_bulge_factor.value();
-		const double displace_x = m_displace_x.value();
-		const double displace_y = m_displace_y.value();
-		const double displace_z = m_displace_z.value();
-		const k3d::axis axis = m_axis.value();
+		const double bulge_factor = m_bulge_factor.pipeline_value();
+		const double displace_x = m_displace_x.pipeline_value();
+		const double displace_y = m_displace_y.pipeline_value();
+		const double displace_z = m_displace_z.pipeline_value();
+		const k3d::axis axis = m_axis.pipeline_value();
 
 		bulge deformation(
 			k3d::point3(0, 0, 0),
 			k3d::point3(bounds.nx, bounds.ny, bounds.nz),
 			k3d::point3(bounds.px, bounds.py, bounds.pz),
 			axis,
-			m_type.value() == RADIAL,
+			m_type.pipeline_value() == RADIAL,
 			displace_x,
 			displace_y,
 			displace_z,

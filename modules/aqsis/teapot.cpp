@@ -25,7 +25,7 @@
 #include <k3dsdk/algebra.h>
 #include <k3dsdk/document_plugin_factory.h>
 #include <k3dsdk/drawable_gl.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/imaterial.h>
 #include <k3dsdk/material_client.h>
 #include <k3dsdk/node.h>
@@ -427,7 +427,7 @@ public:
 			glEnable(GL_POLYGON_OFFSET_FILL);
 		}
 
-		k3d::gl::setup_material(m_material.value());
+		k3d::gl::setup_material(m_material.pipeline_value());
 
 		// Draw solid polygons:
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -533,7 +533,7 @@ public:
 
 	void on_renderman_render(const k3d::ri::render_state& State)
 	{
-		k3d::ri::setup_material(m_material.value(), State);
+		k3d::ri::setup_material(m_material.pipeline_value(), State);
 		State.engine.RiGeometryV("teapot");
 	}
 

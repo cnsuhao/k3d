@@ -17,12 +17,13 @@
 // License along with this program; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+#include <k3d-version-config.h>
+
 #include <k3dsdk/iapplication_plugin_factory.h>
 #include <k3dsdk/idocument_plugin_factory.h>
 #include <k3dsdk/iplugin_factory.h>
 #include <k3dsdk/plugin_factory_collection.h>
 #include <k3dsdk/types.h>
-#include <k3dsdk/version.h>
 #include <k3dsdk/xml.h>
 
 #include <iostream>
@@ -71,15 +72,13 @@ int main(int argc, char* argv[])
 		k3d::xml::attribute("version", K3D_VERSION),
 		k3d::xml::attribute("host", K3D_HOST));
 
-	/** \todo Store the real module class here instead of k3d::uuid::null() */
 	k3d::xml::element& xml_module = xml_proxy.append(
 		k3d::xml::element("module",
-			k3d::xml::attribute("name", module_path.leaf().raw()),
-			k3d::xml::attribute("class", k3d::uuid::null())));
+			k3d::xml::attribute("name", module_path.leaf().raw())));
 
 	k3d::xml::element& xml_plugins = xml_module.append(k3d::xml::element("plugins"));
 
-	for(k3d::iplugin_factory_collection::factories_t::iterator factory = factories.begin(); factory != factories.end(); ++factory)
+	for(k3d::iplugin_factory_collection::factories_t::const_iterator factory = factories.begin(); factory != factories.end(); ++factory)
 	{
 		k3d::xml::element& xml_plugin = xml_plugins.append(
 			k3d::xml::element("plugin",
@@ -116,6 +115,11 @@ int main(int argc, char* argv[])
 
 			xml_interfaces.append(k3d::xml::element("interface", k3d::type_string(**interface)));
 		}
+
+		k3d::xml::element& xml_metadata = xml_plugin.append(k3d::xml::element("metadata"));
+		const k3d::iplugin_factory::metadata_t& metadata = (*factory)->metadata();
+		for(k3d::iplugin_factory::metadata_t::const_iterator pair = metadata.begin(); pair != metadata.end(); ++pair)
+			xml_metadata.append(k3d::xml::element("pair", k3d::xml::attribute("name", pair->first), k3d::xml::attribute("value", pair->second)));
 	}
 
 	std::cout << k3d::xml::declaration() << xml_proxy;

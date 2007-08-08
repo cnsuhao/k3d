@@ -23,7 +23,7 @@
 */
 
 #include <k3dsdk/document_plugin_factory.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/measurement.h>
 #include <k3dsdk/mesh_selection_modifier.h>
 #include <k3dsdk/shared_pointer.h>
@@ -56,7 +56,7 @@ public:
 		    k3d::mesh::selection_t& patch_selection = *k3d::make_unique(bilinear_patches.patch_selection);
 			std::fill(patch_selection.begin(), patch_selection.end(), 0.0);
 
-			const unsigned long index = m_index.value();
+			const unsigned long index = m_index.pipeline_value();
 			if(index < patch_selection.size())
 				patch_selection[index] = 1.0;
 		}

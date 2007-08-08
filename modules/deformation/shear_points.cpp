@@ -25,7 +25,7 @@
 #include <k3dsdk/algebra.h>
 #include <k3dsdk/axis.h>
 #include <k3dsdk/document_plugin_factory.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/measurement.h>
 #include <k3dsdk/mesh_simple_deformation_modifier.h>
 
@@ -55,9 +55,9 @@ public:
 
 	void on_deform_mesh(const k3d::mesh::points_t& InputPoints, const k3d::mesh::selection_t& PointSelection, k3d::mesh::points_t& OutputPoints)
 	{
-		const k3d::axis direction = m_direction.value();
-		const k3d::axis axis = m_axis.value();
-		const double shear_factor = m_shear_factor.value();
+		const k3d::axis direction = m_direction.pipeline_value();
+		const k3d::axis axis = m_axis.pipeline_value();
+		const double shear_factor = m_shear_factor.pipeline_value();
 
 		const double xy = k3d::X == direction && k3d::Y == axis ? shear_factor : 0;
 		const double xz = k3d::X == direction && k3d::Z == axis ? shear_factor : 0;

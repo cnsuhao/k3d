@@ -22,7 +22,7 @@
 */
 
 #include <k3dsdk/document_plugin_factory.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/basic_math.h>
 #include <k3dsdk/imaterial.h>
 #include <k3dsdk/node.h>
@@ -63,17 +63,17 @@ public:
 		m_wrap.changed_signal().connect(make_reset_mesh_slot());
 	}
 
-	void on_create_mesh(k3d::legacy::mesh& Mesh)
+	void on_initialize_mesh(k3d::legacy::mesh& Mesh)
 	{
-		const unsigned long edges = m_edge_count.value();
-		const double mwraps = m_meridian_wraps.value();
-		const double lwraps = m_longitudinal_wraps.value();
-		const double scale = m_scale.value();
-		const double width = m_width.value();
-		const double wrap = m_wrap.value();
+		const unsigned long edges = m_edge_count.pipeline_value();
+		const double mwraps = m_meridian_wraps.pipeline_value();
+		const double lwraps = m_longitudinal_wraps.pipeline_value();
+		const double scale = m_scale.pipeline_value();
+		const double width = m_width.pipeline_value();
+		const double wrap = m_wrap.pipeline_value();
 
 		k3d::legacy::linear_curve_group* const group = new k3d::legacy::linear_curve_group();
-		group->material = m_material.value();
+		group->material = m_material.pipeline_value();
 		group->wrap = wrap;
 		group->constant_data["width"] = width;
 

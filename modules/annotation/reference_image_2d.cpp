@@ -24,7 +24,7 @@
 #include <k3dsdk/bitmap.h>
 #include <k3dsdk/document_plugin_factory.h>
 #include <k3dsdk/gl.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/icamera.h>
 #include <k3dsdk/idrawable_gl.h>
 #include <k3dsdk/iprojection.h>
@@ -95,7 +95,7 @@ public:
 
 	void gl_draw(const k3d::gl::render_state& State)
 	{
-		if(&State.camera != m_camera.value())
+		if(&State.camera != m_camera.pipeline_value())
 			return;
 
 		k3d::gl::store_attributes attributes;
@@ -111,14 +111,14 @@ public:
 
 	void draw(const k3d::gl::render_state& State)
 	{
-		k3d::bitmap* const bitmap = m_bitmap.value();
+		k3d::bitmap* const bitmap = m_bitmap.pipeline_value();
 		if(!(bitmap && bitmap->width() && bitmap->height()))
 			return;
 
-		const k3d::color color = m_color.value();
-		const double opacity = m_opacity.value();
-		const aspect_ratio_type_t aspect_ratio_type = m_aspect_ratio_type.value();
-		const double aspect_ratio = m_aspect_ratio.value();
+		const k3d::color color = m_color.pipeline_value();
+		const double opacity = m_opacity.pipeline_value();
+		const aspect_ratio_type_t aspect_ratio_type = m_aspect_ratio_type.pipeline_value();
+		const double aspect_ratio = m_aspect_ratio.pipeline_value();
 
 		glColor4d(color.red, color.green, color.blue, opacity);
 
@@ -290,7 +290,7 @@ private:
 		else if(text == "camera")
 			Value = CAMERA;
 		else
-			k3d::log() << __PRETTY_FUNCTION__ << ": unknown enumeration [" << text << "]"<< std::endl;
+			k3d::log() << k3d_file_reference << ": unknown enumeration [" << text << "]"<< std::endl;
 
 		return Stream;
 	}

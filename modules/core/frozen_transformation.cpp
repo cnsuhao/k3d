@@ -24,7 +24,7 @@
 #include <k3dsdk/algebra.h>
 #include <k3dsdk/classes.h>
 #include <k3dsdk/document_plugin_factory.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/itransform_sink.h>
 #include <k3dsdk/itransform_source.h>
 #include <k3dsdk/measurement.h>
@@ -67,7 +67,7 @@ public:
 
 	k3d::matrix4 output_value()
 	{
-		return m_input.value() * m_matrix.value();
+		return m_input.pipeline_value() * m_matrix.pipeline_value();
 	}
 
 	static k3d::iplugin_factory& get_factory()

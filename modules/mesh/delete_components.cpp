@@ -56,7 +56,7 @@ public:
 		if(!point_set.size())
 			return;
 
-		point_set_t::const_iterator point = point_set.find(Edge.vertex);
+		point_set_t::iterator point = point_set.find(Edge.vertex);
 		if(point != point_set.end())
 			point_set.erase(point);
 	}
@@ -68,7 +68,7 @@ public:
 
 		for(k3d::legacy::linear_curve::control_points_t::iterator curve_point = Curve.control_points.begin(); curve_point != Curve.control_points.end(); ++curve_point)
 		{
-			point_set_t::const_iterator point = point_set.find(*curve_point);
+			point_set_t::iterator point = point_set.find(*curve_point);
 			if(point != point_set.end())
 				point_set.erase(point);
 		}
@@ -83,7 +83,7 @@ public:
 
 		for(k3d::legacy::cubic_curve::control_points_t::iterator curve_point = Curve.control_points.begin(); curve_point != Curve.control_points.end(); ++curve_point)
 		{
-			point_set_t::const_iterator point = point_set.find(*curve_point);
+			point_set_t::iterator point = point_set.find(*curve_point);
 			if(point != point_set.end())
 				point_set.erase(point);
 		}
@@ -98,7 +98,7 @@ public:
 
 		for(k3d::legacy::nucurve::control_points_t::iterator curve_point = Curve.control_points.begin(); curve_point != Curve.control_points.end(); ++curve_point)
 		{
-			point_set_t::const_iterator point = point_set.find(curve_point->position);
+			point_set_t::iterator point = point_set.find(curve_point->position);
 			if(point != point_set.end())
 				point_set.erase(point);
 		}
@@ -113,7 +113,7 @@ public:
 
 		for(k3d::legacy::bilinear_patch::control_points_t::iterator control_point = Patch.control_points.begin(); control_point != Patch.control_points.end(); ++control_point)
 		{
-			point_set_t::const_iterator point = point_set.find(*control_point);
+			point_set_t::iterator point = point_set.find(*control_point);
 			if(point != point_set.end())
 				point_set.erase(point);
 		}
@@ -126,7 +126,7 @@ public:
 
 		for(k3d::legacy::bicubic_patch::control_points_t::iterator control_point = Patch.control_points.begin(); control_point != Patch.control_points.end(); ++control_point)
 		{
-			point_set_t::const_iterator point = point_set.find(*control_point);
+			point_set_t::iterator point = point_set.find(*control_point);
 			if(point != point_set.end())
 				point_set.erase(point);
 		}
@@ -139,7 +139,7 @@ public:
 
 		for(k3d::legacy::nupatch::control_points_t::iterator control_point = Patch.control_points.begin(); control_point != Patch.control_points.end(); ++control_point)
 		{
-			point_set_t::const_iterator point = point_set.find(control_point->position);
+			point_set_t::iterator point = point_set.find(control_point->position);
 			if(point != point_set.end())
 				point_set.erase(point);
 		}
@@ -245,7 +245,7 @@ struct delete_components
 		}
 
 		// Erase deleted faces
-		polyhedron.faces.erase(std::remove_if(polyhedron.faces.begin(), polyhedron.faces.end(), std::bind2nd(std::equal_to<k3d::legacy::face*>(), 0)), polyhedron.faces.end());
+		polyhedron.faces.erase(std::remove_if(polyhedron.faces.begin(), polyhedron.faces.end(), std::bind2nd(std::equal_to<k3d::legacy::face*>(), (k3d::legacy::face*)0)), polyhedron.faces.end());
 
 		// Delete floating points
 		k3d::legacy::for_each_component(mesh, remove_used_points(touched_points));
@@ -286,10 +286,10 @@ public:
 		return 0;
 	}
 
-	void on_create_mesh(const k3d::legacy::mesh& InputMesh, k3d::legacy::mesh& Mesh)
+	void on_initialize_mesh(const k3d::legacy::mesh& InputMesh, k3d::legacy::mesh& Mesh)
 	{
 		k3d::legacy::deep_copy(InputMesh, Mesh);
-		k3d::replace_selection(m_mesh_selection.value(), Mesh);
+		k3d::replace_selection(m_mesh_selection.pipeline_value(), Mesh);
 
 		// Delete faces, edges and points
 		std::for_each(Mesh.polyhedra.begin(), Mesh.polyhedra.end(), detail::delete_components(Mesh));
@@ -327,7 +327,7 @@ public:
 			*patch = 0;
 		}
 		// Erase deleted patches
-		Mesh.bilinear_patches.erase(std::remove_if(Mesh.bilinear_patches.begin(), Mesh.bilinear_patches.end(), std::bind2nd(std::equal_to<k3d::legacy::bilinear_patch*>(), 0)), Mesh.bilinear_patches.end());
+		Mesh.bilinear_patches.erase(std::remove_if(Mesh.bilinear_patches.begin(), Mesh.bilinear_patches.end(), std::bind2nd(std::equal_to<k3d::legacy::bilinear_patch*>(), (k3d::legacy::bilinear_patch*)0)), Mesh.bilinear_patches.end());
 
 
 		// Delete bicubic patches
@@ -360,7 +360,7 @@ public:
 			*patch = 0;
 		}
 		// Erase deleted patches
-		Mesh.bicubic_patches.erase(std::remove_if(Mesh.bicubic_patches.begin(), Mesh.bicubic_patches.end(), std::bind2nd(std::equal_to<k3d::legacy::bicubic_patch*>(), 0)), Mesh.bicubic_patches.end());
+		Mesh.bicubic_patches.erase(std::remove_if(Mesh.bicubic_patches.begin(), Mesh.bicubic_patches.end(), std::bind2nd(std::equal_to<k3d::legacy::bicubic_patch*>(), (k3d::legacy::bicubic_patch*)0)), Mesh.bicubic_patches.end());
 
 
 		// Delete nupatches
@@ -393,7 +393,7 @@ public:
 			*patch = 0;
 		}
 		// Erase deleted patches
-		Mesh.nupatches.erase(std::remove_if(Mesh.nupatches.begin(), Mesh.nupatches.end(), std::bind2nd(std::equal_to<k3d::legacy::nupatch*>(), 0)), Mesh.nupatches.end());
+		Mesh.nupatches.erase(std::remove_if(Mesh.nupatches.begin(), Mesh.nupatches.end(), std::bind2nd(std::equal_to<k3d::legacy::nupatch*>(), (k3d::legacy::nupatch*)0)), Mesh.nupatches.end());
 
 
 		// Delete floating points

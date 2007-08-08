@@ -24,7 +24,7 @@
 #include <k3dsdk/extension_gl.h>
 #include <k3dsdk/gl.h>
 #include <k3dsdk/hints.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/imesh_painter_gl.h>
 #include <k3dsdk/mesh.h>
 #include <k3dsdk/node.h>
@@ -45,15 +45,15 @@ namespace libk3ddevelopment
 
 class edge_array_painter :
 	public colored_selection_painter,
-	public hint_processor
+	public k3d::hint::hint_processor
 {
 	typedef colored_selection_painter base;
 public:
 	edge_array_painter(k3d::iplugin_factory& Factory, k3d::idocument& Document) :
 		base(Factory, Document),
-		m_points_cache(painter_cache<boost::shared_ptr<const k3d::mesh::points_t>, point_vbo>::instance(Document)),
-		m_edges_cache(painter_cache<boost::shared_ptr<const k3d::mesh::indices_t>, edge_vbo>::instance(Document)),
-		m_selection_cache(painter_cache<boost::shared_ptr<const k3d::mesh::indices_t>, edge_selection>::instance(Document))
+		m_points_cache(k3d::painter_cache<boost::shared_ptr<const k3d::mesh::points_t>, point_vbo>::instance(Document)),
+		m_edges_cache(k3d::painter_cache<boost::shared_ptr<const k3d::mesh::indices_t>, edge_vbo>::instance(Document)),
+		m_selection_cache(k3d::painter_cache<boost::shared_ptr<const k3d::mesh::indices_t>, edge_selection>::instance(Document))
 	{
 	}
 	
@@ -216,9 +216,9 @@ protected:
 	}
 	
 private:
-	painter_cache<boost::shared_ptr<const k3d::mesh::points_t>, point_vbo>& m_points_cache;
-	painter_cache<boost::shared_ptr<const k3d::mesh::indices_t>, edge_vbo>& m_edges_cache;
-	painter_cache<boost::shared_ptr<const k3d::mesh::indices_t>, edge_selection>& m_selection_cache;
+	k3d::painter_cache<boost::shared_ptr<const k3d::mesh::points_t>, point_vbo>& m_points_cache;
+	k3d::painter_cache<boost::shared_ptr<const k3d::mesh::indices_t>, edge_vbo>& m_edges_cache;
+	k3d::painter_cache<boost::shared_ptr<const k3d::mesh::indices_t>, edge_selection>& m_selection_cache;
 };
 
 	/////////////////////////////////////////////////////////////////////////////

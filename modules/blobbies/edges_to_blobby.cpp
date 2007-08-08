@@ -22,7 +22,7 @@
 */
 
 #include <k3dsdk/document_plugin_factory.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/node.h>
 #include <k3dsdk/persistent.h>
 #include <k3dsdk/measurement.h>
@@ -139,15 +139,15 @@ public:
 		return 0;
 	}
 
-	void on_create_mesh(const k3d::legacy::mesh& InputMesh, k3d::legacy::mesh& Mesh)
+	void on_initialize_mesh(const k3d::legacy::mesh& InputMesh, k3d::legacy::mesh& Mesh)
 	{
 		// Collect edges ...
 		detail::ordered_edges_t edges;
 		k3d::legacy::for_each_edge(const_cast<k3d::legacy::mesh&>(InputMesh), detail::get_edges(InputMesh, Mesh, edges));
 
-		const double radius = m_radius.value();
+		const double radius = m_radius.pipeline_value();
 		k3d::legacy::blobby::variable_operands* new_blobby = 0;
-		switch(m_type.value())
+		switch(m_type.pipeline_value())
 		{
 			case ADD:
 				new_blobby = new k3d::legacy::blobby::add();
@@ -245,7 +245,7 @@ private:
 		else if(text == "maximum")
 			Value = MAX;
 		else
-			k3d::log() << __PRETTY_FUNCTION__ << ": unknown enumeration [" << text << "]"<< std::endl;
+			k3d::log() << k3d_file_reference << ": unknown enumeration [" << text << "]"<< std::endl;
 
 		return Stream;
 	}

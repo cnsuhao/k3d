@@ -22,7 +22,7 @@
 */
 
 #include "fstream.h"
-#include "i18n.h"
+#include "k3d-i18n-config.h"
 #include "istate_container.h"
 #include "iuser_property.h"
 #include "options.h"
@@ -92,12 +92,12 @@ void shader::load(xml::element& Element, const ipersistent::load_context& Contex
 
 const path shader::shader_path()
 {
-	return m_shader_path.value();
+	return m_shader_path.pipeline_value();
 }
 
 const std::string shader::shader_name()
 {
-	return m_shader.value().name;
+	return m_shader.internal_value().name;
 }
 
 parameter_list shader::shader_arguments(const render_state& State)
@@ -114,40 +114,40 @@ parameter_list shader::shader_arguments(const render_state& State)
 
 			if(property_type == typeid(ri::real))
 			{
-				results.push_back(parameter(property.property_name(), CONSTANT, 1, boost::any_cast<ri::real>(get_value(document().dag(), property))));
+				results.push_back(parameter(property.property_name(), CONSTANT, 1, boost::any_cast<ri::real>(property::pipeline_value(property))));
 			}
 			else if(property_type == typeid(ri::string))
 			{
-				results.push_back(parameter(property.property_name(), CONSTANT, 1, boost::any_cast<ri::string>(get_value(document().dag(), property))));
+				results.push_back(parameter(property.property_name(), CONSTANT, 1, boost::any_cast<ri::string>(property::pipeline_value(property))));
 			}
 			else if(property_type == typeid(k3d::inode*)) // Node properties always are of type "inode*", so we have to query for the interface type we really want
 			{
-				if(k3d::ri::itexture* const texture = dynamic_cast<k3d::ri::itexture*>(boost::any_cast<k3d::inode*>(get_value(document().dag(), property))))
+				if(k3d::ri::itexture* const texture = dynamic_cast<k3d::ri::itexture*>(boost::any_cast<k3d::inode*>(property::pipeline_value(property))))
 					results.push_back(parameter(property.property_name(), CONSTANT, 1, static_cast<k3d::ri::string>(texture->renderman_texture_path(State).native_filesystem_string())));
 			}
 			else if(property_type == typeid(ri::point))
 			{
-				results.push_back(parameter(property.property_name(), CONSTANT, 1, boost::any_cast<ri::point>(get_value(document().dag(), property))));
+				results.push_back(parameter(property.property_name(), CONSTANT, 1, boost::any_cast<ri::point>(property::pipeline_value(property))));
 			}
 			else if(property_type == typeid(ri::vector))
 			{
-				results.push_back(parameter(property.property_name(), CONSTANT, 1, boost::any_cast<ri::vector>(get_value(document().dag(), property))));
+				results.push_back(parameter(property.property_name(), CONSTANT, 1, boost::any_cast<ri::vector>(property::pipeline_value(property))));
 			}
 			else if(property_type == typeid(ri::normal))
 			{
-				results.push_back(parameter(property.property_name(), CONSTANT, 1, boost::any_cast<ri::normal>(get_value(document().dag(), property))));
+				results.push_back(parameter(property.property_name(), CONSTANT, 1, boost::any_cast<ri::normal>(property::pipeline_value(property))));
 			}
 			else if(property_type == typeid(ri::hpoint))
 			{
-				results.push_back(parameter(property.property_name(), CONSTANT, 1, boost::any_cast<ri::hpoint>(get_value(document().dag(), property))));
+				results.push_back(parameter(property.property_name(), CONSTANT, 1, boost::any_cast<ri::hpoint>(property::pipeline_value(property))));
 			}
 			else if(property_type == typeid(ri::matrix))
 			{
-				results.push_back(parameter(property.property_name(), CONSTANT, 1, boost::any_cast<ri::matrix>(get_value(document().dag(), property))));
+				results.push_back(parameter(property.property_name(), CONSTANT, 1, boost::any_cast<ri::matrix>(property::pipeline_value(property))));
 			}
 			else if(property_type == typeid(ri::color))
 			{
-				results.push_back(parameter(property.property_name(), CONSTANT, 1, boost::any_cast<ri::color>(get_value(document().dag(), property))));
+				results.push_back(parameter(property.property_name(), CONSTANT, 1, boost::any_cast<ri::color>(property::pipeline_value(property))));
 			}
 			else
 			{
@@ -190,7 +190,7 @@ void shader::load_metafile()
 {
     try
     {
-        const filesystem::path shader_path = m_shader_path.value();
+        const filesystem::path shader_path = m_shader_path.pipeline_value();
         const filesystem::path metafile_path = shader_path + ".slmeta";
         filesystem::ifstream metafile_stream(metafile_path);
 
@@ -218,7 +218,7 @@ void shader::load_metafile()
 
 void shader::create_arguments()
 {
-	const sl::shader shader = m_shader.value();
+	const sl::shader shader = m_shader.internal_value();
 	for(sl::shader::arguments_t::const_iterator argument = shader.arguments.begin(); argument != shader.arguments.end(); ++argument)
 	{
 		if(argument->output)

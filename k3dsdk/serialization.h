@@ -7,8 +7,8 @@ namespace k3d
 {
 
 class idocument;
-class idocument_read_format;
-class idocument_write_format;
+class idocument_importer;
+class idocument_exporter;
 class imaterial;
 class ipersistent;
 class ipersistent::load_context;
@@ -22,19 +22,21 @@ namespace xml { class element; }
 void upgrade_document(xml::element& XML);
 
 /// Serializes a document DAG to an XML element
-void save_dag(idocument& Document, xml::element& XML, const ipersistent::save_context& Context);
+void save_pipeline(idocument& Document, xml::element& XML, const ipersistent::save_context& Context);
 /// Deserializes document DAG information from an XML element
-void load_dag(idocument& Document, xml::element& XML, const ipersistent::load_context& Context);
+void load_pipeline(idocument& Document, xml::element& XML, const ipersistent::load_context& Context);
 
 /// Serializes a mesh to an XML document
 void save_mesh(const mesh& Mesh, xml::element& Container, const ipersistent::save_context& Context);
 /// Deserializes a mesh from an XML document
 void load_mesh(mesh& Mesh, xml::element& Container, const ipersistent::load_context& Context);
+/// Deserializes a legacy mesh from an XML document. Needed to parse documents with old FrozenMesh nodes.
+void load_legacy_mesh(legacy::mesh& Mesh, xml::element& XML, const ipersistent::load_context& Context);
 
 /// Imports data into a document from a file
-bool import_file(idocument& Document, idocument_read_format& FormatFilter, const filesystem::path& FilePath);
+bool import_file(idocument& Document, idocument_importer& FormatFilter, const filesystem::path& FilePath);
 /// Exports document data to a file
-bool export_file(idocument& Document, idocument_write_format& FormatFilter, const filesystem::path& FilePath);
+bool export_file(idocument& Document, idocument_exporter& FormatFilter, const filesystem::path& FilePath);
 
 /// Serializes a document node to an XML document
 void save_node(k3d::ipersistent& Node, xml::element& XML, const ipersistent::save_context& Context);

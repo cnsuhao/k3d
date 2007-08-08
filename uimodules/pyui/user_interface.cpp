@@ -30,15 +30,9 @@
 #include <k3dsdk/log.h>
 #include <k3dsdk/module.h>
 
-#include <k3dsdk_python/object_model_python.h>
+#include <k3dsdk/python/object_model_python.h>
 
 #include <iostream>
-
-#if defined K3D_PLATFORM_DARWIN
-	#define PYTHON_INITIALIZE PyMac_Initialize
-#else
-	#define PYTHON_INITIALIZE Py_Initialize
-#endif
 
 namespace libk3dpyui
 {
@@ -84,7 +78,7 @@ public:
 
 		try
 		{
-			PYTHON_INITIALIZE();
+			Py_Initialize();
 
 			initk3d();
 
@@ -103,7 +97,7 @@ public:
 
 	void stop_event_loop()
 	{
-		k3d::log() << debug << __PRETTY_FUNCTION__ << std::endl;
+		k3d::log() << debug << k3d_file_reference << std::endl;
 	}
 
 	bool batch_mode()

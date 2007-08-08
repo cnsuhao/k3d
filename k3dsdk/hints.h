@@ -28,6 +28,8 @@
 #include "mesh_selection.h"
 #include "mesh.h"
 
+#include <boost/any.hpp>
+
 #include <iosfwd>
 
 namespace k3d
@@ -45,8 +47,8 @@ class selection_changed_t :
 {
 };
 
-///// Convenience function that returns a reference to a static instance of selection_changed_t
-// selection_changed_t* selection_changed();
+/// Convenience function that returns a reference to a static instance of selection_changed_t
+selection_changed_t* selection_changed();
 
 /// Hint object that indicates that a mesh's geometry (the locations of its points) has changed
 class mesh_geometry_changed_t :
@@ -105,6 +107,39 @@ public:
 
 /// Stream serialization
 std::ostream& operator<<(std::ostream& Stream, const print& RHS);
+
+/// Common interface for classes that need to process incoming hints
+class hint_processor
+{
+public:
+	/// Process the given hint, calling the required on_... method
+	virtual void process(const k3d::mesh& Mesh, k3d::iunknown* Hint);
+	
+	/// Process the given hint (stored as boost::any), calling the required on_... method
+	virtual void process(const k3d::mesh& Mesh, boost::any& Hint);
+
+protected:
+	/// Called when only the geometry changed
+	virtual void on_geometry_changed(const k3d::mesh& Mesh, k3d::iunknown* Hint) {}
+	
+	/// Called when only the selection changed
+	virtual void on_selection_changed(const k3d::mesh& Mesh, k3d::iunknown* Hint) {}
+	
+	/// Called when the mesh topology changed
+	virtual void on_topology_changed(const k3d::mesh& Mesh, k3d::iunknown* Hint) {}
+	
+	/// Called when the mesh address changed
+	virtual void on_address_changed(const k3d::mesh& Mesh, k3d::iunknown* Hint) {}
+	
+	/// Called when the mesh is deleted
+	virtual void on_mesh_deleted(const k3d::mesh& Mesh, k3d::iunknown* Hint) {}
+	
+	/// Called when an unknown hint is encountered
+	virtual void on_unknown_change(const k3d::mesh& Mesh, k3d::iunknown* Hint)
+	{
+		on_topology_changed(Mesh, Hint);
+	}
+};
 
 } // namespace hint
 

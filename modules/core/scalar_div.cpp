@@ -23,7 +23,7 @@
 */
 
 #include <k3dsdk/document_plugin_factory.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/node.h>
 #include <k3dsdk/persistent.h>
 
@@ -47,8 +47,8 @@ public:
 
 	double get_value()
 	{
-		const double input1 = m_input1.value();
-		const double input2 = m_input2.value();
+		const double input1 = m_input1.pipeline_value();
+		const double input2 = m_input2.pipeline_value();
 
 		return_val_if_fail(input2 != 0, input1);
 

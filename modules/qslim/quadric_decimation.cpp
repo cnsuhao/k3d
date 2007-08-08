@@ -24,7 +24,7 @@
 
 #include <k3dsdk/basic_math.h>
 #include <k3dsdk/document_plugin_factory.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/measurement.h>
 #include <k3dsdk/legacy_mesh_modifier.h>
 #include <k3dsdk/module.h>
@@ -119,7 +119,7 @@ public:
 		return 0;
 	}
 
-	void on_create_mesh(const k3d::legacy::mesh& InputMesh, k3d::legacy::mesh& Mesh)
+	void on_initialize_mesh(const k3d::legacy::mesh& InputMesh, k3d::legacy::mesh& Mesh)
 	{
 		if(!InputMesh.polyhedra.size() || !InputMesh.polyhedra.front()->faces.size())
 			return;
@@ -129,7 +129,7 @@ public:
 		return_if_fail(m);
 
 		const unsigned long face_number = m->face_count();
-		k3d::set_value(m_face_number, face_number);
+		k3d::property::set_internal_value(m_face_number, face_number);
 
 		// Init
 		MxQSlim* slim = 0;
@@ -137,7 +137,7 @@ public:
 		MxFaceQSlim* fslim = 0;
 		std::vector<MxEdge> target_edges;
 
-		const bool will_use_fslim = m_contraction_type.value() == FACE;
+		const bool will_use_fslim = m_contraction_type.pipeline_value() == FACE;
 		if(!slim)
 		{
 			if(will_use_fslim)
@@ -153,22 +153,22 @@ public:
 				eslim = (MxEdgeQSlim*)slim;
 		}
 
-		switch(m_placement_policy.value())
+		switch(m_placement_policy.pipeline_value())
 		{
 			case LINE: slim->placement_policy = 2; break;
 			case ENDORMID: slim->placement_policy = 1; break;
 			case ENDPOINTS: slim->placement_policy = 0; break;
 			default: slim->placement_policy = 3;
 		}
-		slim->boundary_weight = m_boundary_weight.value();
-		switch(m_quadric_weighting.value())
+		slim->boundary_weight = m_boundary_weight.pipeline_value();
+		switch(m_quadric_weighting.pipeline_value())
 		{
 			case UNIFORM: slim->weighting_policy = 0; break;
 			case ANGLE: slim->weighting_policy = 2; break;
 			default: slim->weighting_policy = 1;
 		}
-		slim->compactness_ratio = m_compactness_ratio.value();
-		slim->meshing_penalty = m_meshing_penalty.value();
+		slim->compactness_ratio = m_compactness_ratio.pipeline_value();
+		slim->meshing_penalty = m_meshing_penalty.pipeline_value();
 		slim->will_join_only = false;
 
 		if(eslim && target_edges.size())
@@ -177,7 +177,7 @@ public:
 			slim->initialize();
 
 		// Decimation
-		slim->decimate(m_face_number.value());
+		slim->decimate(m_face_number.pipeline_value());
 
 		// Output cleanup ...
 

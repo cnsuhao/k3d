@@ -23,7 +23,7 @@
 
 #include <k3dsdk/color.h>
 #include <k3dsdk/document_plugin_factory.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/imaterial.h>
 #include <k3dsdk/material.h>
 #include <k3dsdk/material_client.h>
@@ -31,7 +31,6 @@
 #include <k3dsdk/legacy_mesh_source.h>
 #include <k3dsdk/node.h>
 #include <k3dsdk/persistent.h>
-#include <k3dsdk/property.h>
 
 #include <cctype>
 #include <cmath>
@@ -1449,12 +1448,12 @@ public:
 		m_size.changed_signal().connect(make_reset_mesh_slot());
 	}
 
-	void on_create_mesh(k3d::legacy::mesh& Mesh)
+	void on_initialize_mesh(k3d::legacy::mesh& Mesh)
 	{
-		k3d::imaterial* const material = m_material.value();
-		const unsigned long number = m_number.value();
-		const bool dual = m_dual.value();
-		const double size= m_size.value();
+		k3d::imaterial* const material = m_material.pipeline_value();
+		const unsigned long number = m_number.pipeline_value();
+		const bool dual = m_dual.pipeline_value();
+		const double size= m_size.pipeline_value();
 		const std::string name = dual ? kaleido::uniform[number - 1].dual : kaleido::uniform[number - 1].name;
 
 		LoadPolyhedron(number, dual);

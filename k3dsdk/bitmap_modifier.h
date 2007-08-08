@@ -21,7 +21,7 @@
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include "data.h"
-#include "i18n.h"
+#include "k3d-i18n-config.h"
 #include "ibitmap_sink.h"
 #include "ibitmap_source.h"
 #include "bitmap.h"
@@ -71,7 +71,7 @@ protected:
 private:
 	void create_bitmap(bitmap& OutputBitmap)
 	{
-		if(const bitmap* const input_bitmap = m_input_bitmap.value())
+		if(const bitmap* const input_bitmap = m_input_bitmap.pipeline_value())
 		{
 			on_create_bitmap(*input_bitmap, OutputBitmap);
 			on_update_bitmap(*input_bitmap, OutputBitmap);
@@ -80,7 +80,7 @@ private:
 
 	void update_bitmap(iunknown* const Hint)
 	{
-		if(bitmap* const input_bitmap = m_input_bitmap.value())
+		if(bitmap* const input_bitmap = m_input_bitmap.pipeline_value())
 		{
 			if(bitmap* const output_bitmap = m_output_bitmap.internal_value())
 			{

@@ -25,17 +25,20 @@
 		\author Ed Millard (emillard@direcway.com)
 */
 
+#include "k3d-platform-config.h"
+
 #include "result.h"
 
 #include <boost/utility.hpp>
 #include <iostream>
 #include <string>
 
-#include <sys/time.h>
 
-#ifdef K3D_PLATFORM_WIN32
-#include <windows.h>
-#endif // K3D_PLATFORM_WIN32
+#ifdef K3D_API_WIN32
+	#include "win32.h"
+#else
+	#include <sys/time.h>
+#endif // K3D_API_WIN32
 
 namespace k3d
 {
@@ -58,7 +61,7 @@ inline double nanotime()
 
 */
 
-#ifdef K3D_PLATFORM_WIN32
+#ifdef K3D_API_WIN32
 
 /// Retrieves a timestamp in seconds using the Win32 high performance counters
 inline double nanotime()
@@ -70,7 +73,7 @@ inline double nanotime()
 	return static_cast<double>(timestamp.QuadPart) / static_cast<double>(frequency.QuadPart);
 }
 
-#else // K3D_PLATFORM_WIN32
+#else // K3D_API_WIN32
 
 /// Retrieves a timestamp in seconds using gettimeofday() for portable timing
 inline double nanotime()
@@ -81,7 +84,7 @@ inline double nanotime()
 	return tv.tv_sec + static_cast<double>(tv.tv_usec) / 1000000;
 }
 
-#endif // !K3D_PLATFORM_WIN32
+#endif // !K3D_API_WIN32
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 // timer

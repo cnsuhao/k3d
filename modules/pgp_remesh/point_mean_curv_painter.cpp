@@ -21,8 +21,9 @@
 		\author Timothy M. Shead (tshead@k-3d.com)
 */
 
+#include <k3d-i18n-config.h>
+
 #include <k3dsdk/document_plugin_factory.h>
-#include <k3dsdk/i18n.h>
 #include <k3dsdk/mesh_painter_gl.h>
 #include <k3dsdk/mesh.h>
 #include <k3dsdk/painter_render_state_gl.h>
@@ -67,8 +68,8 @@ public:
 		if(Mesh.vertex_data.find("PGPPrincCurv2") == Mesh.vertex_data.end())
 			return;
 		
-		const bool draw_p1 = m_draw_p1.value();
-		const bool draw_p2 = m_draw_p2.value();
+		const bool draw_p1 = m_draw_p1.pipeline_value();
+		const bool draw_p2 = m_draw_p2.pipeline_value();
 
 		const k3d::mesh::points_t& points = *Mesh.points;
 		const size_t vert_count = points.size();
@@ -78,13 +79,13 @@ public:
 		
 		k3d::gl::store_attributes attributes;
 		glDisable(GL_LIGHTING);
-		double scale = m_scale.value();
+		double scale = m_scale.pipeline_value();
 		k3d::point3 x;
 		glBegin(GL_LINES);
 		for(size_t vert = 0; vert != vert_count; ++vert)
 		{
 			if(draw_p1) {
-				k3d::gl::color3d(m_p1_color.value());
+				k3d::gl::color3d(m_p1_color.pipeline_value());
 
 				x =  k3d::to_point(p1[vert]);
 				x *= scale;
@@ -94,7 +95,7 @@ public:
 
 
 			if(draw_p2) {
-				k3d::gl::color3d(m_p2_color.value());
+				k3d::gl::color3d(m_p2_color.pipeline_value());
 				
 				x = k3d::to_point(p2[vert]);
 				x *= scale;

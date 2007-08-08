@@ -26,8 +26,8 @@
 #include <k3dsdk/classes.h>
 #include <k3dsdk/document_plugin_factory.h>
 #include <k3dsdk/file_filter.h>
-#include <k3dsdk/i18n.h>
-#include <k3dsdk/ibitmap_read_format.h>
+#include <k3d-i18n-config.h>
+#include <k3dsdk/ibitmap_importer.h>
 #include <k3dsdk/measurement.h>
 #include <k3dsdk/node.h>
 #include <k3dsdk/options.h>
@@ -59,11 +59,11 @@ public:
 
 	void on_create_bitmap(k3d::bitmap& Bitmap)
 	{
-		const k3d::filesystem::path file = m_file.value();
+		const k3d::filesystem::path file = m_file.pipeline_value();
 		if(!k3d::filesystem::exists(file))
 			return;
 
-		k3d::auto_ptr<k3d::ibitmap_read_format> filter(k3d::auto_file_filter<k3d::ibitmap_read_format>(file));
+		k3d::auto_ptr<k3d::ibitmap_importer> filter(k3d::auto_file_filter<k3d::ibitmap_importer>(file));
 		return_if_fail(filter.get());
 
 		filter->read_file(file, Bitmap);

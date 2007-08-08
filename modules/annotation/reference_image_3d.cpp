@@ -25,7 +25,7 @@
 #include <k3dsdk/bitmap.h>
 #include <k3dsdk/document_plugin_factory.h>
 #include <k3dsdk/drawable_gl.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/measurement.h>
 #include <k3dsdk/node.h>
 #include <k3dsdk/persistent.h>
@@ -96,16 +96,16 @@ public:
 
 	void draw(const k3d::gl::render_state& State)
 	{
-		k3d::bitmap* const bitmap = m_bitmap.value();
+		k3d::bitmap* const bitmap = m_bitmap.pipeline_value();
 		if(!(bitmap && bitmap->width() && bitmap->height()))
 			return;
 
-		const k3d::color color = m_color.value();
-		const double opacity = m_opacity.value();
-		const double size = m_size.value();
-		const aspect_ratio_type_t aspect_ratio_type = m_aspect_ratio_type.value();
-		const double aspect_ratio = m_aspect_ratio.value();
-		const bool draw_behind = m_draw_behind.value();
+		const k3d::color color = m_color.pipeline_value();
+		const double opacity = m_opacity.pipeline_value();
+		const double size = m_size.pipeline_value();
+		const aspect_ratio_type_t aspect_ratio_type = m_aspect_ratio_type.pipeline_value();
+		const double aspect_ratio = m_aspect_ratio.pipeline_value();
+		const bool draw_behind = m_draw_behind.pipeline_value();
 
 		glColor4d(color.red, color.green, color.blue, opacity);
 
@@ -140,7 +140,7 @@ public:
 
 			glMatrixMode(GL_MODELVIEW);
 
-			switch(m_orientation.value())
+			switch(m_orientation.pipeline_value())
 			{
 				case k3d::PX:
 					glRotated(-90, 0, 0, 1);
@@ -246,7 +246,7 @@ private:
 		else if(text == "absolute")
 			Value = ASPECT_RATIO_ABSOLUTE;
 		else
-			k3d::log() << __PRETTY_FUNCTION__ << ": unknown enumeration [" << text << "]"<< std::endl;
+			k3d::log() << k3d_file_reference << ": unknown enumeration [" << text << "]"<< std::endl;
 
 		return Stream;
 	}

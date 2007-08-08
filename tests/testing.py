@@ -80,6 +80,20 @@ def setup_bitmap_reader_test(reader_name, source_file):
 
 	return result
 
+def setup_mesh_reader_test(reader_name, source_file):
+	doc = k3d.new_document()
+	reader = doc.new_node(reader_name)
+	reader.file = "@CMAKE_CURRENT_SOURCE_DIR@/meshes/" + source_file
+
+	class result_object:
+		pass
+
+	result = result_object
+	result.document = doc
+	result.reader = reader
+
+	return result
+
 def setup_mesh_source_test(source_name):
 	doc = k3d.new_document()
 
@@ -239,13 +253,32 @@ def mesh_comparison(document, mesh, mesh_name, threshold):
 	mesh_writer.file = output_file
 	document.set_dependency(mesh_writer.get_property("input_mesh"), mesh)
 
+	if not difference.get_property("input_a").pipeline_value() or not difference.get_property("input_b").pipeline_value():
+		raise Exception("missing mesh comparison input")
+
 	if not difference.equal:
 		print """<DartMeasurement name="Mesh Difference" type="text/text">\n"""
-		print k3d.print_diff(mesh.value(), reference.output_mesh, threshold)
+		print k3d.print_diff(mesh.pipeline_value(), reference.output_mesh, threshold)
 		print """</DartMeasurement>\n"""
 		sys.stdout.flush()
 
 		raise Exception("output mesh differs from reference")
+
+def mesh_area_comparison(calculated_area, expected_area):
+	if calculated_area != expected_area:
+		print """<DartMeasurement name="Calculated Area" type="numeric/float">""" + str(calculated_area) + """</DartMeasurement>"""
+		print """<DartMeasurement name="Expected Area" type="numeric/float">""" + str(expected_area) + """</DartMeasurement>"""
+		raise Exception("incorrect mesh area")
+
+def mesh_volume_comparison(calculated_volume, expected_volume):
+	if calculated_volume != expected_volume:
+		print """<DartMeasurement name="Calculated Volume" type="numeric/float">""" + str(calculated_volume) + """</DartMeasurement>"""
+		print """<DartMeasurement name="Expected Volume" type="numeric/float">""" + str(expected_volume) + """</DartMeasurement>"""
+		raise Exception("incorrect mesh volume")
+
+def assert_solid_mesh(mesh):
+	if not k3d.is_solid(mesh.pipeline_value()):
+		raise Exception("output mesh is not solid")
 
 def image_comparison(document, image, image_name, threshold):
 

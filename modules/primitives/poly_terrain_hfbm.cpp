@@ -24,7 +24,7 @@
 
 #include <k3dsdk/axis.h>
 #include <k3dsdk/document_plugin_factory.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/imaterial.h>
 #include <k3dsdk/material.h>
 #include <k3dsdk/material_client.h>
@@ -137,14 +137,14 @@ public:
 		m_orientation.changed_signal().connect(make_reset_mesh_slot());
 	}
 
-	void on_create_mesh(k3d::legacy::mesh& Mesh)
+	void on_initialize_mesh(k3d::legacy::mesh& Mesh)
 	{
 		// Calculate standard terrain parameters ...
-		const unsigned long iterations = m_iterations.value();
-		const unsigned long points = static_cast<unsigned long>(pow(2, iterations));
+		const unsigned long iterations = m_iterations.pipeline_value();
+		const unsigned long points = static_cast<unsigned long>(pow(2.0, static_cast<double>(iterations)));
 		const unsigned long segments = points - 1;
 		const double terrain_width = 20.0;
-		k3d::imaterial* const material = m_material.value();
+		k3d::imaterial* const material = m_material.pipeline_value();
 
 		std::auto_ptr<k3d::legacy::mesh> mesh(new k3d::legacy::mesh());
 
@@ -178,10 +178,10 @@ public:
 		std::vector<double> exponent_array;
 
 		double frequency = 1.0;
-		for(unsigned long i = 0; i <= m_octaves.value(); i++)
+		for(unsigned long i = 0; i <= m_octaves.pipeline_value(); i++)
 		{
-			exponent_array.push_back(pow(frequency, -m_fractal_dimension.value()));
-			frequency *= m_lacunarity.value();
+			exponent_array.push_back(pow(frequency, -m_fractal_dimension.pipeline_value()));
+			frequency *= m_lacunarity.pipeline_value();
 		}
 
 		k3d::legacy::mesh::points_t::iterator point = Mesh.points.begin();
@@ -190,7 +190,7 @@ public:
 			for(unsigned long x = 0; x < points; x++)
 			{
 				// 5 is an arbitrary constant to keep same y-scale ratio as other terrain algorithms
-				const double elevation = get_elevation(x, z, points, exponent_array, m_frequency.value(), m_noise_offset.value(), m_offset.value(), m_lacunarity.value(), m_octaves.value());
+				const double elevation = get_elevation(x, z, points, exponent_array, m_frequency.pipeline_value(), m_noise_offset.pipeline_value(), m_offset.pipeline_value(), m_lacunarity.pipeline_value(), m_octaves.pipeline_value());
 
 				(*point)->position.n[1] = elevation;
 				point++;
@@ -198,7 +198,7 @@ public:
 		}
 
 		// Set orientation
-		k3d::signed_axis orientation = m_orientation.value();
+		k3d::signed_axis orientation = m_orientation.pipeline_value();
 		for(k3d::legacy::mesh::points_t::iterator point = Mesh.points.begin(); point != Mesh.points.end(); ++point)
 		{
 			// Update orientation

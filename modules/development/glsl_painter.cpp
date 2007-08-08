@@ -23,7 +23,7 @@
 
 #include <k3dsdk/document_plugin_factory.h>
 #include <k3dsdk/gl.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/imesh_painter_gl.h>
 #include <k3dsdk/mesh.h>
 #include <k3dsdk/node.h>
@@ -42,11 +42,11 @@ GLhandleARB compile_shader(const GLenum ShaderType, const std::string& ShaderSou
 	glShaderSourceARB(shader_object, 1, &source, 0);
 	glCompileShaderARB(shader_object);
 
-	int compile_status = 0;
+	GLint compile_status = 0;
 	glGetObjectParameterivARB(shader_object, GL_OBJECT_COMPILE_STATUS_ARB, &compile_status);
 	k3d::log() << debug << "compile status: " << compile_status << std::endl;
 
-	int log_length = 0;
+	GLint log_length = 0;
 	glGetObjectParameterivARB(shader_object, GL_OBJECT_INFO_LOG_LENGTH_ARB, &log_length);
 	std::string log(log_length, ' ');
 	glGetInfoLogARB(shader_object, log_length, 0, const_cast<char*>(log.data()));
@@ -66,11 +66,11 @@ GLhandleARB link_shader(const GLhandleARB VertexObject, const GLhandleARB Fragme
 
 	glLinkProgramARB(program_object);
 
-	int link_status = 0;
+	GLint link_status = 0;
 	glGetObjectParameterivARB(program_object, GL_OBJECT_LINK_STATUS_ARB, &link_status);
 	k3d::log() << debug << "link status: " << link_status << std::endl;
 
-	int log_length = 0;
+	GLint log_length = 0;
 	glGetObjectParameterivARB(program_object, GL_OBJECT_INFO_LOG_LENGTH_ARB, &log_length);
 	std::string log(log_length, ' ');
 	glGetInfoLogARB(program_object, log_length, 0, const_cast<char*>(log.data()));
@@ -119,8 +119,8 @@ public:
 	{
 		if(!m_program_object)
 		{
-			const GLhandleARB vertex_shader_object = compile_shader(GL_VERTEX_SHADER_ARB, m_vertex_shader.value());
-			const GLhandleARB fragment_shader_object = compile_shader(GL_FRAGMENT_SHADER_ARB, m_fragment_shader.value());
+			const GLhandleARB vertex_shader_object = compile_shader(GL_VERTEX_SHADER_ARB, m_vertex_shader.pipeline_value());
+			const GLhandleARB fragment_shader_object = compile_shader(GL_FRAGMENT_SHADER_ARB, m_fragment_shader.pipeline_value());
 			m_program_object = link_shader(vertex_shader_object, fragment_shader_object);
 
 			if(fragment_shader_object)
@@ -137,7 +137,7 @@ public:
 			k3d::iproperty& property = **prop;
 			if(property.property_type() == typeid(k3d::inode*))
 			{
-				if(k3d::gl::imesh_painter* const painter = dynamic_cast<k3d::gl::imesh_painter*>(boost::any_cast<k3d::inode*>(k3d::get_value(document().dag(), property))))
+				if(k3d::gl::imesh_painter* const painter = dynamic_cast<k3d::gl::imesh_painter*>(boost::any_cast<k3d::inode*>(k3d::property::pipeline_value(property))))
 				{
 					painter->paint_mesh(Mesh, RenderState);
 				}
@@ -155,7 +155,7 @@ public:
 			k3d::iproperty& property = **prop;
 			if(property.property_type() == typeid(k3d::inode*))
 			{
-				if(k3d::gl::imesh_painter* const painter = dynamic_cast<k3d::gl::imesh_painter*>(boost::any_cast<k3d::inode*>(k3d::get_value(document().dag(), property))))
+				if(k3d::gl::imesh_painter* const painter = dynamic_cast<k3d::gl::imesh_painter*>(boost::any_cast<k3d::inode*>(k3d::property::pipeline_value(property))))
 				{
 					painter->select_mesh(Mesh, RenderState, SelectionState);
 				}
@@ -171,7 +171,7 @@ public:
 			k3d::iproperty& property = **prop;
 			if(property.property_type() == typeid(k3d::inode*))
 			{
-				if(k3d::gl::imesh_painter* const painter = dynamic_cast<k3d::gl::imesh_painter*>(boost::any_cast<k3d::inode*>(k3d::get_value(document().dag(), property))))
+				if(k3d::gl::imesh_painter* const painter = dynamic_cast<k3d::gl::imesh_painter*>(boost::any_cast<k3d::inode*>(k3d::property::pipeline_value(property))))
 				{
 					painter->mesh_changed(Mesh, Hint);
 				}

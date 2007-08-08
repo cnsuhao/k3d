@@ -23,15 +23,14 @@
 
 #include <k3dsdk/document_plugin_factory.h>
 #include <k3dsdk/gl.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/icamera.h>
 #include <k3dsdk/irender_engine_gl.h>
 #include <k3dsdk/bitmap_source.h>
 #include <k3dsdk/persistent.h>
 #include <k3dsdk/measurement.h>
 #include <k3dsdk/node.h>
-
-#include <windows.h>
+#include <k3dsdk/win32.h>
 
 #include <iterator>
 
@@ -164,17 +163,17 @@ public:
 
 	void on_create_bitmap(k3d::bitmap& Bitmap)
 	{
-		const k3d::pixel_size_t width = m_width.value();
-		const k3d::pixel_size_t height = m_height.value();
+		const k3d::pixel_size_t width = m_width.pipeline_value();
+		const k3d::pixel_size_t height = m_height.pipeline_value();
 		Bitmap.recreate(width, height);
 	}
 
 	void on_update_bitmap(k3d::bitmap& Bitmap)
 	{
-		k3d::icamera* const camera = m_camera.value();
-		k3d::gl::irender_engine* const render_engine = m_render_engine.value();
-		const k3d::pixel_size_t width = m_width.value();
-		const k3d::pixel_size_t height = m_height.value();
+		k3d::icamera* const camera = m_camera.pipeline_value();
+		k3d::gl::irender_engine* const render_engine = m_render_engine.pipeline_value();
+		const k3d::pixel_size_t width = m_width.pipeline_value();
+		const k3d::pixel_size_t height = m_height.pipeline_value();
 
 		if(camera && render_engine)
 		{

@@ -22,7 +22,7 @@
 */
 
 #include <k3dsdk/document_plugin_factory.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/mesh_diff.h>
 #include <k3dsdk/node.h>
 #include <k3dsdk/persistent.h>
@@ -53,7 +53,7 @@ public:
 
 	bool get_equal()
 	{
-		const unsigned long threshold = m_threshold.value();
+		const unsigned long threshold = m_threshold.pipeline_value();
 
 		const k3d::mesh* first_mesh = 0;
 		const k3d::iproperty_collection::properties_t& properties = node::properties();
@@ -64,7 +64,7 @@ public:
 			{
 				if(first_mesh)
 				{
-					if(const k3d::mesh* const mesh = boost::any_cast<k3d::mesh*>(k3d::get_value(document().dag(), property)))
+					if(const k3d::mesh* const mesh = boost::any_cast<k3d::mesh*>(k3d::property::pipeline_value(property)))
 					{
 						if(!k3d::equal(*first_mesh, *mesh, threshold))
 							return false;
@@ -72,7 +72,7 @@ public:
 				}
 				else
 				{
-					first_mesh = boost::any_cast<k3d::mesh*>(k3d::get_value(document().dag(), property));
+					first_mesh = boost::any_cast<k3d::mesh*>(k3d::property::pipeline_value(property));
 				}
 			}
 		}

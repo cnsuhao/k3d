@@ -22,7 +22,7 @@
 */
 
 #include <k3dsdk/document_plugin_factory.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/imaterial.h>
 #include <k3dsdk/measurement.h>
 #include <k3dsdk/legacy_mesh_modifier.h>
@@ -56,7 +56,7 @@ public:
 		m_parameter_value.changed_signal().connect(make_reset_mesh_slot());
 	}
 
-	void on_create_mesh(const k3d::legacy::mesh& InputMesh, k3d::legacy::mesh& Mesh)
+	void on_initialize_mesh(const k3d::legacy::mesh& InputMesh, k3d::legacy::mesh& Mesh)
 	{
 		k3d::legacy::deep_copy(InputMesh, Mesh);
 	}
@@ -67,8 +67,8 @@ public:
 
 		size_t point_index = 0;
 
-		const std::string name = m_parameter_name.value();
-		const double value = m_parameter_value.value();
+		const std::string name = m_parameter_name.pipeline_value();
+		const double value = m_parameter_value.pipeline_value();
 		for(k3d::legacy::mesh::points_t::iterator point = Target.points.begin(); point != Target.points.end(); ++point)
 		{
 			while(m_point_parameters.size() <= point_index)
@@ -88,7 +88,7 @@ public:
 		if(!empty())
 			return;
 
-		const std::string name = m_parameter_name.value();
+		const std::string name = m_parameter_name.pipeline_value();
 		for(k3d::legacy::mesh::points_t::const_iterator point = Source.points.begin(); point != Source.points.end(); ++point)
 		{
 			m_point_parameters.push_back(point_record((*point)->selection_weight));

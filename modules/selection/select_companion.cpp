@@ -56,14 +56,14 @@ public:
 		m_mesh_selection.changed_signal().connect(make_update_mesh_slot());
 	}
 
-	void on_create_mesh(const k3d::legacy::mesh& InputMesh, k3d::legacy::mesh& Mesh)
+	void on_initialize_mesh(const k3d::legacy::mesh& InputMesh, k3d::legacy::mesh& Mesh)
 	{
 		k3d::legacy::deep_copy(InputMesh, Mesh);
 	}
 
 	void on_update_mesh(const k3d::legacy::mesh& InputMesh, k3d::legacy::mesh& Mesh)
 	{
-		k3d::replace_selection(m_mesh_selection.value(), Mesh);
+		k3d::replace_selection(m_mesh_selection.pipeline_value(), Mesh);
 
 		for(k3d::legacy::mesh::polyhedra_t::iterator polyhedron = Mesh.polyhedra.begin(); polyhedron != Mesh.polyhedra.end(); ++polyhedron)
 		{

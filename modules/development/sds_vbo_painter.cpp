@@ -24,7 +24,7 @@
 #include <k3dsdk/extension_gl.h>
 #include <k3dsdk/gl.h>
 #include <k3dsdk/hints.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/imesh_painter_gl.h>
 #include <k3dsdk/measurement.h>
 #include <k3dsdk/mesh.h>
@@ -48,15 +48,15 @@ namespace libk3ddevelopment
 
 class sds_face_painter :
 	public colored_selection_painter,
-	public hint_processor
+	public k3d::hint::hint_processor
 {
 	typedef colored_selection_painter base;
 	/// Defines the set of sds caches associated with this painter
-	typedef std::set<sds_vbo_cache*> sds_cache_set_t;
+	typedef std::set<boost::shared_ptr<const k3d::mesh::points_t> > sds_cache_set_t;
 public:
 	sds_face_painter(k3d::iplugin_factory& Factory, k3d::idocument& Document, const k3d::color Unselected = k3d::color(0.2,0.2,0.2), const k3d::color Selected = k3d::color(0.6,0.6,0.6)) :
 		base(Factory, Document, Unselected, Selected),
-		m_sds_cache(painter_cache<boost::shared_ptr<const k3d::mesh::points_t>, sds_vbo_cache>::instance(Document)),
+		m_sds_cache(k3d::painter_cache<boost::shared_ptr<const k3d::mesh::points_t>, sds_vbo_cache>::instance(Document)),
 		m_levels(init_owner(*this) + init_name("levels") + init_label(_("Levels")) + init_description(_("Number of SDS levels")) + init_value(2) + init_constraint(constraint::minimum(2L)) + init_step_increment(1) + init_units(typeid(k3d::measurement::scalar)))
 	{
 		m_levels.changed_signal().connect(sigc::mem_fun(*this, &sds_face_painter::on_levels_changed));
@@ -65,15 +65,14 @@ public:
 	~sds_face_painter()
 	{
 		m_sds_cache.remove_painter(this);
-		for (sds_cache_set_t::iterator cache = m_sds_cache_set.begin(); cache != m_sds_cache_set.end(); ++cache) {
-			(*cache)->remove_property(&m_levels);
-		}
 	}
 	
 	void on_levels_changed(k3d::iunknown* Hint)
 	{
-		for (sds_cache_set_t::iterator cache = m_sds_cache_set.begin(); cache != m_sds_cache_set.end(); ++cache) {
-			(*cache)->level_changed();
+		for (sds_cache_set_t::iterator points = m_sds_cache_set.begin(); points != m_sds_cache_set.end(); ++points) {
+			sds_vbo_cache* cache = m_sds_cache.get_data(*points);
+			if (cache)
+				cache->level_changed();
 		}
 		
 		k3d::gl::redraw_all(document(), k3d::gl::irender_engine::ASYNCHRONOUS);
@@ -97,7 +96,7 @@ public:
 			cache->cache.set_input(&Mesh);
 		}
 		
-		m_sds_cache_set.insert(cache);
+		m_sds_cache_set.insert(Mesh.points);
 		cache->register_property(&m_levels);
 		
 		cache->execute(Mesh);
@@ -106,7 +105,7 @@ public:
 		k3d::gl::store_attributes attributes;
 		
 		clean_vbo_state();
-		draw(cache->cache, RenderState.node_selection);
+		draw(cache->cache, RenderState);
 		
 		clean_vbo_state();
 	}
@@ -127,7 +126,7 @@ public:
 			cache->cache.set_input(&Mesh);
 		}
 		
-		m_sds_cache_set.insert(cache);
+		m_sds_cache_set.insert(Mesh.points);
 		cache->register_property(&m_levels);
 		
 		cache->execute(Mesh);
@@ -170,7 +169,7 @@ public:
 	}
 
 protected:
-	painter_cache<boost::shared_ptr<const k3d::mesh::points_t>, sds_vbo_cache>& m_sds_cache;
+	k3d::painter_cache<boost::shared_ptr<const k3d::mesh::points_t>, sds_vbo_cache>& m_sds_cache;
 	k3d_data(long, immutable_name, change_signal, with_undo, local_storage, with_constraint, measurement_property, with_serialization) m_levels;
 	bool m_do_update;
 	bool m_do_selection_update;
@@ -196,17 +195,20 @@ protected:
 		k3d::hint::mesh_address_changed_t* address_hint = dynamic_cast<k3d::hint::mesh_address_changed_t*>(Hint);
 		return_if_fail(address_hint);
 		m_sds_cache.switch_key(address_hint->old_points_address, Mesh.points);
+		m_sds_cache_set.erase(address_hint->old_points_address);
 	}
 	
 	virtual void on_mesh_deleted(const k3d::mesh& Mesh, k3d::iunknown* Hint)
 	{
+		k3d::log() << debug << "Removing cache " << m_sds_cache.get_data(Mesh.points) << std::endl;
+		m_sds_cache_set.erase(Mesh.points);
 		m_sds_cache.remove_data(Mesh.points);
 	}
 	
 	// override to choose drawing mode
-	virtual void draw(k3d::sds::k3d_vbo_sds_cache& Cache, bool Selected)
+	virtual void draw(k3d::sds::k3d_vbo_sds_cache& Cache, const k3d::gl::painter_render_state& RenderState)
 	{
-		glFrontFace(GL_CW);
+		glFrontFace(RenderState.inside_out ? GL_CCW : GL_CW);
 		glEnable(GL_CULL_FACE);
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		glEnable(GL_POLYGON_OFFSET_FILL);
@@ -214,10 +216,10 @@ protected:
 		glEnable(GL_LIGHTING);
 		glEnable(GL_COLOR_MATERIAL);
 		glColorMaterial(GL_FRONT_AND_BACK, GL_DIFFUSE);
-		if (!Selected)
+		if (!RenderState.node_selection)
 			k3d::gl::color3d(unselected_mesh_color());
 		
-		Cache.draw_faces(m_levels.value(), Selected);
+		Cache.draw_faces(m_levels.pipeline_value(), RenderState.node_selection);
 	}
 	
 	// override to choose selection mode
@@ -225,7 +227,7 @@ protected:
 	{
 		if (!SelectionState.select_faces)
 			return;
-		Cache.select_faces(m_levels.value());
+		Cache.select_faces(m_levels.pipeline_value());
 	}
 	
 private:
@@ -269,18 +271,18 @@ public:
 	}
 	
 private:
-	virtual void draw(k3d::sds::k3d_vbo_sds_cache& Cache, bool Selected)
+	virtual void draw(k3d::sds::k3d_vbo_sds_cache& Cache, const k3d::gl::painter_render_state& RenderState)
 	{
 		glDisable(GL_LIGHTING);
 		k3d::gl::color3d(unselected_mesh_color());
-		Cache.draw_borders(m_levels.value(), Selected);
+		Cache.draw_borders(m_levels.pipeline_value(), RenderState.node_selection);
 	}
 	
 	virtual void select(k3d::sds::k3d_vbo_sds_cache& Cache, const k3d::gl::painter_selection_state& SelectionState)
 	{
 		if (!SelectionState.select_edges)
 			return;
-		Cache.select_borders(m_levels.value());
+		Cache.select_borders(m_levels.pipeline_value());
 	}
 };
 
@@ -321,18 +323,18 @@ public:
 	}
 	
 private:
-	virtual void draw(k3d::sds::k3d_vbo_sds_cache& Cache, bool Selected)
+	virtual void draw(k3d::sds::k3d_vbo_sds_cache& Cache, const k3d::gl::painter_render_state& RenderState)
 	{
 		glDisable(GL_LIGHTING);
 		k3d::gl::color3d(unselected_mesh_color());
-		Cache.draw_corners(m_levels.value(), Selected);
+		Cache.draw_corners(m_levels.pipeline_value(), RenderState.node_selection);
 	}
 	
 	virtual void select(k3d::sds::k3d_vbo_sds_cache& Cache, const k3d::gl::painter_selection_state& SelectionState)
 	{
 		if (!SelectionState.select_points)
 			return;
-		Cache.select_corners(m_levels.value());
+		Cache.select_corners(m_levels.pipeline_value());
 	}
 };
 

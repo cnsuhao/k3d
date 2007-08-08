@@ -24,7 +24,7 @@
 
 #include <k3dsdk/document_plugin_factory.h>
 #include <k3dsdk/classes.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/irender_engine_ri.h>
 #include <k3dsdk/itexture_ri.h>
 #include <k3dsdk/node.h>
@@ -60,7 +60,7 @@ public:
 
 	const k3d::filesystem::path renderman_texture_path(const k3d::ri::render_state& State)
 	{
-		return m_file.value();
+		return m_file.pipeline_value();
 	}
 
 	static k3d::iplugin_factory& get_factory()

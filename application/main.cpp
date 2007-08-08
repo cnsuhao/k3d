@@ -21,6 +21,10 @@
 	\author Tim Shead (tshead@k-3d.com)
 */
 
+#include <k3d-i18n-config.h>
+#include <k3d-platform-config.h>
+#include <k3d-version-config.h>
+
 // Standard K-3D interface implementations for embedding
 #include <k3dsdk/application_detail.h>
 #include <k3dsdk/plugin_factory_collection.h>
@@ -35,10 +39,9 @@
 #include <k3dsdk/extension_gl.h>
 #include <k3dsdk/fstream.h>
 #include <k3dsdk/gzstream.h>
-#include <k3dsdk/i18n.h>
 #include <k3dsdk/ideletable.h>
 #include <k3dsdk/idocument.h>
-#include <k3dsdk/idocument_read_format.h>
+#include <k3dsdk/idocument_importer.h>
 #include <k3dsdk/iuser_interface.h>
 #include <k3dsdk/iuser_interface_plugin.h>
 #include <k3dsdk/log.h>
@@ -46,8 +49,8 @@
 #include <k3dsdk/nodes.h>
 #include <k3dsdk/options_policy.h>
 #include <k3dsdk/property.h>
-#include <k3dsdk/render_farm_detail.h>
 #include <k3dsdk/register_application.h>
+#include <k3dsdk/render_farm_detail.h>
 #include <k3dsdk/scripting.h>
 #include <k3dsdk/shader_cache_detail.h>
 #include <k3dsdk/share_detail.h>
@@ -56,16 +59,14 @@
 #include <k3dsdk/types.h>
 #include <k3dsdk/user_interface_detail.h>
 #include <k3dsdk/utility.h>
-#include <k3dsdk/version.h>
 #include <k3dsdk/xml.h>
 
 #include <iomanip>
 #include <iterator>
 
-#ifdef K3D_PLATFORM_WIN32
-#include <windows.h>
-#undef interface
-#endif // K3D_PLATFORM_WIN32
+#ifdef K3D_API_WIN32
+	#include <k3dsdk/win32.h>
+#endif // K3D_API_WIN32
 
 namespace
 {
@@ -148,7 +149,7 @@ void set_default_options(bool& Quit, bool& Error)
 	g_default_options_path = data_path / k3d::filesystem::generic_path("options.k3d");
 	g_default_shader_cache_path = data_path / k3d::filesystem::generic_path("shadercache");
 
-#ifdef K3D_PLATFORM_WIN32
+#ifdef K3D_API_WIN32
 
 	// Get the path where this module is executing ...
 	std::string executable(256, '\0');
@@ -167,7 +168,7 @@ void set_default_options(bool& Quit, bool& Error)
 	// Add the executable path to PATH
 	k3d::system::setenv("PATH", executable_path.native_filesystem_string() + ";" + k3d::system::getenv("PATH"));
 
-#else // K3D_PLATFORM_WIN32
+#else // K3D_API_WIN32
 
 	g_default_ngui_path = k3d::filesystem::native_path(k3d::ustring::from_utf8(K3D_PKGLIBDIR)) / k3d::filesystem::generic_path("uiplugins/k3d-ngui.module");
 	g_default_nui_path = k3d::filesystem::native_path(k3d::ustring::from_utf8(K3D_PKGLIBDIR)) / k3d::filesystem::generic_path("uiplugins/k3d-nui.module");
@@ -177,7 +178,7 @@ void set_default_options(bool& Quit, bool& Error)
 	g_default_share_path = k3d::filesystem::native_path(k3d::ustring::from_utf8(K3D_PKGDATADIR));
 	g_default_user_interface_path = g_default_ngui_path;
 
-#endif // !K3D_PLATFORM_WIN32
+#endif // !K3D_API_WIN32
 
 	g_options_path = g_default_options_path;
 	g_plugin_paths = g_default_plugin_paths;
@@ -305,11 +306,11 @@ const arguments_t parse_startup_arguments(const arguments_t& Arguments, bool& Qu
 		}
 		else if(argument->string_key == "add-path")
 		{
-#ifdef K3D_PLATFORM_WIN32
+#ifdef K3D_API_WIN32
 			k3d::system::setenv("PATH", argument->value[0] + ";" + k3d::system::getenv("PATH"));
-#else // K3D_PLATFORM_WIN32
+#else // K3D_API_WIN32
 			k3d::system::setenv("PATH", argument->value[0] + ":" + k3d::system::getenv("PATH"));
-#endif // !K3D_PLATFORM_WIN32
+#endif // !K3D_API_WIN32
 		}
 		else if(argument->string_key == "disable-gl-extension")
 		{
@@ -345,7 +346,7 @@ void check_dependencies(bool& Quit, bool& Error)
 	k3d::log() << info << "package: " << K3D_PACKAGE << std::endl;
 	k3d::log() << info << "version: " << K3D_VERSION << std::endl;
 	k3d::log() << info << "platform: " << K3D_HOST << std::endl;
-	k3d::log() << info << "compiler: " << __VERSION__ << std::endl;
+	k3d::log() << info << "compiler: " << K3D_COMPILER_NAME << std::endl;
 	k3d::log() << info << "build time: " << __DATE__ << " " << __TIME__ << " local" << std::endl;
 
 #ifdef K3D_HAVE_EXPAT
@@ -675,9 +676,9 @@ int main(int argc, char* argv[])
 		k3d::options::set_storage(user_options);
 
 		// Handle creation of the required user interface plugin ...
-		k3d::plugin_factory_collection ui_plugins;
-		ui_plugins.connect_message_signal(sigc::ptr_fun(startup_message_handler));
-		create_user_interface(ui_plugins, quit, error);
+		k3d::plugin_factory_collection plugins;
+		plugins.connect_message_signal(sigc::ptr_fun(startup_message_handler));
+		create_user_interface(plugins, quit, error);
 		if(quit)
 			return error ? 1 : 0;
 		return_val_if_fail(g_user_interface, 1);
@@ -707,8 +708,6 @@ int main(int argc, char* argv[])
 			return error ? 1 : 0;
 
 		// Load plugins ...
-		k3d::plugin_factory_collection plugins;
-		plugins.connect_message_signal(sigc::ptr_fun(startup_message_handler));
 		load_modules(plugins, quit, error);
 		if(quit)
 			return error ? 1 : 0;
@@ -759,9 +758,9 @@ int main(int argc, char* argv[])
 
 		k3d::log() << critical << message << std::endl;
 
-#ifdef K3D_PLATFORM_WIN32
+#ifdef K3D_API_WIN32
 		MessageBox(0, message.c_str(), _("K-3D Fatal Error"), MB_OK | MB_ICONSTOP);
-#endif // K3D_PLATFORM_WIN32
+#endif // K3D_API_WIN32
 
 		return 1;
 	}
@@ -771,9 +770,9 @@ int main(int argc, char* argv[])
 
 		k3d::log() << critical << message << std::endl;
 
-#ifdef K3D_PLATFORM_WIN32
+#ifdef K3D_API_WIN32
 		MessageBox(0, message.c_str(), _("K-3D Fatal Error"), MB_OK | MB_ICONSTOP);
-#endif // K3D_PLATFORM_WIN32
+#endif // K3D_API_WIN32
 
 		return 1;
 	}

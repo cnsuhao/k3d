@@ -33,39 +33,6 @@ namespace libk3ddevelopment
 {
 
 ////////
-// hint_processor
-//////////
-
-void hint_processor::process(const k3d::mesh& Mesh, k3d::iunknown* Hint)
-{
-	if (dynamic_cast<k3d::hint::mesh_geometry_changed_t*>(Hint))
-	{
-		on_geometry_changed(Mesh, Hint);
-	}
-	else if (dynamic_cast<k3d::hint::selection_changed_t*>(Hint))
-	{
-		on_selection_changed(Mesh, Hint);
-	}
-	else if (dynamic_cast<k3d::hint::mesh_topology_changed_t*>(Hint))
-	{
-		on_topology_changed(Mesh, Hint);
-	}
-	else if (dynamic_cast<k3d::hint::mesh_deleted_t*>(Hint))
-	{
-		on_mesh_deleted(Mesh, Hint);
-	}
-	else if (dynamic_cast<k3d::hint::mesh_address_changed_t*>(Hint))
-	{
-		on_address_changed(Mesh, Hint);
-	}
-	else
-	{
-		k3d::log() << warning << "Unknown hint " << Hint << " encountered" << std::endl;
-		on_unknown_change(Mesh, Hint);
-	}
-}
-
-////////
 // class vbo
 ///////
 
@@ -97,7 +64,7 @@ void component_selection::on_execute(const k3d::mesh& Mesh)
 	{
 		size_t start = i;
 		k3d::mesh_selection::record record(start, i+1, selection_array[i]);
-		while (record.weight == selection_array[i] && i < selection_array.size())
+		while (i < selection_array.size() && record.weight == selection_array[i])
 		{
 			record.end = i+1;
 			++i;
@@ -919,6 +886,13 @@ bool edge_face::is_sharp( const size_t Edge, const k3d::mesh::points_t & Points,
 // sds_cache
 /////////////
 
+sds_cache::~sds_cache()
+{
+	// disconnect these, so they no longer point into freed memory
+	for (size_t i = 0; i != m_connections.size(); ++i)
+		m_connections[i].disconnect();
+}
+
 void sds_cache::level_changed()
 {
 	// search the highest level requested by the clients
@@ -935,7 +909,10 @@ void sds_cache::level_changed()
 void sds_cache::register_property(k3d::iproperty* LevelProperty)
 {
 	if (m_levels.insert(LevelProperty).second)
+	{
+		m_connections.push_back(LevelProperty->property_deleted_signal().connect(sigc::bind(sigc::mem_fun(*this, &sds_cache::remove_property), LevelProperty)));
 		level_changed();
+	}
 }
 
 void sds_cache::remove_property(k3d::iproperty* LevelProperty)
@@ -949,7 +926,6 @@ void sds_cache::remove_property(k3d::iproperty* LevelProperty)
 
 void sds_vbo_cache::on_execute(const k3d::mesh& Mesh)
 {
-	cache.set_new_addresses(Mesh);
 	if (levels > 0 || regenerate)
 	{
 		k3d::log() << debug << "SDS: Setting new level to " << levels << std::endl;
@@ -959,6 +935,7 @@ void sds_vbo_cache::on_execute(const k3d::mesh& Mesh)
 		update_selection = true;
 		regenerate = true;
 	}
+	cache.set_new_addresses(Mesh);
 	if (update)
 	{
 		cache.update();

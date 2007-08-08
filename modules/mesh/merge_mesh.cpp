@@ -23,7 +23,7 @@
 */
 
 #include <k3dsdk/document_plugin_factory.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/measurement.h>
 #include <k3dsdk/legacy_mesh_source.h>
 #include <k3dsdk/node.h>
@@ -45,8 +45,8 @@ class merge_mesh_implementation :
 public:
 	merge_mesh_implementation(k3d::iplugin_factory& Factory, k3d::idocument& Document) :
 		base(Factory, Document),
-		m_input_mesh1(init_owner(*this) + init_name("input_mesh1") + init_label(_("Input mesh 1")) + init_description(_("First mesh to merge")) + init_value<k3d::legacy::mesh*>(0)),
-		m_input_mesh2(init_owner(*this) + init_name("input_mesh2") + init_label(_("Input mesh 2")) + init_description(_("Second mesh to merge")) + init_value<k3d::legacy::mesh*>(0)),
+		m_input_mesh1(init_owner(*this) + init_name("input_mesh1") + init_label(_("Input mesh 1")) + init_description(_("First mesh to merge")) + init_value<k3d::mesh*>(0)),
+		m_input_mesh2(init_owner(*this) + init_name("input_mesh2") + init_label(_("Input mesh 2")) + init_description(_("Second mesh to merge")) + init_value<k3d::mesh*>(0)),
 		m_same_polyhedron(init_owner(*this) + init_name("same_polyhedron") + init_label(_("Same polyhedron")) + init_description(_("Merge meshes in a single polyhedron")) + init_value(true))
 	{
 		m_input_mesh1.changed_signal().connect(make_reset_mesh_slot());
@@ -61,20 +61,29 @@ public:
 		return 0;
 	}
 
-	void on_create_mesh(k3d::legacy::mesh& Mesh)
+	void on_initialize_mesh(k3d::legacy::mesh& Mesh)
 	{
 		// Get the input geometry ...
-		const k3d::legacy::mesh* const input_mesh1 = m_input_mesh1.value();
-		const k3d::legacy::mesh* const input_mesh2 = m_input_mesh2.value();
+		const k3d::mesh* const input_mesh1 = m_input_mesh1.pipeline_value();
+		const k3d::mesh* const input_mesh2 = m_input_mesh2.pipeline_value();
+			
+		k3d::legacy::mesh legacy_input1;
+		k3d::legacy::mesh legacy_input2;
 
 		// Create output geometry ...
 		if(input_mesh1)
-			k3d::legacy::deep_copy(*input_mesh1, Mesh);
+		{
+			legacy_input1 = *input_mesh1;
+			k3d::legacy::deep_copy(legacy_input1, Mesh);
+		}
 
 		if(input_mesh2)
-			k3d::legacy::deep_copy(*input_mesh2, Mesh);
+		{
+			legacy_input2 = *input_mesh2;
+			k3d::legacy::deep_copy(legacy_input2, Mesh);
+		}
 
-		while(m_same_polyhedron.value() && Mesh.polyhedra.size() > 1)
+		while(m_same_polyhedron.pipeline_value() && Mesh.polyhedra.size() > 1)
 		{
 			// Merge two first polyhedra
 			k3d::legacy::polyhedron* polyhedron1 = Mesh.polyhedra[0];
@@ -104,8 +113,8 @@ public:
 	}
 
 private:
-	k3d_data(k3d::legacy::mesh*, immutable_name, change_signal, no_undo, local_storage, no_constraint, read_only_property, no_serialization) m_input_mesh1;
-	k3d_data(k3d::legacy::mesh*, immutable_name, change_signal, no_undo, local_storage, no_constraint, read_only_property, no_serialization) m_input_mesh2;
+	k3d_data(k3d::mesh*, immutable_name, change_signal, no_undo, local_storage, no_constraint, read_only_property, no_serialization) m_input_mesh1;
+	k3d_data(k3d::mesh*, immutable_name, change_signal, no_undo, local_storage, no_constraint, read_only_property, no_serialization) m_input_mesh2;
 	k3d_data(bool, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, with_serialization) m_same_polyhedron;
 };
 

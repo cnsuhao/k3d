@@ -26,7 +26,7 @@
 #include <k3dsdk/document_plugin_factory.h>
 #include <k3dsdk/hints.h>
 #include <k3dsdk/icommand_node.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/measurement.h>
 #include <k3dsdk/mesh_selection_sink.h>
 #include <k3dsdk/mesh_modifier.h>
@@ -58,9 +58,15 @@ public:
 		m_tweaks(init_owner(*this) + init_name("tweaks") + init_label(_("Tweaks")) + init_description(_("Map containing the difference vectors for all transformations performed by this node")) + init_value(tweaks_t())),
 		m_selection_copied(false)
 	{
-		m_matrix.changed_signal().connect(make_update_mesh_slot());
+		m_matrix.changed_signal().connect(sigc::mem_fun(*this, &tweak_points::on_matrix_changed));
 		m_selected_points.changed_signal().connect(sigc::mem_fun(*this, &tweak_points::on_selected_points_changed));
 		m_tweaks.changed_signal().connect(sigc::mem_fun(*this, &tweak_points::on_tweaks_changed));
+	}
+	
+	void on_matrix_changed(k3d::iunknown* Hint)
+	{
+		m_hint.transformation_matrix = m_matrix.pipeline_value();
+		m_output_mesh.update(&m_hint);
 	}
 
 	/// If the mesh was reset, see if we can apply tweaks and if not clear them
@@ -71,7 +77,7 @@ public:
 		m_input_points = Input.points;
 		m_output_points = Output.points;
 		
-		const tweaks_t tweaks = m_tweaks.internal_value();
+		const tweaks_t tweaks = m_tweaks.pipeline_value();
 		if (tweaks.empty())
 			return;
 		tweaks_t::const_iterator last = tweaks.end();
@@ -96,7 +102,7 @@ public:
 		
 		if (!m_selection_copied)
 		{
-			replace_selection(m_mesh_selection.value(), Output);
+			replace_selection(m_mesh_selection.pipeline_value(), Output);
 			m_selection_copied = true;
 		}
 		return_if_fail(Output.point_selection);
@@ -107,9 +113,9 @@ public:
 		m_input_points = Input.points;
 		m_output_points = Output.points;
 		
-		const k3d::mesh::indices_t selected_points = m_selected_points.value();
-		m_hint.transformation_matrix = m_matrix.value();
-		k3d::point3 center = m_center.value();
+		const k3d::mesh::indices_t selected_points = m_selected_points.pipeline_value();
+		m_hint.transformation_matrix = m_matrix.pipeline_value();
+		k3d::point3 center = m_center.pipeline_value();
 		for (size_t i = 0; i != selected_points.size(); ++i)
 		{
 			k3d::point3 position = input_points[selected_points[i]] + m_selected_tweaks[i];
@@ -125,7 +131,7 @@ public:
 	/// Update affected mesh components in the hint. This needs to be done only when the selection changed
 	void on_selected_points_changed(k3d::iunknown* Hint)
 	{
-		const k3d::mesh::indices_t selected_points = m_selected_points.value();
+		const k3d::mesh::indices_t selected_points = m_selected_points.pipeline_value();
 		const size_t selected_count = selected_points.size();
 
 		// reset hint
@@ -148,7 +154,7 @@ public:
 			return;
 		if (!m_output_points)
 			return;
-		const tweaks_t tweaks = m_tweaks.internal_value();
+		const tweaks_t tweaks = m_tweaks.pipeline_value();
 		const k3d::mesh::points_t& input_points = *m_input_points;
 		k3d::mesh::points_t& output_points = *const_cast<k3d::mesh::points_t*>(m_output_points.get());
 		return_if_fail(output_points.size() == input_points.size());
@@ -165,7 +171,7 @@ public:
 		if (!dynamic_cast<internal_update_hint*>(Hint))
 		{
 			k3d::log() << debug << "TweakPoints: Emitting 0 hint!" << std::endl;
-			base::emit_hint(0); // we need to flush any cached data if the tweaks changed from an external cause
+			m_output_mesh.update(0);
 		}
 	}
 		
@@ -180,9 +186,9 @@ public:
 		if (!m_output_points)
 			return k3d::icommand_node::RESULT_ERROR;
 		
-		const k3d::mesh::indices_t selected_points = m_selected_points.value();
+		const k3d::mesh::indices_t selected_points = m_selected_points.pipeline_value();
 		const size_t selection_count = selected_points.size();
-		tweaks_t tweaks = m_tweaks.value();
+		tweaks_t tweaks = m_tweaks.pipeline_value();
 		const k3d::mesh::points_t& input_points = *m_input_points;
 		const k3d::mesh::points_t& output_points = *m_output_points;
 		m_selected_tweaks.clear();
@@ -207,7 +213,7 @@ public:
 
 		k3d::xml::element& tweaks = Element.append(k3d::xml::element("tweaks"));
 
-		const tweaks_t& tweak_array = m_tweaks.internal_value();
+		const tweaks_t& tweak_array = m_tweaks.pipeline_value();
 		for(tweaks_t::const_iterator tweak_i = tweak_array.begin(); tweak_i != tweak_array.end(); ++tweak_i)
 		{
 			tweaks.append(k3d::xml::element("tweak", k3d::xml::attribute("index", tweak_i->first), k3d::xml::attribute("value", tweak_i->second)));
@@ -261,12 +267,6 @@ public:
 	k3d_data(k3d::point3, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, with_serialization) m_center;
 	k3d_data(k3d::mesh::indices_t, immutable_name, change_signal, no_undo, local_storage, no_constraint, writable_property, no_serialization) m_selected_points; // no undo to ensure synchronisation with the actual selection
 	k3d_data(tweaks_t, immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, no_serialization) m_tweaks;
-
-protected:
-	virtual void emit_hint()
-	{
-		base::emit_hint(&m_hint);
-	}
 	
 private:
 	k3d::hint::mesh_geometry_changed_t m_hint;
@@ -287,10 +287,10 @@ private:
 	/// Update fast selected tweaks cache
 	void update_selected_tweaks()
 	{
-		const k3d::mesh::indices_t selected_points = m_selected_points.value();
+		const k3d::mesh::indices_t selected_points = m_selected_points.pipeline_value();
 		const size_t selected_count = selected_points.size();
 		m_selected_tweaks.clear();
-		const tweaks_t& tweaks = m_tweaks.internal_value();
+		const tweaks_t& tweaks = m_tweaks.pipeline_value();
 		for (size_t point_index = 0; point_index != selected_count; ++point_index)
 		{
 			tweaks_t::const_iterator tweak = tweaks.find(selected_points[point_index]);

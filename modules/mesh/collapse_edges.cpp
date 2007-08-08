@@ -21,7 +21,7 @@
 		\author Romain Behar (romainbehar@yahoo.com)
 */
 
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/document_plugin_factory.h>
 #include <k3dsdk/measurement.h>
 #include <k3dsdk/legacy_mesh.h>
@@ -227,12 +227,12 @@ public:
 		m_mesh_selection.changed_signal().connect(make_reset_mesh_slot());
 	}
 
-	void on_create_mesh(const k3d::legacy::mesh& InputMesh, k3d::legacy::mesh& Mesh)
+	void on_initialize_mesh(const k3d::legacy::mesh& InputMesh, k3d::legacy::mesh& Mesh)
 	{
 		k3d::legacy::deep_copy(InputMesh, Mesh);
-		k3d::replace_selection(m_mesh_selection.value(), Mesh);
+		k3d::replace_selection(m_mesh_selection.pipeline_value(), Mesh);
 
-		const vertex_t destination_vertex = m_vertex.value();
+		const vertex_t destination_vertex = m_vertex.pipeline_value();
 
 		// Keep track of replaced points
 		detail::point_map_t point_map;
@@ -516,10 +516,10 @@ public:
 		return 0;
 	}
 
-	void on_create_mesh(const k3d::legacy::mesh& InputMesh, k3d::legacy::mesh& Mesh)
+	void on_initialize_mesh(const k3d::legacy::mesh& InputMesh, k3d::legacy::mesh& Mesh)
 	{
 		k3d::legacy::deep_copy(InputMesh, Mesh);
-		k3d::replace_selection(m_mesh_selection.value(), Mesh);
+		k3d::replace_selection(m_mesh_selection.pipeline_value(), Mesh);
 
 		// Change face selection to an edge selection, then apply CollapseEdges
 		for(k3d::legacy::mesh::polyhedra_t::iterator polyhedron = Mesh.polyhedra.begin(); polyhedron != Mesh.polyhedra.end(); ++polyhedron)

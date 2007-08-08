@@ -22,7 +22,7 @@
 */
 
 #include <k3dsdk/document_plugin_factory.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/basic_math.h>
 #include <k3dsdk/measurement.h>
 #include <k3dsdk/legacy_mesh_modifier.h>
@@ -62,10 +62,10 @@ public:
 		return 0;
 	}
 
-	void on_create_mesh(const k3d::legacy::mesh& InputMesh, k3d::legacy::mesh& Mesh)
+	void on_initialize_mesh(const k3d::legacy::mesh& InputMesh, k3d::legacy::mesh& Mesh)
 	{
 		k3d::legacy::deep_copy(InputMesh, Mesh);
-		k3d::replace_selection(m_mesh_selection.value(), Mesh);
+		k3d::replace_selection(m_mesh_selection.pipeline_value(), Mesh);
 
 		// For each polyhedron ...
 		for(k3d::legacy::mesh::polyhedra_t::iterator polyhedron = Mesh.polyhedra.begin(); polyhedron != Mesh.polyhedra.end(); ++polyhedron)
@@ -73,8 +73,8 @@ public:
 			if(!(*polyhedron)->faces.size())
 				continue;
 
-			const bool cap_polyhedra = m_cap_polyhedra.value();
-			const bool cap_faces = m_cap_faces.value();
+			const bool cap_polyhedra = m_cap_polyhedra.pipeline_value();
+			const bool cap_faces = m_cap_faces.pipeline_value();
 
 			k3d::imaterial* material = (*polyhedron)->faces.front()->material;
 

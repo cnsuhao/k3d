@@ -23,7 +23,7 @@
 
 #include <k3dsdk/classes.h>
 #include <k3dsdk/document_plugin_factory.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/node.h>
 #include <k3dsdk/persistent.h>
 #include <k3dsdk/property.h>
@@ -66,12 +66,12 @@ public:
 			return;
 
 		// If the user hasn't selected a shader, we're done ...
-		k3d::ri::ilight_shader* const shader = m_shader.value();
+		k3d::ri::ilight_shader* const shader = m_shader.pipeline_value();
 		if(!shader)
 			return;
 
 		// If the user hasn't selected some geometry, we're done ...
-		k3d::ri::irenderable* const geometry = m_geometry.value();
+		k3d::ri::irenderable* const geometry = m_geometry.pipeline_value();
 		if(!geometry)
 			return;
 

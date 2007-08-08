@@ -25,7 +25,7 @@
 #include <k3dsdk/algebra.h>
 #include <k3dsdk/axis.h>
 #include <k3dsdk/document_plugin_factory.h>
-#include <k3dsdk/i18n.h>
+#include <k3d-i18n-config.h>
 #include <k3dsdk/measurement.h>
 #include <k3dsdk/mesh_simple_deformation_modifier.h>
 
@@ -61,11 +61,11 @@ public:
 	{
 		const k3d::bounding_box3 bounds = k3d::bounds(InputPoints);
 
-		const k3d::axis axis = m_axis.value();
-		const double taper_factor = m_taper_factor.value();
-		const bool displace_x = m_displace_x.value();
-		const bool displace_y = m_displace_y.value();
-		const bool displace_z = m_displace_z.value();
+		const k3d::axis axis = m_axis.pipeline_value();
+		const double taper_factor = m_taper_factor.pipeline_value();
+		const bool displace_x = m_displace_x.pipeline_value();
+		const bool displace_y = m_displace_y.pipeline_value();
+		const bool displace_z = m_displace_z.pipeline_value();
 
 		double size = 0.0;
 		switch(axis)
