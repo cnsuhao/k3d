@@ -149,13 +149,21 @@ namespace libk3dquadremesh
 			pgp.solve();
 			base_t::document().pipeline_profiler().finish_execution(*this, "PGP solve");
 
+			base_t::document().pipeline_profiler().start_execution(*this, "PGP optimize");
+			pgp.optimize(m_omega.pipeline_value());
+			base_t::document().pipeline_profiler().finish_execution(*this, "PGP omptimize");
+
 			base_t::document().pipeline_profiler().start_execution(*this, "PGP extract");
-			pgp.extract(m_omega.pipeline_value(), m_divides.pipeline_value());
+			pgp.extract2(m_divides.pipeline_value(), OutputMesh);
 			base_t::document().pipeline_profiler().finish_execution(*this, "PGP extract");
 
-			base_t::document().pipeline_profiler().start_execution(*this, "PGP remesh");
-			pgp.remesh(OutputMesh);
-			base_t::document().pipeline_profiler().finish_execution(*this, "PGP remesh");
+			//base_t::document().pipeline_profiler().start_execution(*this, "PGP extract");
+			//pgp.extract(m_divides.pipeline_value());
+			//base_t::document().pipeline_profiler().finish_execution(*this, "PGP extract");
+			//
+			//base_t::document().pipeline_profiler().start_execution(*this, "PGP remesh");
+			//pgp.remesh(OutputMesh);
+			//base_t::document().pipeline_profiler().finish_execution(*this, "PGP remesh");
 
 			// If our output isn't valid, bail-out ...
 			if(!k3d::validate(OutputMesh))

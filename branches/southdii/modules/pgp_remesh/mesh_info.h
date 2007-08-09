@@ -97,6 +97,10 @@ namespace detail {
 			edge_vert.resize(num_edges);
 			vert_edge_cw.resize(num_verts);
 			// face->edge is missing
+			for(size_t f = 0; f < num_faces; ++f) {
+				face_edge[f] = mesh->polyhedra->loop_first_edges->at(mesh->polyhedra->face_first_loops->at(f));
+			}
+
 			calc_edge_face_adj(*mesh->polyhedra, edge_face);
 			calc_edge_ccw_adj(*mesh->polyhedra, edge_ccw);
 			calc_edge_companion_adj(*mesh->polyhedra, edge_comp);

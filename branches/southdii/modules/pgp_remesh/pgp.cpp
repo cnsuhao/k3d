@@ -535,8 +535,8 @@ namespace detail {
 
 	}
 
-	void PGP::extract(double omega, int divisions) 
-	{
+
+	void PGP::optimize(double omega) {
 		std::vector<double> UV(4);
 		std::vector<double> M_UV(4);
 		for(face_t f = 0; f < mesh->num_faces; ++f) {
@@ -598,22 +598,275 @@ namespace detail {
 				pf.phi[j] -= k3d::pi_times_2()*t;
 			}
 		}
+	}
 	
-		double trans = k3d::pi_times_2()/(double)divisions;
+	void PGP::validate(std::vector<new_edge2>& edges, std::vector<new_face2>& faces, std::vector<new_vert2>& verts, std::vector<fake_edge>& fakes) {
+		for(edge_t e = 0; e < edges.size(); e++) {
+			return_if_fail(edges[e].vert != 0xffffffff);			
+			return_if_fail(edges[e].face != 0xffffffff);			
+			return_if_fail(edges[e].next != 0xffffffff);
+			return_if_fail(edges[e].comp  >= -1);
+			return_if_fail(edges[e].index >= 0);
+		}
+		for(face_t f = 0; f < faces.size(); f++) {
+			return_if_fail(faces[f].edge != 0xffffffff);
+			return_if_fail(faces[f].index >= 0);
+			edge_t e = faces[f].edge;
+			int c = 0;
+			do {
+				c++;
+				e = edges[e].next;
+				return_if_fail(c <= edges.size());
+			} while(e != faces[f].edge);
+		}
+		for(vert_t v = 0; v < verts.size(); v++) {
+			return_if_fail(verts[v].edge != 0xffffffff);
+			return_if_fail(verts[v].index >= 0);
+		}
+	}
+
+	void PGP::print(std::vector<new_edge2>& edges, std::vector<new_face2>& faces, std::vector<new_vert2>& verts, std::vector<fake_edge>& fakes) {
+		for(edge_t e = 0; e < edges.size(); e++) {
+			std::cout << "e " << e << '(' << edges[e].index << ", " << edges[e].next << ", " << edges[e].comp << ", " << edges[e].face << ", " << edges[e].vert <<')' << std::endl;
+		}
+		for(face_t f = 0; f < faces.size(); f++) {
+			std::cout << "f " << f << '(' << faces[f].index << ", " << faces[f].edge << ')' << std::endl;
+		}
+		for(vert_t v = 0; v < verts.size(); v++) {
+			std::cout << "v " << v << '(' << verts[v].index << ", " << verts[v].edge << ')' << std::endl;
+		}
+		for(edge_t e = 0; e < fakes.size(); e++) {
+			std::cout << "fake " << e << '(' << fakes[e].index << ", " << fakes[e].next << ", " << fakes[e].comp << ", " << fakes[e].edge << ')' << std::endl;		
+		}
+	}	
+	void PGP::split_tri(face_t f, int i, double X, std::vector<new_edge2>& edges, std::vector<new_face2>& faces, std::vector<new_vert2>& verts, std::vector<fake_edge>& fakes){
+		edge_t fe = faces[f].edge;
+		do {
+			new_edge2& e = edges[fakes[fe].comp];
+			new_edge2& en = edges[fakes[fakes[fe].next].comp];
+			double x0 = get(e.param, i);
+			double x1 = get(en.param, i);
+			if(x0 <= X && X < x1) {
 				
-		for(face_t f = 0; f < mesh->num_faces; f++) {
+				double alpha = (X - x0)/(x1 - x0);
+//				std::cout << alpha << std::endl;
+				fake_edge nfe(fakes.size());
+				new_vert2 nv(verts.size());
+				new_edge2 ne(edges.size(), e.next, -1, e.face, nv.index, nfe.index);
+
+				e.next = ne.index;
+				nv.edge = ne.index;
+				
+				nfe.comp = ne.index;
+				return_if_fail(fe != -1);
+				nfe.next = fakes[fe].next;
+				nfe.edge = fakes[fe].edge;
+				fakes[fe].next = nfe.index;
+
+				ne.local = e.local + alpha*(en.local - e.local);
+				ne.param = e.param + alpha*(en.param - e.param);
+
+				nv.world = verts[en.vert].world;
+				nv.world -= verts[e.vert].world;
+				nv.world *= alpha;
+				nv.world += verts[e.vert].world;
+
+				fakes.push_back(nfe);
+				verts.push_back(nv);
+				edges.push_back(ne);
+
+				return;
+			}
+			fe = fakes[fe].next;
+		
+		} while( fe != faces[f].edge );
+		
+		return;
+	}
+
+	void PGP::extract2(int divisions, k3d::mesh& OutputMesh) 
+	{
+		std::vector<new_edge2> edges(mesh->num_edges);
+		std::vector<fake_edge> fakes(mesh->num_edges);
+		std::vector<new_face2> faces(mesh->num_faces);
+		std::vector<new_vert2> verts(mesh->num_verts);
+
+std::cout << 'a' << std::flush;
+		for(edge_t e = 0; e < mesh->num_edges; ++e) {
+			edges[e] = new_edge2(e, mesh->edge_ccw[e], -1, mesh->edge_face[e], mesh->edge_vert[e], e);
+			fakes[e] = fake_edge(e, mesh->edge_ccw[e], e, e);
+		}
+
+std::cout << 'b' << std::flush;
+		for(face_t f = 0; f < mesh->num_faces; ++f) {
+			faces[f] = new_face2(f, mesh->face_edge[f]);
+			edges[face_data[f].edge[0]].param = vec2(face_data[f].theta[1], face_data[f].phi[1]);
+			edges[face_data[f].edge[1]].param = vec2(face_data[f].theta[1], face_data[f].phi[2]);
+			edges[face_data[f].edge[2]].param = vec2(face_data[f].theta[1], face_data[f].phi[0]);
+			edges[face_data[f].edge[0]].local = face_data[f].v[1];
+			edges[face_data[f].edge[0]].local = face_data[f].v[2];
+			edges[face_data[f].edge[0]].local = face_data[f].v[0];
+		}
+
+std::cout << 'c' << std::flush;
+		for(vert_t v = 0; v < mesh->num_verts; ++v) {
+			verts[v] = new_vert2(v, mesh->vert_edge[v]);
+			verts[v].world = mesh->getVert(v).pos();
+		}
+		
+		// check validity
+
+		double trans = k3d::pi_times_2()/(double)divisions;
+		//validate(edges, faces, verts, fakes);
+
+		//print(edges, faces, verts, fakes);
+std::cout << 'd' << std::endl;
+		for(face_t f = 0; f < mesh->num_faces; ++f) {
+//std::cout << '(' << f << ')' << std::flush;
+//std::cout << '0' << std::flush;
 			per_face &pf = face_data[f];
 			double max_t = std::max(pf.theta[0], std::max(pf.theta[1], pf.theta[2]));
 			double max_p = std::max(pf.phi[0],   std::max(pf.phi[1], pf.phi[2]));
 			double min_t = std::min(pf.theta[0], std::min(pf.theta[1], pf.theta[2]));
 			double min_p = std::min(pf.phi[0],   std::min(pf.phi[1], pf.phi[2]));
+			int s0 = (int)(min_t/trans);// - 2;
+			int s1 = (int)(max_t/trans);// + 2;
+			int t0 = (int)(min_p/trans);// - 2;
+			int t1 = (int)(max_p/trans);// + 2;
+//std::cout << '1' << std::flush;
+
+			for(int s = s0; s <= s1; ++s) {
+				split_tri(f, 0, trans*((double)s), edges, faces, verts, fakes);
+//				validate(edges, faces, verts, fakes);
+			}
+//std::cout << '2' << std::flush;
+			for(int t = t0; t <= t1; ++t) {
+				split_tri(f, 1, trans*((double)t), edges, faces, verts, fakes);
+//				validate(edges, faces, verts, fakes);
+			}
+//std::cout << '3' << std::flush;
+		}
+//		print(edges, faces, verts, fakes);
+std::cout << '1' << std::flush;
+		validate(edges, faces, verts, fakes);
+
+std::cout << 'e' << std::flush;
+		k3d::mesh::polyhedra_t* poly = new k3d::mesh::polyhedra_t();
+		k3d::mesh::selection_t* points_sel = new k3d::mesh::selection_t();
+		k3d::mesh::point_groups_t* points_group = new k3d::mesh::point_groups_t();
+		k3d::mesh::points_t* points = new k3d::mesh::points_t();
+		k3d::mesh::indices_t* clockwise_edges = new k3d::mesh::indices_t();
+		k3d::mesh::indices_t* edge_points = new k3d::mesh::indices_t();
+		k3d::mesh::selection_t* edge_selection = new k3d::mesh::selection_t();
+		k3d::mesh::counts_t* face_counts = new k3d::mesh::counts_t();
+		k3d::mesh::indices_t* face_first_loops = new k3d::mesh::indices_t();
+		k3d::mesh::counts_t* face_loop_counts = new k3d::mesh::counts_t();
+		k3d::mesh::materials_t* face_materials = new k3d::mesh::materials_t();
+		k3d::mesh::selection_t* face_selection = new k3d::mesh::selection_t();
+		k3d::mesh::indices_t* first_faces = new k3d::mesh::indices_t();
+		k3d::mesh::indices_t* loop_first_edges = new k3d::mesh::indices_t();
+		k3d::mesh::polyhedra_t::types_t* types = new k3d::mesh::polyhedra_t::types_t();
+		
+		points->resize(verts.size());
+		points_sel->resize(verts.size(), 0.0);
+		std::cout << "size = " << verts.size() << std::endl;
+		for(size_t i = 0; i < points->size(); ++i) {
+			points->at(i)[0] = verts[i].world[0];
+			points->at(i)[1] = verts[i].world[1];
+			points->at(i)[2] = verts[i].world[2];
+		}
+std::cout << 'f' << std::flush;
+
+		edge_selection->resize(edges.size(), 0.0);
+		face_counts->push_back(faces.size());
+		face_first_loops->resize(faces.size());
+		face_loop_counts->resize(faces.size(), 1);
+		face_materials->resize(faces.size(), 0);
+		face_selection->resize(faces.size(), 0.0);
+		first_faces->push_back(0);
+		loop_first_edges->resize(edges.size());
+		types->push_back(k3d::mesh::polyhedra_t::POLYGONS);
+
+		edge_points->resize(edges.size());
+		for(size_t i = 0; i < edge_points->size(); ++i) {
+			edge_points->at(i) = edges[edges[i].next].vert;
+			face_first_loops->at(edges[i].face) = i;
+			loop_first_edges->at(i) = i;
+		}
+std::cout << 'g' << std::flush;
+
+		clockwise_edges->resize(edges.size());
+		for(size_t i = 0; i < clockwise_edges->size(); ++i) {
+			clockwise_edges->at(edges[i].next) = i;
+		}
+std::cout << 'h' << std::flush;
+
+		k3d::mesh::point_groups_t* pg = new k3d::mesh::point_groups_t();
+		k3d::mesh::indices_t* pg_first = new k3d::mesh::indices_t();
+		k3d::mesh::materials_t* pg_mat = new k3d::mesh::materials_t();
+		k3d::mesh::indices_t* pg_points = new k3d::mesh::indices_t();
+		k3d::mesh::counts_t* pg_counts = new k3d::mesh::indices_t();
+		pg->first_points =  boost::shared_ptr<k3d::mesh::indices_t>(pg_first);
+		pg->materials =  boost::shared_ptr<k3d::mesh::materials_t>(pg_mat);		
+		pg->point_counts =  boost::shared_ptr<k3d::mesh::counts_t>(pg_counts);
+		pg->points =  boost::shared_ptr<k3d::mesh::indices_t>(pg_points);
+		
+		OutputMesh.points = boost::shared_ptr<k3d::mesh::points_t>(points);
+		OutputMesh.polyhedra = boost::shared_ptr<k3d::mesh::polyhedra_t>(poly);
+		OutputMesh.point_selection = boost::shared_ptr<k3d::mesh::selection_t>(points_sel);
+		OutputMesh.point_groups = boost::shared_ptr<k3d::mesh::point_groups_t>(pg);
+
+		poly->clockwise_edges = boost::shared_ptr<k3d::mesh::indices_t>(clockwise_edges);
+		poly->edge_points = boost::shared_ptr<k3d::mesh::indices_t>(edge_points);
+		poly->edge_selection = boost::shared_ptr<k3d::mesh::selection_t>(edge_selection);
+		poly->face_counts = boost::shared_ptr<k3d::mesh::counts_t>(face_counts);
+		poly->face_first_loops = boost::shared_ptr<k3d::mesh::indices_t>(face_first_loops);
+		poly->face_loop_counts = boost::shared_ptr<k3d::mesh::counts_t>(face_loop_counts);
+		poly->face_materials = boost::shared_ptr<k3d::mesh::materials_t>(face_materials);
+		poly->face_selection = boost::shared_ptr<k3d::mesh::selection_t>(face_selection);
+		poly->first_faces = boost::shared_ptr<k3d::mesh::indices_t>(first_faces);
+		poly->loop_first_edges = boost::shared_ptr<k3d::mesh::indices_t>(loop_first_edges);
+		poly->types = boost::shared_ptr<k3d::mesh::polyhedra_t::types_t>(types);
+	}
+
+	void PGP::extract(int divisions) 
+	{
+		//std::vector<new_edge> edges;
+		//for(edge_t e = 0; e < mesh->num_edges; ++i) {
+		//	new_edge ne(e);
+		//	ne.comp = mesh->edge_comp[e];
+		//	ne.next = mesh->edge_ccw[e];
+		//	ne.v = mesh->edge_vert[e];
+		//	ne.start = pf
+		//	edges.push_back(ne);
+		//}
+		double trans = k3d::pi_times_2()/(double)divisions;
+				
+		for(face_t f = 0; f < mesh->num_faces; f++) {
+			per_face &pf = face_data[f];
+			
+			double a = pf.theta[1] - pf.theta[0];
+			double b = pf.phi[1] - pf.phi[0];
+			double c = pf.theta[2] - pf.theta[0];
+			double d = pf.phi[2] - pf.phi[0];
+
+			if(a*d - b*c == 0.0) {
+				std::cout << "singular triangle" << std::endl;	
+				continue;
+			}
+			double max_t = std::max(pf.theta[0], std::max(pf.theta[1], pf.theta[2]));
+			double max_p = std::max(pf.phi[0],   std::max(pf.phi[1], pf.phi[2]));
+			double min_t = std::min(pf.theta[0], std::min(pf.theta[1], pf.theta[2]));
+			double min_p = std::min(pf.phi[0],   std::min(pf.phi[1], pf.phi[2]));
+
+
 
 			int s0 = (int)(min_t/trans);// - 2;
 			int s1 = (int)(max_t/trans);// + 2;
 			int t0 = (int)(min_p/trans);// - 2;
 			int t1 = (int)(max_p/trans);// + 2;
 			std::vector<edge_t> edges1;
-			std::vector<edge_t> edges2;
+			//std::vector<edge_t> edges2;
 
 			for(int s = s0; s <= s1; ++s) {
 				int intersect = -1;
@@ -707,7 +960,7 @@ namespace detail {
 							e1.comp = e2.index;
 							e2.comp = e1.index;
 
-							edges2.push_back(e1.index);
+							edges1.push_back(e1.index);
 
 							e1.v = -1;
 							e2.v = -1;
@@ -749,17 +1002,20 @@ namespace detail {
 				}
 			}
 			int inter = 0;
-			if(edges1.size() > 1 || edges2.size() > 1)
-				std::cout << "What_" << edges1.size() << " " << edges2.size() << std::endl;
+			if(edges1.size() > 2 || edges1.size() > 2)
+				std::cout << "What_" << edges1.size() << " " << edges1.size() << std::endl;
 			for(edge_t p = 0; p < edges1.size(); ++p) {
-				for(edge_t q = 0; q < edges2.size(); ++q) {
-					if(new_edges[edges1[p]].v > 0 && new_edges[edges2[q]].v == new_edges[edges1[p]].v)
-						continue;
-					//std::cout << "!(" << p << ", " << q << ") ";
+				for(edge_t q = p+1; q < edges1.size(); ++q) {
 					new_edge& p0 = new_edges[edges1[p]];
 					new_edge& p1 = new_edges[p0.comp];
-					new_edge& q0 = new_edges[edges2[q]];
-					new_edge& q1 = new_edges[q0.comp];
+					new_edge& q0 = new_edges[edges1[q]];
+					new_edge& q1 = new_edges[q0.comp];						
+					if(p1.v >= 0 && (p1.v == q1.v || p1.v == q0.v)) 
+						continue;
+					if(p0.v >= 0 && (p0.v == q0.v || p0.v == q1.v )) 
+						continue;
+					//std::cout << "!(" << p << ", " << q << ") ";
+
 					//std::cout << "p0 = (" << p0.start.first << ", " << p0.start.second << ") ";
 					//std::cout << "p1 = (" << p1.start.first << ", " << p1.start.second << ") ";
 					//std::cout << "q0 = (" << q0.start.first << ", " << q0.start.second << ") ";
@@ -782,7 +1038,7 @@ namespace detail {
 					double alpha = ((x4-x3)*(y1-y3) - (y4-y3)*(x1-x3))/det;
 					double beta  = ((x2-x1)*(y1-y3) - (y2-y1)*(x1-x3))/det;
 //					std::cout << "(" << alpha << ", " << beta << ") " << std::endl;
-						if(0 < alpha && alpha < 1.0  &&  0 < beta && beta < 1.0) {
+					if(0 <= alpha && alpha <= 1.0  &&  0 <= beta && beta <= 1.0) {
 						new_edge& A = p0;
 						new_edge& B = p1;
 						new_edge& C = q0;
@@ -793,8 +1049,8 @@ namespace detail {
 						new_edge _D(new_edges.size()+3);
 						new_vert V;
 						inter++;
-						//edges1.push_back(_C.index);
-						//edges1.push_back(_D.index);
+						edges1.push_back(B.index);
+						edges1.push_back(D.index);
 
 						V.local = (p0.start + alpha*(p1.start - p0.start));
 						//std::cout << "!(" << V.local.first << ", " << V.local.second << ") ";
@@ -983,9 +1239,9 @@ std::cout << "fix indices2\n" << std::flush;
 					en = e;
 					c = 0;
 				}
-				if(c != 4) std::cout << f << "-" << c << "----------\n";
+				if(c == 0) std::cout << f << "-" << c << "----------\n";
 				while(new_edges[en].face < 0) {
-					if(c != 4) std::cout << "(" << en << "|" << new_edges[en].comp << ")->" << new_edges[en].next << " (" << new_edges[en].v << ")" << std::endl;
+					if(c == 0) std::cout << "(" << en << "|" << new_edges[en].comp << ")->" << new_edges[en].next << " (" << new_edges[en].v << ")" << std::endl;
 					new_edges[en].face = f;
 
 					en = new_edges[en].next;
@@ -1002,6 +1258,7 @@ std::cout << "remesh\n" << std::flush;
 		k3d::mesh::polyhedra_t* poly = new k3d::mesh::polyhedra_t();
 		
 		k3d::mesh::points_t* points = new k3d::mesh::points_t();
+		k3d::mesh::selection_t* points_sel = new k3d::mesh::selection_t();
 		k3d::mesh::indices_t* clockwise_edges = new k3d::mesh::indices_t();
 		k3d::mesh::indices_t* edge_points = new k3d::mesh::indices_t();
 		k3d::mesh::selection_t* edge_selection = new k3d::mesh::selection_t();
@@ -1014,7 +1271,7 @@ std::cout << "remesh\n" << std::flush;
 		k3d::mesh::indices_t* loop_first_edges = new k3d::mesh::indices_t();
 		k3d::mesh::polyhedra_t::types_t* types = new k3d::mesh::polyhedra_t::types_t();
 
-		
+		points->resize(new_verts.size());
 		points->resize(new_verts.size());
 		std::cout << "size = " << new_verts.size() << std::endl;
 		for(size_t i = 0; i < points->size(); ++i) {
@@ -1077,6 +1334,20 @@ std::cout << "remesh\n" << std::flush;
 		}
 		std::cout << "c" << std::flush;
 
+		k3d::mesh::point_groups_t* pg = new k3d::mesh::point_groups_t();
+		k3d::mesh::indices_t* pg_first = new k3d::mesh::indices_t();
+		k3d::mesh::materials_t* pg_mat = new k3d::mesh::materials_t();
+		k3d::mesh::indices_t* pg_points = new k3d::mesh::indices_t();
+		k3d::mesh::counts_t* pg_counts = new k3d::mesh::indices_t();
+		pg->first_points =  boost::shared_ptr<k3d::mesh::indices_t>(pg_first);
+		pg->materials =  boost::shared_ptr<k3d::mesh::materials_t>(pg_mat);		
+		pg->point_counts =  boost::shared_ptr<k3d::mesh::counts_t>(pg_counts);
+		pg->points = boost::shared_ptr<k3d::mesh::indices_t>(pg_points);
+		
+		OutputMesh.points = boost::shared_ptr<k3d::mesh::points_t>(points);
+		OutputMesh.polyhedra = boost::shared_ptr<k3d::mesh::polyhedra_t>(poly);
+		OutputMesh.point_selection = boost::shared_ptr<k3d::mesh::selection_t>(points_sel);
+		OutputMesh.point_groups = boost::shared_ptr<k3d::mesh::point_groups_t>(pg);
 		OutputMesh.points = boost::shared_ptr<k3d::mesh::points_t>(points);
 		OutputMesh.polyhedra = boost::shared_ptr<k3d::mesh::polyhedra_t>(poly);
 		
