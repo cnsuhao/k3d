@@ -36,6 +36,7 @@
 #include <k3dsdk/persistent.h>
 #include <k3dsdk/utility.h>
 #include <k3dsdk/color.h>
+#include <k3dsdk/result.h>
 #include <iostream>
 #include <fstream>
 #include <map>
@@ -55,6 +56,16 @@ namespace detail {
 	inline vec2 operator+(const vec2& a, const vec2& b) {
 		return vec2(a.first+b.first, a.second+b.second);
 	}
+	
+
+
+	inline double& get(vec2& v, const int a) {
+		switch(a) {
+			case 0: return v.first;
+			default: return v.second;
+		}
+	}
+
 	inline vec2 operator-(const vec2& a, const vec2& b) {
 		return vec2(a.first-b.first, a.second-b.second);
 	}
@@ -101,8 +112,9 @@ namespace detail {
 		void curl_correction() ;
 		void setup(double omega);
 		void solve();
-
-		void extract(double omega, int divisions = 1);
+		void optimize(double omega);
+		void extract(int divisions = 1);
+		void extract2(int divisions, k3d::mesh& OutputMesh);
 
 		void remesh(k3d::mesh& OutputMesh);
 
@@ -147,16 +159,107 @@ namespace detail {
 			int v;  // -1 implies starts at non existant vertex
 			int next; // -2 implies pointing at triangle edge
 			edge_t comp; // companion edge
+
 			vec2 start; // local start of vertex
 			Vec3 world;
 			int face;
 		};
 
+		struct new_edge2 {
+			new_edge2(int i = -1, edge_t n = 0xffffffff, int c = -1, face_t f = 0xffffffff, vert_t v = 0xffffffff, int _fake = -1) 
+				: index(i), next(n), comp(c), face(f), vert(v), fake(_fake)  {}
+			
+			bool test() {
+				if(next == 0xffffffff || comp < -1 || face == 0xffffffff || index < 0 || vert == 0xffffffff) {
+					std::cout << '(' << index << ", " << next << ", " << comp << ", " << face << ", " << vert <<')' << std::endl;
+					return false;
+				}
+				return true;
+			}
+			int index;
+
+			int comp; // -1 if boundary
+			edge_t next;
+
+			face_t face;
+			vert_t vert;
+
+			vec2 local;
+			vec2 param;
+
+			int fake;
+		};
+
+		struct fake_edge {
+			fake_edge(int i = -1, edge_t n = 0xffffffff, edge_t c = 0xffffffff, edge_t e = 0xffffffff) 
+				: index(i), next(n), comp(c), edge(e)  {}
+
+			bool test() {
+				if(next == 0xffffffff || comp == 0xffffffff || edge == 0xffffffff || index < 0) {
+					std::cout << '(' << index << ", " << next << ", " << comp << ", " << edge << ')' << std::endl;
+					return false;
+				}
+				return true;
+			}
+			int index;
+			edge_t next; // next fake edge
+			edge_t comp; // companion real edge
+			edge_t edge; // original edge part of
+		};
+
+		struct new_vert2 {
+			new_vert2(int i = -1, edge_t e = 0xffffffff) 
+				: index(i), edge(e) {}
+			bool test() {
+				if(edge == 0xffffffff || index < 0) {
+					std::cout << '(' << index << ", " << edge << ')' << std::endl;
+					return false;
+				}
+				return true;
+			}
+			int index;
+			Vec3 world;
+			edge_t edge;
+		};
+
+		struct new_face2 {
+			new_face2(int i = -1, edge_t e = 0xffffffff) 
+				: index(i), edge(e) {}
+			bool test() {
+				if(edge == 0xffffffff || index < 0) {
+					std::cout << '(' << index << ", " << edge << ')' << std::endl;
+					return false;
+				}
+				return true;
+			}
+
+			int index;
+			edge_t edge;
+		};
+
 		struct new_vert {
-			new_vert() {}
+			//new_vert(int i, bool k) : index(i), keep(k) {}
 			Vec3 world;
 			vec2 local;
+			//----------
+			//int index;
+			//bool keep;
 		};
+
+		void validate(std::vector<new_edge2>& edges, 
+						std::vector<new_face2>& faces, 
+						std::vector<new_vert2>& verts, 
+						std::vector<fake_edge>& fakes);
+		void print(std::vector<new_edge2>& edges, 
+						std::vector<new_face2>& faces, 
+						std::vector<new_vert2>& verts, 
+						std::vector<fake_edge>& fakes);
+
+		void split_tri(face_t f, int i, double X, 
+						std::vector<new_edge2>& edges, 
+						std::vector<new_face2>& faces, 
+						std::vector<new_vert2>& verts, 
+						std::vector<fake_edge>& fakes);
 
 		int num_faces;
 		std::vector<per_face> face_data;
