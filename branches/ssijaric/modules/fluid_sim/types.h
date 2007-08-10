@@ -7,26 +7,30 @@ using std::vector;
 
 namespace fluid_sim
 {
-
-class array3d_f : public vector<float>
+template<class T>
+class array3d : public vector<T>
 {
 public:
-	array3d_f(int xcomps, int ycomps, int zcomps) :
-		vector<float>(xcomps*ycomps*zcomps),
+	array3d(int xcomps, int ycomps, int zcomps) :
+		vector<T>(xcomps*ycomps*zcomps),
 		m_xcomps(xcomps), m_ycomps(ycomps), m_zcomps(zcomps)
 	{
 
 	}
 
-	float operator() (int i, int j, int k) const {
+	T operator() (int i, int j, int k) const {
 		return (*this)[k*m_xcomps*m_zcomps + m_xcomps*i + j];
 	}
 	
 
 
-	float& operator() (int i, int j, int k) {
+	T& operator() (int i, int j, int k) {
 		return (*this)[k*m_xcomps*m_zcomps + m_xcomps*i + j];
 	}
+
+	int xcomps() { return m_xcomps; }
+	int ycomps() { return m_ycomps; }
+	int zcomps() { return m_zcomps; }
 
 
 private:

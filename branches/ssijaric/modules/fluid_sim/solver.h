@@ -29,21 +29,23 @@ public:
 	static k3d::iplugin_factory& get_factory();
 
 protected:
-
+	typedef gmm::row_matrix< gmm::wsvector<float> > sparse_matrix;
 	k3d_data(voxel_grid*, immutable_name, change_signal, no_undo, node_storage, no_constraint, node_property, no_serialization) m_voxel_grid;
 	k3d_data(float, immutable_name, change_signal, with_undo, local_storage, no_constraint, read_only_property, no_serialization) m_timestep;
 	k3d_data(int, immutable_name, change_signal, with_undo, local_storage, no_constraint, read_only_property, no_serialization) m_steps;
 	k3d_data(float, immutable_name, change_signal, with_undo, local_storage, no_constraint, read_only_property, no_serialization) m_viscosity;
 
 
-	int m_xcomps, m_ycomps, m_zcomps; // get from the voxel_grid
+	int m_xfaces, m_yfaces, m_zfaces; // get from the voxel_grid
+	int m_xvox, m_yvox, m_zvox;
 	float m_vox_width;
 
 
 	sigc::slot<void, iunknown*> start_solver_slot();
 
-	void diffuse(array3d_f& new_field, const array3d_f& old_field);
-	void add_force(array3d_f& field, const array3d_f& forces);
+	void diffuse(array3d<float>& new_field, const array3d<float>& old_field);
+	void project(voxel_grid& new_grid, const voxel_grid& old_grid);
+	void add_force(array3d<float>& field, const array3d<float>& forces);
 
 
 };

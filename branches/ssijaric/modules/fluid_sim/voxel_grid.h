@@ -41,7 +41,19 @@ public:
 	float py() { return m_py.value(); }
 	float pz() { return m_pz.value(); }
 
-	int number_of_voxels() { return (m_xcomps-1) * (m_ycomps-1) * (m_zcomps-1); }
+	int number_of_voxels() const { return (m_xcomps-1) * (m_ycomps-1) * (m_zcomps-1); }
+
+	int xvoxels() const { return m_xcomps-1; }
+	int yvoxels() const { return m_ycomps-1; }
+	int zvoxels() const { return m_zcomps-1; }
+
+	int xfaces() const { return m_xcomps; }
+	int yfaces() const { return m_ycomps; }
+	int zfaces() const { return m_zcomps; }
+
+	float vx(int i, int j, int k) const { return (*m_grid_vx)(i,j,k); }
+	float vy(int i, int j, int k) const { return (*m_grid_vy)(i,j,k); }
+	float vz(int i, int j, int k) const { return (*m_grid_vz)(i,j,k); }
 
 	// interpolate different velocity components
 	float interpolate_vx(const k3d::point3& pos);
@@ -53,6 +65,15 @@ public:
 	float interpolate_vz(float x, float y, float z);
 
 	float voxel_width() { return m_vox_width.value(); }
+
+	enum voxel_type {
+		FLUID,
+		OBSTACLE,
+		AIR
+	};
+
+	bool is_solid(int i, int j, int k) const { return ((*m_vox_type)(i,j,k) == OBSTACLE) ? true : false; }
+	float& pressure(int i, int j, int k) { return (*m_pressure)(i,j,k); }
 
 private:
 	// many of the properties will be removed - only voxel width will be modifiable by the user
@@ -85,14 +106,18 @@ private:
 	float m_vox_width_y;
 	float m_vox_width_z;
 
+	
+
 	k3d::vector3 m_norigin; // <nx, ny, nz>
 	k3d::vector3 m_porigin; // <px, py, pz>
 
-	array3d_f* m_grid_vx;
-	array3d_f* m_grid_vy;
-	array3d_f* m_grid_vz;
+	array3d<float>* m_grid_vx;
+	array3d<float>* m_grid_vy;
+	array3d<float>* m_grid_vz;
 
-	array3d_f* m_density;
+	array3d<float>* m_density;
+	array3d<float>* m_pressure;
+	array3d<voxel_type>* m_vox_type;
 
 	float m_visc;
 
