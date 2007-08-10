@@ -42,15 +42,17 @@ namespace fluid_sim
 		m_porigin[1] = m_py.value();
 		m_porigin[2] = m_pz.value();
 
-	
+
+		// number of faces in each direction
 		m_xcomps = m_cols.value() + 1;
 		m_ycomps = m_slices.value() + 1 ;
 		m_zcomps = m_rows.value() + 1;
 
-		m_grid_vx = new array3d_f(m_xcomps, m_ycomps, m_zcomps);
-		m_grid_vy = new array3d_f(m_xcomps, m_ycomps, m_zcomps);
-		m_grid_vz = new array3d_f(m_xcomps, m_ycomps, m_zcomps);
-		m_density = new array3d_f(m_xcomps-1, m_ycomps-1, m_zcomps-1);
+		m_grid_vx = new array3d<float>(m_xcomps, m_ycomps, m_zcomps);
+		m_grid_vy = new array3d<float>(m_xcomps, m_ycomps, m_zcomps);
+		m_grid_vz = new array3d<float>(m_xcomps, m_ycomps, m_zcomps);
+		m_density = new array3d<float>(m_xcomps-1, m_ycomps-1, m_zcomps-1);
+		m_vox_type = new array3d<voxel_type>(m_xcomps-1,m_ycomps-1,m_zcomps-1);
 
 		
 	}
