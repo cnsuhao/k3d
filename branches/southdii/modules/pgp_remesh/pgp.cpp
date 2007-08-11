@@ -638,17 +638,243 @@ namespace detail {
 		for(edge_t e = 0; e < fakes.size(); e++) {
 			std::cout << "fake " << e << '(' << fakes[e].index << ", " << fakes[e].next << ", " << fakes[e].comp << ", " << fakes[e].edge << ')' << std::endl;		
 		}
-	}	
-	void PGP::split_tri(face_t f, int i, double X, std::vector<new_edge2>& edges, std::vector<new_face2>& faces, std::vector<new_vert2>& verts, std::vector<fake_edge>& fakes){
-		edge_t fe = faces[f].edge;
+	}
+
+	int PGP::split(edge_t edge_start, int i, double X, std::vector<new_edge2>& edges, std::vector<new_face2>& faces, std::vector<new_vert2>& verts, std::vector<fake_edge>& fakes){
+		new_face2 nf(faces.size(), 0);
+		edge_t edge = edge_start;
+		new_face2& f = faces[edges[edge].face];
+		bool found = false;
+		edge_t edge_stop = edge_start;
+		edge_t ne_1 = edges.size();
+		edge_t ne_2 = edges.size()+1;
+		int ret = -1;
+//		std::cout << std::endl << std::endl << i << " - " << X << std::endl;
+		//do {
+		//	edges[edge].operator <<(std::cout);
+		//	edge = edges[edge].next;
+		//} while( edge != edge_start );		
+		edge = edges[edge].next;
+
 		do {
+			new_edge2& e = edges[edge];
+			new_edge2& en = edges[e.next];
+			if(!found) {
+//				std::cout << ' ' << edge << ' ' <<std::flush;
+				
+				double x0 = get(e.param, i);
+				double x1 = get(en.param, i);
+				if(x0 == X) { // Unlikely case, but should check for it
+					std::cout << "!!! ";
+					return -1;
+				}
+				else if((x0 < X && X < x1) || (x1 < X && X < x0) ) {
+					found = true;
+					double alpha = (X - x0)/(x1 - x0);
+					new_vert2 _v(verts.size(), ne_1);
+					
+					vec2 local = e.local + alpha*(en.local - e.local);
+					vec2 param = e.param + alpha*(en.param - e.param);
+					get(param, i) = X;
+
+					_v.world = verts[en.vert].world;
+					_v.world -= verts[e.vert].world;
+					_v.world *= alpha;
+					_v.world += verts[e.vert].world;
+
+					verts.push_back(_v);
+
+					if(e.comp >= 0) {
+//						std::cout << 'a' <<std::flush;
+						new_edge2& ec = edges[e.comp];
+						new_edge2 _e(ne_2+1), _en(ne_1), _enc(ne_2), _ec(ne_2+2);
+
+						_e.next = e.next;
+						_e.comp = ec.index;
+						_e.face = nf.index;
+						_e.vert = _v.index;
+						_e.local = local;
+						_e.param = param;
+						nf.edge = _e.index;
+
+						e.next = _en.index;
+						e.comp = _ec.index;
+						e.face = f.index;
+						f.edge = e.index;
+						
+						_ec.next = ec.next;
+						_ec.comp = e.index;
+						_ec.face = ec.face;
+						_ec.vert = _v.index;
+						_ec.local = local;
+						_ec.param = param;
+						
+						ret = _ec.index;
+
+						ec.next = _ec.index;
+						ec.comp = _e.index;
+
+						_en.next = edge_start;
+						_en.comp = _enc.index;
+						_en.face = f.index;
+						_en.vert = _v.index;
+						_en.local = local;
+						_en.param = param;
+
+						_enc.comp = _en.index;
+						_enc.next = _e.index;
+						_enc.vert = edges[edge_start].vert;
+						_enc.face = nf.index;
+						_enc.param = edges[edge_start].param;
+						_enc.local = edges[edge_start].local;
+						
+						//std::cout << "\ne"; e.operator <<(std::cout);
+						//std::cout << "en"; en.operator <<(std::cout);
+						//std::cout << "_e"; _e.operator <<(std::cout);
+						//std::cout << "_en"; _en.operator <<(std::cout);
+						//std::cout << "_enc"; _enc.operator <<(std::cout);
+						//std::cout << "_ec"; _ec.operator <<(std::cout);
+
+
+						edges.push_back(_en);
+						edges.push_back(_enc);
+						edges.push_back(_e);
+						edges.push_back(_ec);
+						
+						//std::cout << "---------" << std::endl;
+						//edge_t e1 =_en.index;
+						//do {
+						//	edges[e1].operator <<(std::cout);
+						//	e1 = edges[e1].next;
+						//} while( e1 != _en.index );		
+						//std::cout << "---------" << std::endl;
+						//e1 =_enc.index;
+						//do {
+						//	edges[e1].operator <<(std::cout);
+						//	e1 = edges[e1].next;
+						//} while( e1 != _enc.index );		
+						//std::cout << "---------" << std::endl;
+
+						edge = _e.index;
+
+					} else {
+//						std::cout << 'b' <<std::flush;
+						fake_edge& fe = fakes[e.fake];
+						new_edge2 _en(ne_1), _enc(ne_2), _e(ne_2+1);
+						fake_edge _fe(fakes.size(), fe.next, _e.index, fe.edge);
+
+						_e.next = e.next;
+						_e.comp = -1;
+						_e.fake = _fe.index;
+						_e.face = nf.index;
+						_e.vert = _v.index;
+						_e.local = local;
+						_e.param = param;
+						nf.edge = _e.index;
+
+						e.next = _en.index;
+						e.face = f.index;
+						f.edge = e.index;
+
+						_en.next = edge_start;
+						_en.comp = _enc.index;
+						_en.face = f.index;
+						_en.vert = _v.index;
+						_en.local = local;
+						_en.param = param;
+
+						_enc.comp = _en.index;
+						_enc.next = _e.index;
+						_enc.vert = edges[edge_start].vert;
+						_enc.face = nf.index;
+						_enc.param = edges[edge_start].param;
+						_enc.local = edges[edge_start].local;
+						
+						//std::cout << "\ne"; e.operator <<(std::cout);
+						//std::cout << "en"; en.operator <<(std::cout);
+						//std::cout << "_e"; _e.operator <<(std::cout);
+						//std::cout << "_en"; _en.operator <<(std::cout);
+						//std::cout << "_enc"; _enc.operator <<(std::cout);
+
+						fakes.push_back(_fe);
+						edges.push_back(_en);
+						edges.push_back(_enc);
+						edges.push_back(_e);
+
+/*						std::cout << "---------" << std::endl;
+						edge_t e1 =_en.index;
+						do {
+							edges[e1].operator <<(std::cout);
+							e1 = edges[e1].next;
+						} while( e1 != _en.index );		
+						std::cout << "---------" << std::endl;
+						e1 =_enc.index;
+						do {
+							edges[e1].operator <<(std::cout);
+							e1 = edges[e1].next;
+						} while( e1 != _enc.index );		
+						std::cout << "---------" << std::endl;
+	*/					
+						edge = _e.index;
+					}
+				} else {
+//					std::cout << "\\" << std::flush;
+					e.face = f.index;
+					f.edge = e.index;
+					edge = edges[edge].next;
+				}
+				
+
+			} else {
+//				std::cout << '-' <<std::flush;
+
+				e.face = nf.index;
+				nf.edge = e.index;
+				if(en.index == edge_start) {
+					e.next = ne_2;
+					break;
+				}
+				edge = en.index;				
+
+			}
+		} while(edge != edge_start);
+
+		if(found) {
+			face_t f_i = f.index;
+			faces.push_back(nf);
+			//std::cout << "new f: " << nf.index << " " << nf.edge << std::endl;
+			//edge = nf.edge;
+			//do {
+			//	edges[edge].operator <<(std::cout);
+			//	edge = edges[edge].next;
+			//} while( edge != nf.edge );		
+
+			//std::cout << "_old f: " << &f << " " << faces[f_i].index << " " << faces[f_i].edge << std::endl;
+			//edge = faces[f_i].edge;
+			//do {
+			//	edges[edge].operator <<(std::cout);
+			//	edge = edges[edge].next;
+			//} while( edge != faces[f_i].edge );		
+		}
+
+		return ret;
+	}
+
+	void PGP::split_tri(face_t f, int i, double X, std::vector<new_edge2>& edges, std::vector<new_face2>& faces, std::vector<new_vert2>& verts, std::vector<fake_edge>& fakes){
+		edge_t fe = mesh->face_edge[f];
+		do {
+//			std::cout << "Split face " << f << "| fake= " << fe << " " << fakes[fe].index << "->" <<fakes[fe].next << " | " << fakes[fe].comp << " \\ " << fakes[fe].edge <<std::endl;
 			new_edge2& e = edges[fakes[fe].comp];
 			new_edge2& en = edges[fakes[fakes[fe].next].comp];
 			double x0 = get(e.param, i);
 			double x1 = get(en.param, i);
-			if(x0 <= X && X < x1) {
-				
+			if(x0 == X) { // Unlikely case, but shoud check for it
+				std::cout << "!!! ";
+					return;
+			}
+			else if((x0 < X && X < x1) || (x1 < X && X < x0)) {
 				double alpha = (X - x0)/(x1 - x0);
+
 //				std::cout << alpha << std::endl;
 				fake_edge nfe(fakes.size());
 				new_vert2 nv(verts.size());
@@ -658,13 +884,13 @@ namespace detail {
 				nv.edge = ne.index;
 				
 				nfe.comp = ne.index;
-				return_if_fail(fe != -1);
 				nfe.next = fakes[fe].next;
 				nfe.edge = fakes[fe].edge;
 				fakes[fe].next = nfe.index;
 
 				ne.local = e.local + alpha*(en.local - e.local);
 				ne.param = e.param + alpha*(en.param - e.param);
+				get(ne.param, i) = X;
 
 				nv.world = verts[en.vert].world;
 				nv.world -= verts[e.vert].world;
@@ -674,6 +900,12 @@ namespace detail {
 				fakes.push_back(nfe);
 				verts.push_back(nv);
 				edges.push_back(ne);
+
+				int s = ne.index;
+				while(s >= 0) {
+					//std::cout << "s " << s << " in " << f << std::endl;
+					s = split(s, i, X, edges, faces, verts, fakes);
+				}
 
 				return;
 			}
@@ -701,8 +933,8 @@ std::cout << 'b' << std::flush;
 		for(face_t f = 0; f < mesh->num_faces; ++f) {
 			faces[f] = new_face2(f, mesh->face_edge[f]);
 			edges[face_data[f].edge[0]].param = vec2(face_data[f].theta[1], face_data[f].phi[1]);
-			edges[face_data[f].edge[1]].param = vec2(face_data[f].theta[1], face_data[f].phi[2]);
-			edges[face_data[f].edge[2]].param = vec2(face_data[f].theta[1], face_data[f].phi[0]);
+			edges[face_data[f].edge[1]].param = vec2(face_data[f].theta[2], face_data[f].phi[2]);
+			edges[face_data[f].edge[2]].param = vec2(face_data[f].theta[0], face_data[f].phi[0]);
 			edges[face_data[f].edge[0]].local = face_data[f].v[1];
 			edges[face_data[f].edge[0]].local = face_data[f].v[2];
 			edges[face_data[f].edge[0]].local = face_data[f].v[0];
@@ -746,6 +978,7 @@ std::cout << 'd' << std::endl;
 			}
 //std::cout << '3' << std::flush;
 		}
+std::cout << "Done" << std::endl;
 //		print(edges, faces, verts, fakes);
 std::cout << '1' << std::flush;
 		validate(edges, faces, verts, fakes);
