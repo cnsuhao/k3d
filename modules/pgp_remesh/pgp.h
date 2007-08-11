@@ -188,6 +188,12 @@ namespace detail {
 			vec2 param;
 
 			int fake;
+			std::ostream& operator<<(std::ostream& out)
+			{
+				out << "(" << face << ", " << index << ") ->" << next << " | " << comp << " | "  << fake  << " | " 
+					<< "(" << local.first << ", " << local.second << ")|||(" << param.first << ", " << param.second << ")" << std::endl;
+				return out;
+			}
 		};
 
 		struct fake_edge {
@@ -237,6 +243,23 @@ namespace detail {
 			edge_t edge;
 		};
 
+		//ostream& operator<<(ostream& out, const new_face2& f)
+		//{
+		//	out << "(" << c.myReal << "," << c.myImag << ")";
+		//	return out;
+		//}
+		//ostream& operator<<(ostream& out, const new_vert2& v)
+		//{
+		//	out << "(" << c.myReal << "," << c.myImag << ")";
+		//	return out;
+		//}
+		//ostream& operator<<(ostream& out, const fake_edge& e)
+		//{
+		//	out << "(" << c.myReal << "," << c.myImag << ")";
+		//	return out;
+		//}
+
+
 		struct new_vert {
 			//new_vert(int i, bool k) : index(i), keep(k) {}
 			Vec3 world;
@@ -256,6 +279,11 @@ namespace detail {
 						std::vector<fake_edge>& fakes);
 
 		void split_tri(face_t f, int i, double X, 
+						std::vector<new_edge2>& edges, 
+						std::vector<new_face2>& faces, 
+						std::vector<new_vert2>& verts, 
+						std::vector<fake_edge>& fakes);
+		int split(edge_t e, int i, double X, 
 						std::vector<new_edge2>& edges, 
 						std::vector<new_face2>& faces, 
 						std::vector<new_vert2>& verts, 
