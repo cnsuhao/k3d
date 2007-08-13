@@ -18,6 +18,7 @@
 
 
 #include "voxel_grid.h"
+#include <list>
 
 namespace fluid_sim
 {
@@ -39,13 +40,27 @@ protected:
 	int m_xfaces, m_yfaces, m_zfaces; // get from the voxel_grid
 	int m_xvox, m_yvox, m_zvox;
 	float m_vox_width;
+	float m_dt;
 
 
 	sigc::slot<void, iunknown*> start_solver_slot();
 
-	void diffuse(array3d<float>& new_field, const array3d<float>& old_field);
+	void diffuse_velocities(voxel_grid& new_grid, const voxel_grid& old_grid);
 	void project(voxel_grid& new_grid, const voxel_grid& old_grid);
-	void add_force(array3d<float>& field, const array3d<float>& forces);
+	void add_force(voxel_grid& u, const array3d_i& forcesx, const array3d_i& forcesy, const array3d_i& forcesz);
+	k3d::point3 trace_particle(const k3d::point3& p);
+
+
+	struct idx {
+		idx(int i,int j,int k) : m_i(i), m_j(j), m_k(k) { }
+		int m_i, m_j, m_k;
+	};
+
+	void setup_diffusion_velocity_bc(array3d_i& faces);
+	void setup_and_solve_diffusion(const std::list<idx>& faces, array3d_i& faces_r, voxel_grid& u, const voxel_grid& w, voxel_grid::velocity_type vtype);
+
+
+
 
 
 };

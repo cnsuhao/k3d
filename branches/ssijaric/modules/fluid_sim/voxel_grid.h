@@ -9,12 +9,13 @@
 #include <k3dsdk/i18n.h>
 #include <k3dsdk/mesh_source.h>
 
-
-#include "types.h"
+#include <boost/multi_array.hpp>
 
 
 namespace fluid_sim
 {
+	typedef boost::multi_array<float, 3> array3d_f; // float
+	typedef boost::multi_array<int, 3> array3d_i;
 
 // the voxel grid is specifed in similar fashion as the k3d bounding box - with (nx, ny, nz) and (px, py, pz)
 class voxel_grid : public k3d::node
@@ -41,21 +42,27 @@ public:
 	float py() { return m_py.value(); }
 	float pz() { return m_pz.value(); }
 
-	int number_of_voxels() const { return (m_xcomps-1) * (m_ycomps-1) * (m_zcomps-1); }
+	int number_of_voxels() const { return m_xvox*m_yvox*m_zvox; }
 
-	int xvoxels() const { return m_xcomps-1; }
-	int yvoxels() const { return m_ycomps-1; }
-	int zvoxels() const { return m_zcomps-1; }
+	int xvoxels() const { return m_xvox; }
+	int yvoxels() const { return m_yvox; }
+	int zvoxels() const { return m_zvox; }
 
-	int xfaces() const { return m_xcomps; }
-	int yfaces() const { return m_ycomps; }
-	int zfaces() const { return m_zcomps; }
+	int xfaces() const { return m_xfaces; }
+	int yfaces() const { return m_yfaces; }
+	int zfaces() const { return m_zfaces; }
 
-	float vx(int i, int j, int k) const { return (*m_grid_vx)(i,j,k); }
-	float vy(int i, int j, int k) const { return (*m_grid_vy)(i,j,k); }
-	float vz(int i, int j, int k) const { return (*m_grid_vz)(i,j,k); }
+	float vx(int i, int j, int k) const { return (*m_grid_vx)[i][j][k]; }
+	float vy(int i, int j, int k) const { return (*m_grid_vy)[i][j][k]; }
+	float vz(int i, int j, int k) const { return (*m_grid_vz)[i][j][k]; }
+
+	float& vx(int i, int j, int k) { return (*m_grid_vx)[i][j][k]; }
+	float& vy(int i, int j, int k) { return (*m_grid_vy)[i][j][k]; }
+	float& vz(int i, int j, int k) { return (*m_grid_vz)[i][j][k]; }
+
 
 	// interpolate different velocity components
+	
 	float interpolate_vx(const k3d::point3& pos);
 	float interpolate_vy(const k3d::point3& pos);
 	float interpolate_vz(const k3d::point3& pos);
@@ -63,17 +70,38 @@ public:
 	float interpolate_vx(float x, float y, float z);
 	float interpolate_vy(float x, float y, float z);
 	float interpolate_vz(float x, float y, float z);
+	
 
-	float voxel_width() { return m_vox_width.value(); }
+
+
+	float voxel_width() const { return m_voxel_width; }
 
 	enum voxel_type {
-		FLUID,
+		FLUID, 
 		OBSTACLE,
-		AIR
+		EMPTY // air
 	};
 
-	bool is_solid(int i, int j, int k) const { return ((*m_vox_type)(i,j,k) == OBSTACLE) ? true : false; }
-	float& pressure(int i, int j, int k) { return (*m_pressure)(i,j,k); }
+	enum velocity_type {
+		VX,
+		VY,
+		VZ
+	};
+
+	
+	//typedef boost::multi_array<float, 3> array3d_f; // float
+	//typedef boost::multi_array<int, 3> array3d_i;
+	typedef boost::multi_array<voxel_type,3> array3d_type; // type
+
+	bool is_solid(int i, int j, int k) const { return ((*m_vox_type)[i][j][k] == OBSTACLE) ? true : false; }
+	bool is_fluid(int i, int j, int k) const { return ((*m_vox_type)[i][j][k] == FLUID) ? true : false; }
+	bool is_air(int i, int j, int k) const { return ((*m_vox_type)[i][j][k] == EMPTY) ? true : false; }
+
+	float& pressure(int i, int j, int k) { return (*m_pressure)[i][j][k]; }
+	float& density(int i, int j, int k) { return (*m_density)[i][j][k]; }
+
+	float pressure(int i, int j, int k) const { return (*m_pressure)[i][j][k]; }
+	float density(int i, int j, int k) const { return (*m_density)[i][j][k]; }
 
 private:
 	// many of the properties will be removed - only voxel width will be modifiable by the user
@@ -106,25 +134,29 @@ private:
 	float m_vox_width_y;
 	float m_vox_width_z;
 
-	
+	float m_voxel_width;
 
 	k3d::vector3 m_norigin; // <nx, ny, nz>
 	k3d::vector3 m_porigin; // <px, py, pz>
 
-	array3d<float>* m_grid_vx;
-	array3d<float>* m_grid_vy;
-	array3d<float>* m_grid_vz;
+	array3d_f* m_grid_vx;
+	array3d_f* m_grid_vy;
+	array3d_f* m_grid_vz;
 
-	array3d<float>* m_density;
-	array3d<float>* m_pressure;
-	array3d<voxel_type>* m_vox_type;
+	array3d_f* m_density;
+	array3d_f* m_pressure;
+	array3d_type* m_vox_type;
 
 	float m_visc;
 
 	// number of components in each direction
-	int m_xcomps; // components along x axis = columns
-	int m_ycomps; // components along y axis = slices
-	int m_zcomps; // components along z axis = rows
+	int m_xfaces; // components along x axis = columns
+	int m_yfaces; // components along y axis = slices
+	int m_zfaces; // components along z axis = rows
+
+	int m_xvox;
+	int m_yvox;
+	int m_zvox;
 };
 
 k3d::iplugin_factory& voxel_grid_factory();
