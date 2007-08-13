@@ -43,18 +43,21 @@ namespace fluid_sim
 		m_porigin[2] = m_pz.value();
 
 
-		// number of faces in each direction
-		m_xcomps = m_cols.value() + 1;
-		m_ycomps = m_slices.value() + 1 ;
-		m_zcomps = m_rows.value() + 1;
+		// number of faces in each direction	
+		m_xfaces = m_cols.value() + 1;
+		m_yfaces = m_slices.value() + 1 ;
+		m_zfaces = m_rows.value() + 1;
 
-		m_grid_vx = new array3d<float>(m_xcomps, m_ycomps, m_zcomps);
-		m_grid_vy = new array3d<float>(m_xcomps, m_ycomps, m_zcomps);
-		m_grid_vz = new array3d<float>(m_xcomps, m_ycomps, m_zcomps);
-		m_density = new array3d<float>(m_xcomps-1, m_ycomps-1, m_zcomps-1);
-		m_vox_type = new array3d<voxel_type>(m_xcomps-1,m_ycomps-1,m_zcomps-1);
+		m_xvox = m_cols.value();
+		m_yvox = m_slices.value();
+		m_zvox = m_rows.value();
 
-		
+		m_grid_vx = new array3d_f(boost::extents[m_xfaces][m_yfaces][m_zfaces]);
+		m_grid_vy = new array3d_f(boost::extents[m_xfaces][m_yfaces][m_zfaces]);
+		m_grid_vz = new array3d_f(boost::extents[m_xfaces][m_yfaces][m_zfaces]);
+		m_density = new array3d_f(boost::extents[m_xvox][m_yvox][m_zvox]);
+		m_vox_type = new array3d_type(boost::extents[m_xvox][m_yvox][m_zvox]);
+		m_voxel_width = m_vox_width.value();
 	}
 
 	k3d::iplugin_factory& voxel_grid::get_factory()
@@ -138,6 +141,7 @@ namespace fluid_sim
 		m_vox_width_x = m_vox_width.value();
 		m_vox_width_y = m_vox_width.value();
 		m_vox_width_z = m_vox_width.value();
+		m_voxel_width = m_vox_width.value();
 		voxel_grid_changed_signal.emit(Hint);
 	}
 
@@ -147,7 +151,7 @@ namespace fluid_sim
 	}
 
 	// tri-linear interpolation for different velcoity components
-	
+
 	float voxel_grid::interpolate_vx(const k3d::point3& pos)
 	{
 		return interpolate_vx(pos[0], pos[1], pos[2]);
@@ -197,18 +201,18 @@ namespace fluid_sim
 		if (j_diff < 0 &&  k_diff < 0) { // interpolate over 2 points along i - (i,0,0) and (i+1,0,0)
 			std::cout << "j < 0, k < 0" << std::endl;
 
-			float v0 = (*m_grid_vx)(i,0,0);
-			float v1 = (*m_grid_vx)(i+1,0,0);
+			float v0 = (*m_grid_vx)[i][0][0];
+			float v1 = (*m_grid_vx)[i+1][0][0];
 
 			return v0*(1-dx) + v1*dx;
 		}
 		else if (j_diff < 0) {
 			std::cout << "j < 0" << std::endl;
 
-			float v00 = (*m_grid_vx)(i,0,k);
-			float v10 = (*m_grid_vx)(i+1,0,k);
-			float v11 = (*m_grid_vx)(i+1,0,k+1);
-			float v01 = (*m_grid_vx)(i,0,k+1);
+			float v00 = (*m_grid_vx)[i][0][k];
+			float v10 = (*m_grid_vx)[i+1][0][k];
+			float v11 = (*m_grid_vx)[i+1][0][k+1];
+			float v01 = (*m_grid_vx)[i][0][k+1];
 
 			return v00*(1-dx)*(1-dz) + v10*dx*(1-dz) + v11*dx*dz + v01*(1-dx)*dz;
 
@@ -216,24 +220,24 @@ namespace fluid_sim
 		else if (k_diff < 0) {
 			std::cout << "k < 0" << std::endl;
 
-			float v00 = (*m_grid_vx)(i,j,0);
-			float v10 = (*m_grid_vx)(i+1,j,0);
-			float v01 = (*m_grid_vx)(i,j+1,0);
-			float v11 = (*m_grid_vx)(i+1,j+1,0); // possibly wrong - check!!
+			float v00 = (*m_grid_vx)[i][j][0];
+			float v10 = (*m_grid_vx)[i+1][j][0];
+			float v01 = (*m_grid_vx)[i][j+1][0];
+			float v11 = (*m_grid_vx)[i+1][j+1][0]; // possibly wrong - check!!
 
 			return v00*(1-dx)*(1-dy) + v10*dx*(1-dy) + v01*(1-dx)*dy + v11*dx*dy;
 
 		}
 		else {
-			float v000 = (*m_grid_vx)(i,j,k);
-			float v001 = (*m_grid_vx)(i,j,k+1);
-			float v101 = (*m_grid_vx)(i+1,j,k+1);
-			float v100 = (*m_grid_vx)(i+1,j,k);
+			float v000 = (*m_grid_vx)[i][j][k];
+			float v001 = (*m_grid_vx)[i][j][k+1];
+			float v101 = (*m_grid_vx)[i+1][j][k+1];
+			float v100 = (*m_grid_vx)[i+1][j][k];
 
-			float v010 = (*m_grid_vx)(i,j+1,k);
-			float v011 = (*m_grid_vx)(i,j+1,k+1);
-			float v111 = (*m_grid_vx)(i+1,j+1,k+1);
-			float v110 = (*m_grid_vx)(i+1,j+1,k);
+			float v010 = (*m_grid_vx)[i][j+1][k];
+			float v011 = (*m_grid_vx)[i][j+1][k+1];
+			float v111 = (*m_grid_vx)[i+1][j+1][k+1];
+			float v110 = (*m_grid_vx)[i+1][j+1][k];
 
 
 			std::cout << v000 << " " << v001 << " " << v101 << " " << v100 << " " << v010 << " " <<
@@ -285,18 +289,18 @@ namespace fluid_sim
 
 		if (i_diff < 0 &&  k_diff < 0) { // interpolate over 2 points along i - (i,0,0) and (i+1,0,0)
 			std::cout << "j < 0, k < 0" << std::endl;
-			float v0 = (*m_grid_vy)[(0,j,0)];
-			float v1 = (*m_grid_vy)[(0,j+1,0)];
+			float v0 = (*m_grid_vy)[0][j][0];
+			float v1 = (*m_grid_vy)[0][j+1][0];
 
 			return v0*(1-dy) + v1*dy;
 		}
 		else if (i_diff < 0) {
 			std::cout << "i < 0" << std::endl;
 
-			float v00 = (*m_grid_vy)(0,j,k);
-			float v10 = (*m_grid_vy)(0,j+1,k);
-			float v11 = (*m_grid_vy)(0,j+1,k+1);
-			float v01 = (*m_grid_vy)(0,j,k+1);
+			float v00 = (*m_grid_vy)[0][j][k];
+			float v10 = (*m_grid_vy)[0][j+1][k];
+			float v11 = (*m_grid_vy)[0][j+1][k+1];
+			float v01 = (*m_grid_vy)[0][j][k+1];
 
 			return v00*(1-dy)*(1-dz) + v10*dy*(1-dz) + v11*dy*dz + v01*(1-dy)*dz;
 
@@ -304,24 +308,24 @@ namespace fluid_sim
 		else if (k_diff < 0) {
 			std::cout << "k < 0" << std::endl;
 
-			float v00 = (*m_grid_vy)(i,j,0);
-			float v10 = (*m_grid_vy)(i+1,j,0);
-			float v01 = (*m_grid_vy)(i,j+1,0);
-			float v11 = (*m_grid_vy)(i+1,j+1,0);
+			float v00 = (*m_grid_vy)[i][j][0];
+			float v10 = (*m_grid_vy)[i+1][j][0];
+			float v01 = (*m_grid_vy)[i][j+1][0];
+			float v11 = (*m_grid_vy)[i+1][j+1][0];
 
 			return v00*(1-dx)*(1-dy) + v10*dx*(1-dy) + v01*(1-dx)*dy + v11*dx*dy;
 
 		}
 		else {
-			float v000 = (*m_grid_vy)(i,j,k);
-			float v001 = (*m_grid_vy)(i,j,k+1);
-			float v101 = (*m_grid_vy)(i+1,j,k+1);
-			float v100 = (*m_grid_vy)(i+1,j,k);
+			float v000 = (*m_grid_vy)[i][j][k];
+			float v001 = (*m_grid_vy)[i][j][k+1];
+			float v101 = (*m_grid_vy)[i+1][j][k+1];
+			float v100 = (*m_grid_vy)[i+1][j][k];
 
-			float v010 = (*m_grid_vy)(i,j,k+1);
-			float v011 = (*m_grid_vy)(i,j+1,k+1);
-			float v111 = (*m_grid_vy)(i+1,j+1,k+1);
-			float v110 = (*m_grid_vy)(i+1,j+1,k);
+			float v010 = (*m_grid_vy)[i][j][k+1];
+			float v011 = (*m_grid_vy)[i][j+1][k+1];
+			float v111 = (*m_grid_vy)[i+1][j+1][k+1];
+			float v110 = (*m_grid_vy)[i+1][j+1][k];
 
 
 			std::cout << v000 << " " << v001 << " " << v101 << " " << v100 << " " << v010 << " " <<
@@ -373,41 +377,41 @@ namespace fluid_sim
 
 		if (i_diff < 0 &&  j_diff < 0) { // interpolate over 2 points along i - (i,0,0) and (i+1,0,0)
 			std::cout << "j < 0, k < 0" << std::endl;
-			float v0 = (*m_grid_vz)(0,0,k);
-			float v1 = (*m_grid_vz)(0,0,k+1);
+			float v0 = (*m_grid_vz)[0][0][k];
+			float v1 = (*m_grid_vz)[0][0][k+1];
 
 			return v0*(1-dz) + v1*dz;
 		}
 		else if (i_diff < 0) {
 			std::cout << "i < 0" << std::endl;
-			float v00 = (*m_grid_vz)(0,j,k);
-			float v10 = (*m_grid_vz)(0,j+1,k);
-			float v11 = (*m_grid_vz)(0,j+1,k+1);
-			float v01 = (*m_grid_vz)(0,j,k+1);
+			float v00 = (*m_grid_vz)[0][j][k];
+			float v10 = (*m_grid_vz)[0][j+1][k];
+			float v11 = (*m_grid_vz)[0][j+1][k+1];
+			float v01 = (*m_grid_vz)[0][j][k+1];
 
 			return v00*(1-dy)*(1-dz) + v10*dy*(1-dz) + v11*dy*dz + v01*(1-dy)*dz;
 
 		}	
 		else if (j_diff < 0) {
 			std::cout << "k < 0" << std::endl;
-			float v00 = (*m_grid_vz)(i,0,k);
-			float v10 = (*m_grid_vz)(i+1,0,k);
-			float v01 = (*m_grid_vz)(i,0,k+1);
-			float v11 = (*m_grid_vz)(i+1,0,k+1);
+			float v00 = (*m_grid_vz)[i][0][k];
+			float v10 = (*m_grid_vz)[i+1][0][k];
+			float v01 = (*m_grid_vz)[i][0][k+1];
+			float v11 = (*m_grid_vz)[i+1][0][k+1];
 
 			return v00*(1-dx)*(1-dz) + v10*dx*(1-dz) + v01*(1-dx)*dz + v11*dx*dz;
 
 		}
 		else {
-			float v000 = (*m_grid_vz)(i,j,k);
-			float v001 = (*m_grid_vz)(i,j,k+1);
-			float v101 = (*m_grid_vz)(i+1,j,k+1);
-			float v100 = (*m_grid_vz)(i+1,j,k);
+			float v000 = (*m_grid_vz)[i][j][k];
+			float v001 = (*m_grid_vz)[i][j][k+1];
+			float v101 = (*m_grid_vz)[i+1][j][k+1];
+			float v100 = (*m_grid_vz)[i+1][j][k];
 
-			float v010 = (*m_grid_vz)(i,j+1,k);
-			float v011 = (*m_grid_vz)(i,j+1,k+1);
-			float v111 = (*m_grid_vz)(i+1,j+1,k+1);
-			float v110 = (*m_grid_vz)(i+1,j+1,k);
+			float v010 = (*m_grid_vz)[i][j+1][k];
+			float v011 = (*m_grid_vz)[i][j+1][k+1];
+			float v111 = (*m_grid_vz)[i+1][j+1][k+1];
+			float v110 = (*m_grid_vz)[i+1][j+1][k];
 
 			std::cout << v000 << " " << v001 << " " << v101 << " " << v100 << " " << v010 << " " <<
 				v011 << " " << v111 << " " << v110 << std::endl;
@@ -422,7 +426,6 @@ namespace fluid_sim
 				v111*dx*dy*dz;
 		}
 	}
-
 
 
 }
