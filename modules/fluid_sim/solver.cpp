@@ -378,22 +378,22 @@ namespace fluid_sim
 		}
 	}
 
-	k3d::point3 solver::trace_particle(const k3d::point3& p) {
+	k3d::point3 solver::trace_particle(const k3d::point3& p, float dt) {
 		k3d::point3 v, v2;
 
 		v[0] = m_voxel_grid.value()->interpolate_vx(p);
 		v[1] = m_voxel_grid.value()->interpolate_vy(p);
 		v[2] = m_voxel_grid.value()->interpolate_vz(p);
 
-		v[0] = p[0] + 0.5*m_dt*v[0];
-		v[1] = p[1] + 0.5*m_dt*v[1];
-		v[2] = p[2] + 0.5*m_dt*v[2];
+		v[0] = p[0] + 0.5*dt*v[0];
+		v[1] = p[1] + 0.5*dt*v[1];
+		v[2] = p[2] + 0.5*dt*v[2];
 
 		v2[0] = m_voxel_grid.value()->interpolate_vx(v);
 		v2[1] = m_voxel_grid.value()->interpolate_vy(v);
 		v2[2] = m_voxel_grid.value()->interpolate_vz(v);
 
-		return p + m_dt*v;
+		return p + dt*v;
 		
 	}
 }
