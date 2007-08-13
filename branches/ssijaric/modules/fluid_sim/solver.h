@@ -48,7 +48,7 @@ protected:
 	void diffuse_velocities(voxel_grid& new_grid, const voxel_grid& old_grid);
 	void project(voxel_grid& new_grid, const voxel_grid& old_grid);
 	void add_force(voxel_grid& u, const array3d_i& forcesx, const array3d_i& forcesy, const array3d_i& forcesz);
-	k3d::point3 trace_particle(const k3d::point3& p);
+	k3d::point3 trace_particle(const k3d::point3& p, float dt);
 
 
 	struct idx {
