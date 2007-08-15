@@ -160,7 +160,7 @@ public:
 				k3d::gl::vertex3d(points[edge_points[edge]]);
 				edge = clockwise_edges[edge];
 				count++;
-				if(edge == first_edge || count > 15)
+				if(edge == first_edge || count > edge_points.size()+1)
 					break;
 			}
 			glEnd();
