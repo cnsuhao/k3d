@@ -122,9 +122,9 @@ namespace fluid_sim
 		std::vector<float> b(size);
 		row = 0;
 		for (std::list<idx>::iterator it = fluid_voxels.begin(); it != fluid_voxels.end(); ++it) {
-			int i = (*it).m_i;
-			int j = (*it).m_j;
-			int k = (*it).m_k;
+			int i = (*it).i;
+			int j = (*it).j;
+			int k = (*it).k;
 
 			b[row] = -(vox_width*w.density(i,j,k)/m_timestep.value())*(w.vx(i+1,j,k) - w.vx(i,j,k) +
 				   w.vy(i,j+1,k) - w.vy(i,j,k) +
@@ -277,9 +277,9 @@ namespace fluid_sim
 		int row = 0;
 		if (vtype == voxel_grid::VX) {
 			for (std::list<idx>::const_iterator it = faces.begin(); it != faces.end(); ++it) {
-				int i = (*it).m_i;
-				int j = (*it).m_j;
-				int k = (*it).m_k;
+				int i = (*it).i;
+				int j = (*it).j;
+				int k = (*it).k;
 	
 				b[row] = w.vx(i,j,k);
 				++row;
@@ -287,9 +287,9 @@ namespace fluid_sim
 		}
 		else if (vtype == voxel_grid::VX) {
 			for (std::list<idx>::const_iterator it = faces.begin(); it != faces.end(); ++it) {
-				int i = (*it).m_i;
-				int j = (*it).m_j;
-				int k = (*it).m_k;
+				int i = (*it).i;
+				int j = (*it).j;
+				int k = (*it).k;
 	
 				b[row] = w.vy(i,j,k);
 				++row;
@@ -297,9 +297,9 @@ namespace fluid_sim
 		}
 		else if (vtype == voxel_grid::VY) {
 			for (std::list<idx>::const_iterator it = faces.begin(); it != faces.end(); ++it) {
-				int i = (*it).m_i;
-				int j = (*it).m_j;
-				int k = (*it).m_k;
+				int i = (*it).i;
+				int j = (*it).j;
+				int k = (*it).k;
 	
 				b[row] = w.vy(i,j,k);
 				++row;
@@ -309,9 +309,9 @@ namespace fluid_sim
 
 		row = 0;
 		for (std::list<idx>::const_iterator it = faces.begin(); it != faces.end(); ++it) {
-			int i = (*it).m_i;
-			int j = (*it).m_j;
-			int k = (*it).m_k;
+			int i = (*it).i;
+			int j = (*it).j;
+			int k = (*it).k;
 			
 			A(row,row) = 1 + 6*beta;
 
@@ -394,6 +394,222 @@ namespace fluid_sim
 		v2[2] = m_voxel_grid.value()->interpolate_vz(v);
 
 		return p + dt*v;
+
 		
+	}
+
+	// This routine must be called before the diffusion step to make sure that surface cells are
+	// divergence-free
+	void solver::update_surface_face_boundaries(voxel_grid& u)
+	{
+		std::list<idx> xfaces;
+		std::list<idx> yfaces;
+		std::list<idx> zfaces;
+
+		// faces opposite those in lists above
+		std::list<idx> xfaces_op;
+		std::list<idx> yfaces_op;
+		std::list<idx> zfaces_op;
+
+		int num_xfaces, num_yfaces, num_zfaces;
+		int surface_faces;
+
+		for (int i = 1; i < u.xvoxels(); ++i) {
+			for (int j = 1; j < u.yvoxels(); ++j) {
+				for (int k = 1; k < u.zvoxels(); ++k) {
+					if (u.is_fluid(i,j,k)) {
+						if (u.is_air(i-1,j,k)) {
+							xfaces.push_back(idx(i,j,k));
+							xfaces_op.push_back(idx(i+1,j,k));
+						}
+						if (u.is_air(i+1,j,k)) {
+							xfaces.push_back(idx(i+1,j,k));
+							xfaces_op.push_back(idx(i,j,k));
+						}
+						if (u.is_air(i,j-1,k)) {
+							yfaces.push_back(idx(i,j,k));
+							yfaces_op.push_back(idx(i,j+1,k));
+						}
+						if (u.is_air(i,j+1,k)) {
+							yfaces.push_back(idx(i,j+1,k));
+							yfaces_op.push_back(idx(i,j,k));
+						}
+						if (u.is_air(i,j,k-1)) {
+							zfaces.push_back(idx(i,j,k));
+							zfaces_op.push_back(idx(i,j,k+1));
+						}
+						if (u.is_air(i,j,k+1)) {
+							zfaces.push_back(idx(i,j,k+1));
+							zfaces_op.push_back(idx(i,j,k));
+						}
+					}
+				
+					num_xfaces = xfaces.size();
+					num_yfaces = yfaces.size();
+					num_zfaces = zfaces.size();
+					surface_faces = num_xfaces + num_yfaces + num_zfaces;
+
+
+					if (surface_faces == 1) {
+						if (num_xfaces == 1) {
+							if ((xfaces.front()).i > i) {
+								u.vx(i+1,j,k) = u.vx(i,j,k) - u.vy(i,j+1,k) + u.vy(i,j,k) 
+									        - u.vz(i,j,k+1) + u.vz(i,j,k);
+							}
+							else {
+								u.vx(i,j,k) = u.vx(i+1,j,k) + u.vy(i,j+1,k) - u.vy(i,j,k)
+									    + u.vz(i,j,k+1) - u.vz(i,j,k);
+							}
+							//xfaces.pop_front();
+						}
+						else if (num_yfaces == 1) {
+							if ((yfaces.front()).j > j) {
+								u.vy(i,j+1,k) = u.vx(i,j,k) - u.vx(i+1,j,k) + u.vy(i,j,k)
+									      - u.vz(i,j,k+1) + u.vz(i,j,k);
+							}
+							else {
+								u.vy(i,j,k) = u.vx(i+1,j,k) - u.vx(i,j,k) + u.vy(i,j+1,k)
+									    - u.vz(i,j,k) + u.vz(i,j,k+1);
+							}
+							//yfaces.pop_front();
+						}
+						else if (num_zfaces == 1) {
+							if ((zfaces.front()).k > k) {
+								u.vz(i,j,k+1) = u.vx(i,j,k) - u.vx(i+1,j,k) + u.vy(i,j,k)
+									      - u.vy(i,j+1,k) + u.vz(i,j,k);
+							}
+							else {
+								u.vz(i,j,k) = u.vx(i+1,j,k) - u.vx(i,j,k) + u.vy(i,j+1,k) 
+									    - u.vy(i,j,k) + u.vz(i,j,k+1);
+							}
+							//zfaces.pop_front();
+						}
+					}
+					else if (surface_faces == 2)
+					{
+						// when the air is on two opposite sides of the cell, we do nothing (Carlson's PhD thesis for 
+						// reference)
+						// otherwise "copy velocities to surface-faces from the faces on the opposite side, and add
+						// half the difference of the remaining two faces to each surface face" (p. 26)
+
+						float hdiff;
+						if (num_xfaces == 1 && num_yfaces == 1) {
+							hdiff = 0.5*(u.vz(i,j,k+1) - u.vz(i,j,k));
+
+							u.vx(xfaces.front()) = u.vx(xfaces_op.front());
+							u.vy(yfaces.front()) = u.vy(yfaces_op.front());
+							u.vx(xfaces.front()) += hdiff;
+							u.vy(yfaces.front()) += hdiff;
+
+						}
+						else if (num_xfaces == 1 && num_zfaces == 1) {
+							hdiff = 0.5*(u.vy(i,j+1,k) - u.vy(i,j,k));
+							
+							u.vx(xfaces.front()) = u.vx(xfaces_op.front());
+							u.vz(zfaces.front()) = u.vz(zfaces_op.front());
+							u.vx(xfaces.front()) += hdiff;
+							u.vz(zfaces.front()) += hdiff;
+
+						}
+						else if (num_yfaces == 1 && num_zfaces == 1) {
+							hdiff = 0.5*(u.vx(i+1,j,k) - u.vy(i,j,k));
+					
+							u.vy(yfaces.front()) = u.vy(yfaces_op.front());
+							u.vz(zfaces.front()) = u.vz(zfaces_op.front());
+							u.vy(yfaces.front()) += hdiff;
+							u.vz(zfaces.front()) += hdiff;
+						}
+					}
+					else if (surface_faces == 3) {
+						// non-surface faces are across from surfaces faces ---> copy velocities from non-surface
+						// to surface faces
+						if (num_xfaces == 1 && num_yfaces == 1 && num_zfaces == 1) {
+							u.vx(xfaces.front()) = u.vx(xfaces_op.front());
+							u.vy(yfaces.front()) = u.vy(yfaces_op.front());
+							u.vz(zfaces.front()) = u.vz(zfaces_op.front());
+						}
+						// otherwise, just solve for the three surface faces
+						else if (num_yfaces == 1) {
+							if ((yfaces.front()).j > j) {
+								// solve for u.vy(i,j+1,k)
+								u.vy(i,j+1,k) = u.vx(i,j,k) - u.vx(i+1,j,k) + u.vy(i,j,k)
+									      - u.vz(i,j,k+1) + u.vz(i,j,k);
+							}
+							else {
+								u.vy(i,j,k) = u.vx(i+1,j,k) - u.vx(i,j,k) + u.vy(i,j+1,k)
+								            - u.vz(i,j,k) + u.vz(i,j,k+1);
+							}
+						}
+						else if (num_zfaces == 1) {
+							if ((zfaces.front()).k > k) {
+								u.vz(i,j,k+1) = u.vx(i,j,k) - u.vx(i+1,j,k) + u.vy(i,j,k)
+									      - u.vy(i,j+1,k) + u.vz(i,j,k);
+							}
+							else {
+								u.vz(i,j,k) = u.vx(i+1,j,k) - u.vx(i,j,k) + u.vy(i,j+1,k) 
+									    - u.vy(i,j,k) + u.vz(i,j,k+1);
+							}
+
+						}
+						else { // num_xfaces == 1
+							if ((xfaces.front()).i > i) {
+								u.vx(i+1,j,k) = u.vx(i,j,k) - u.vy(i,j+1,k) + u.vy(i,j,k) 
+									        - u.vz(i,j,k+1) + u.vz(i,j,k);
+							}
+							else {
+								u.vx(i,j,k) = u.vx(i+1,j,k) + u.vy(i,j+1,k) - u.vy(i,j,k)
+									    + u.vz(i,j,k+1) - u.vz(i,j,k);
+							}
+
+						}
+
+					}
+					else if (surface_faces == 4) {
+						float diff;
+						if (num_yfaces == 1 && num_zfaces == 1) { // num_xfaces == 2
+							u.vy(yfaces.front()) = u.vy(yfaces_op.front());
+							u.vz(zfaces.front()) = u.vz(zfaces_op.front());
+							diff = 0.25*(u.vx(i,j,k) - u.vx(i+1,j,k));
+							u.vy(yfaces.front()) += diff;
+							u.vy(yfaces_op.front()) += diff;
+							u.vz(zfaces.front()) += diff;
+							u.vz(zfaces_op.front()) += diff;
+						}
+						else if (num_xfaces == 1 && num_zfaces == 1) {
+							u.vx(xfaces.front()) = u.vx(xfaces_op.front());
+							u.vz(zfaces.front()) = u.vz(zfaces_op.front());
+							diff = 0.25*(u.vy(i,j,k) - u.vy(i,j+1,k));
+							u.vx(xfaces.front()) += diff; 
+							u.vx(xfaces_op.front()) += diff;
+							u.vz(zfaces.front()) += diff;
+							u.vz(zfaces_op.front()) += diff;
+
+						}
+						else if (num_xfaces == 1 && num_yfaces == 1) {
+							u.vx(xfaces.front()) = u.vx(xfaces_op.front());
+							u.vy(yfaces.front()) = u.vy(yfaces_op.front());
+							diff = 0.25*(u.vz(i,j,k) - u.vz(i,j,k+1));
+							u.vx(xfaces.front()) += diff;
+							u.vx(xfaces_op.front()) += diff;
+							u.vy(yfaces.front()) += diff;
+							u.vy(yfaces_op.front()) += diff;
+						}
+						else if (num_xfaces == 2 && num_zfaces == 2) {
+
+						}
+						else if (num_xfaces == 2 && num_yfaces == 2) {
+
+						}
+						else { // num_yfaces == 2 && num_zfaces == 2
+
+						}
+
+					}
+
+
+				}
+			}
+		}
+
 	}
 }

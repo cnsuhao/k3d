@@ -16,7 +16,7 @@
 
 #include <gmm/gmm.h>
 
-
+#include "types.h"
 #include "voxel_grid.h"
 #include <list>
 
@@ -50,14 +50,11 @@ protected:
 	void add_force(voxel_grid& u, const array3d_i& forcesx, const array3d_i& forcesy, const array3d_i& forcesz);
 	k3d::point3 trace_particle(const k3d::point3& p, float dt);
 
-
-	struct idx {
-		idx(int i,int j,int k) : m_i(i), m_j(j), m_k(k) { }
-		int m_i, m_j, m_k;
-	};
-
 	void setup_diffusion_velocity_bc(array3d_i& faces);
 	void setup_and_solve_diffusion(const std::list<idx>& faces, array3d_i& faces_r, voxel_grid& u, const voxel_grid& w, voxel_grid::velocity_type vtype);
+
+	void update_surface_face_boundaries(voxel_grid& u);
+
 
 
 

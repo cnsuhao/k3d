@@ -11,6 +11,8 @@
 
 #include <boost/multi_array.hpp>
 
+#include "types.h"
+
 
 namespace fluid_sim
 {
@@ -59,6 +61,16 @@ public:
 	float& vx(int i, int j, int k) { return (*m_grid_vx)[i][j][k]; }
 	float& vy(int i, int j, int k) { return (*m_grid_vy)[i][j][k]; }
 	float& vz(int i, int j, int k) { return (*m_grid_vz)[i][j][k]; }
+
+
+	float vx(const idx& l) const { return (*m_grid_vx)[l.i][l.j][l.k]; }
+	float vy(const idx& l) const { return (*m_grid_vy)[l.i][l.j][l.k]; }
+	float vz(const idx& l) const { return (*m_grid_vz)[l.i][l.j][l.k]; }
+
+
+	float& vx(const idx& l) { return (*m_grid_vx)[l.i][l.j][l.k]; }
+	float& vy(const idx& l) { return (*m_grid_vy)[l.i][l.j][l.k]; }
+	float& vz(const idx& l) { return (*m_grid_vz)[l.i][l.j][l.k]; }
 
 
 	// interpolate different velocity components
@@ -150,9 +162,9 @@ private:
 	float m_visc;
 
 	// number of components in each direction
-	int m_xfaces; // components along x axis = columns
-	int m_yfaces; // components along y axis = slices
-	int m_zfaces; // components along z axis = rows
+	int m_xfaces; 
+	int m_yfaces; 
+	int m_zfaces; 
 
 	int m_xvox;
 	int m_yvox;
