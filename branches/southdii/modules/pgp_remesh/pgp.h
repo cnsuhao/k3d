@@ -181,7 +181,7 @@ namespace detail {
 			int comp; // -1 if boundary
 			edge_t next;
 
-			face_t face;
+			int face;
 			vert_t vert;
 
 			vec2 local;
@@ -190,8 +190,8 @@ namespace detail {
 			int fake;
 			std::ostream& operator<<(std::ostream& out)
 			{
-				out << "(" << face << ", " << index << ") ->" << next << " | " << comp << " | "  << fake  << " | " 
-					<< "(" << local.first << ", " << local.second << ")|||(" << param.first << ", " << param.second << ")" << std::endl;
+				out << "i = " << index << "| f=" << face<< "| n=" << next << " | c=" << comp << " | fake="  << fake  << " | v=" << vert  
+					<< "l=(" << local.first << ", " << local.second << ") p=(" << param.first << ", " << param.second << ")" << std::endl;
 				return out;
 			}
 		};
@@ -206,6 +206,11 @@ namespace detail {
 					return false;
 				}
 				return true;
+			}
+			std::ostream& operator<<(std::ostream& out)
+			{
+				out << "i = " << index << " | n=" << next << " | c=" << comp << " | e="  << edge << std::endl;  
+				return out;
 			}
 			int index;
 			edge_t next; // next fake edge
@@ -222,6 +227,10 @@ namespace detail {
 					return false;
 				}
 				return true;
+			}
+
+			void print(std::ostream& out = std::cout) {
+				out << "i = " << index << "e = " << edge << " (" << world[0] << ", " << world[1] << ", " << world[2] << ")" << std::endl;
 			}
 			int index;
 			Vec3 world;
@@ -284,6 +293,18 @@ namespace detail {
 						std::vector<new_vert2>& verts, 
 						std::vector<fake_edge>& fakes);
 		int split(edge_t e, int i, double X, 
+						std::vector<new_edge2>& edges, 
+						std::vector<new_face2>& faces, 
+						std::vector<new_vert2>& verts, 
+						std::vector<fake_edge>& fakes);
+
+		void zip(edge_t e,
+						std::vector<new_edge2>& edges, 
+						std::vector<new_face2>& faces, 
+						std::vector<new_vert2>& verts, 
+						std::vector<fake_edge>& fakes);
+		void unzip(edge_t e,
+						std::vector<edge_t>& prev, 
 						std::vector<new_edge2>& edges, 
 						std::vector<new_face2>& faces, 
 						std::vector<new_vert2>& verts, 
