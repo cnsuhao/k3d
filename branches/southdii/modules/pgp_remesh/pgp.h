@@ -167,7 +167,7 @@ namespace detail {
 
 		struct new_edge2 {
 			new_edge2(int i = -1, edge_t n = 0xffffffff, int c = -1, face_t f = 0xffffffff, vert_t v = 0xffffffff, int _fake = -1) 
-				: index(i), next(n), comp(c), face(f), vert(v), fake(_fake)  {}
+				: orig(i), index(i), next(n), comp(c), face(f), vert(v), fake(_fake)  {}
 			
 			bool test() {
 				if(next == 0xffffffff || comp < -1 || face == 0xffffffff || index < 0 || vert == 0xffffffff) {
@@ -177,6 +177,7 @@ namespace detail {
 				return true;
 			}
 			int index;
+			int orig;
 
 			int comp; // -1 if boundary
 			edge_t next;
@@ -186,12 +187,12 @@ namespace detail {
 
 			vec2 local;
 			vec2 param;
-
+			
 			int fake;
 			std::ostream& operator<<(std::ostream& out)
 			{
-				out << "i = " << index << "| f=" << face<< "| n=" << next << " | c=" << comp << " | fake="  << fake  << " | v=" << vert  
-					<< "l=(" << local.first << ", " << local.second << ") p=(" << param.first << ", " << param.second << ")" << std::endl;
+				out << orig << " i = " << index << "| f=" << face<< "| n=" << next << " | c=" << comp << " | fake="  << fake  << " | v=" << vert  
+					<< " l=(" << local.first << ", " << local.second << ") p=(" << param.first << ", " << param.second << ")" << std::endl;
 				return out;
 			}
 		};
