@@ -51,8 +51,8 @@ namespace libk3dquadremesh
 			m_symmetry(init_owner(*this) + init_name("smooth_4") + init_label(_("Smooth as 4-symmetry")) + init_description(_("Smooth as 4-symmetry")) + init_value(false)),
 			m_steps(init_owner(*this) + init_name("steps") + init_label(_("Smoothing steps")) + init_description(_("Smoothing steps")) + init_value(5) + init_constraint(constraint::minimum(0))),
 			m_h(init_owner(*this) + init_name("h") + init_label(_("Smoothing timestep")) + init_description(_("Smoothing timesteps")) + init_value(1500.0) + init_constraint(constraint::minimum(0.0001))),
-			m_omega(init_owner(*this) + init_name("h") + init_label(_("Omega parameter")) + init_description(_("Omega parameter")) + init_value(10.0) + init_constraint(constraint::minimum(0.1))),
-			m_divides(init_owner(*this) + init_name("h") + init_label(_("Iso line divisions")) + init_description(_("Iso line divisions")) + init_value(2) + init_constraint(constraint::minimum(1))),
+			m_omega(init_owner(*this) + init_name("omega") + init_label(_("Omega parameter")) + init_description(_("Omega parameter")) + init_value(10.0) + init_constraint(constraint::minimum(0.1))),
+			m_divides(init_owner(*this) + init_name("div") + init_label(_("Iso line divisions")) + init_description(_("Iso line divisions")) + init_value(2) + init_constraint(constraint::minimum(1))),
 			prev_steps(0),
 			smoothed(false)
 		{
@@ -75,20 +75,6 @@ namespace libk3dquadremesh
 
 		void smooth(k3d::iunknown* const Hint)
 		{
-			std::cout << "smooth \n";
-
-			if(!geom.valid) return;
-			if(k3d::mesh* const output = m_output_mesh.internal_value())
-			{
-				int steps = m_steps.pipeline_value()-prev_steps;
-				if(steps < 0)
-					geom.smooth(m_h.pipeline_value(), m_steps.pipeline_value(), m_symmetry.pipeline_value());
-				else
-					geom.smooth(m_h.pipeline_value(), steps, m_symmetry.pipeline_value());
-				prev_steps = m_steps.pipeline_value();
-				geom.dump_draw_data(*output);
-			}
-
 		}	
 
 		void on_create_mesh(const k3d::mesh& InputMesh, k3d::mesh& OutputMesh) 
