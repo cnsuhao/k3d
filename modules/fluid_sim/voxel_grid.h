@@ -72,6 +72,16 @@ public:
 	float& vy(const idx& l) { return (*m_grid_vy)[l.i][l.j][l.k]; }
 	float& vz(const idx& l) { return (*m_grid_vz)[l.i][l.j][l.k]; }
 
+	k3d::point3 lower_voxel_corner(int i, int j, int k) { return k3d::point3(m_nx.value() + m_voxel_width*i, m_ny.value() + m_voxel_width*j,
+									     m_nz.value() + m_voxel_width*k); }
+
+	void make_obstacle(int i, int j, int k) {
+		(*m_vox_type)[i][j][k] = OBSTACLE;
+		(*m_grid_vx)[i][j][k] = 0;
+		(*m_grid_vy)[i][j][k] = 0;
+		(*m_grid_vz)[i][j][k] = 0;
+	}
+
 
 	// interpolate different velocity components
 	
@@ -82,8 +92,9 @@ public:
 	float interpolate_vx(float x, float y, float z);
 	float interpolate_vy(float x, float y, float z);
 	float interpolate_vz(float x, float y, float z);
-	
 
+		
+	void setup_outer_voxel_layer();
 
 
 	float voxel_width() const { return m_voxel_width; }
@@ -100,6 +111,8 @@ public:
 		VZ
 	};
 
+	float interpolate(float x, float y, float z, velocity_type vtype);
+
 	
 	//typedef boost::multi_array<float, 3> array3d_f; // float
 	//typedef boost::multi_array<int, 3> array3d_i;
@@ -114,6 +127,9 @@ public:
 
 	float pressure(int i, int j, int k) const { return (*m_pressure)[i][j][k]; }
 	float density(int i, int j, int k) const { return (*m_density)[i][j][k]; }
+
+	voxel_type vox_type(int i, int j, int k) const { return (*m_vox_type)[i][j][k]; }
+	voxel_type& vox_type(int i, int j, int k) { return (*m_vox_type)[i][j][k]; }
 
 private:
 	// many of the properties will be removed - only voxel width will be modifiable by the user
@@ -140,6 +156,15 @@ private:
 	float m_orig_py;
 	float m_orig_pz;
 
+	/**
+	float m_cur_nx;
+	float m_cur_ny;
+	float m_cur_nz;
+
+	float m_cur_px;
+	float m_cur_py;
+	float m_cut_pz;
+	**/
 
 	// right now, widthx = widthy = widthz, but this may change in the future
 	float m_vox_width_x;
