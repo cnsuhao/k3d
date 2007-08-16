@@ -180,7 +180,7 @@ namespace detail {
 			int orig;
 
 			int comp; // -1 if boundary
-			edge_t next;
+			int next;
 
 			int face;
 			vert_t vert;
