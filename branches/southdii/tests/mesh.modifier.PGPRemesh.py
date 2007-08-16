@@ -12,6 +12,11 @@ triangles.mesh_selection = k3d.select_all()
 document.set_dependency(triangles.get_property("input_mesh"), source.get_property("output_mesh"))
 
 modifier = document.new_node("PGPRemesh")
+modifier.use_smooth = False
+modifier.smooth_4 = False
+modifier.steps = 0
+modifier.omega = 1
+modifier.div = 1
 document.set_dependency(modifier.get_property("input_mesh"), triangles.get_property("output_mesh"))
 
 #print "source output: " + repr(source.output_mesh)
