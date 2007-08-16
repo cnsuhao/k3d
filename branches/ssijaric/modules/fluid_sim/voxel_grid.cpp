@@ -58,6 +58,8 @@ namespace fluid_sim
 		m_density = new array3d_f(boost::extents[m_xvox][m_yvox][m_zvox]);
 		m_vox_type = new array3d_type(boost::extents[m_xvox][m_yvox][m_zvox]);
 		m_voxel_width = m_vox_width.value();
+
+		setup_outer_voxel_layer();
 	}
 
 	k3d::iplugin_factory& voxel_grid::get_factory()
@@ -150,202 +152,110 @@ namespace fluid_sim
 		return voxel_grid::get_factory();
 	}
 
+
+	// the outer voxel layer conists of four solid walls
+	void voxel_grid::setup_outer_voxel_layer()
+	{
+		for (int i = 0; i < m_xvox; ++i) {
+			for (int j = 0; j < m_yvox; ++j) {
+				(*m_vox_type)[i][j][m_zvox-1] = OBSTACLE;
+			}
+		}
+
+		for (int i = 0; i < m_xvox; ++i) {
+			for (int k = 0; k < m_zvox; ++k) {
+				(*m_vox_type)[i][m_yvox-1][k] = OBSTACLE;
+			}
+		}
+
+		for (int j = 0; j < m_yvox; ++j) {
+			for (int k = 0; k < m_zvox; ++k) {
+				(*m_vox_type)[m_xvox-1][j][k] = OBSTACLE;
+			}
+		}
+
+
+		// set velocities 
+		for (int i = 0; i < m_xfaces; ++i) {
+			for (int j = 0; j < m_yfaces; ++j) {
+				(*m_grid_vx)[i][j][m_zfaces-1] = 0;
+				(*m_grid_vy)[i][j][m_zfaces-1] = 0;
+				(*m_grid_vz)[i][j][m_zfaces-1] = 0;
+			}
+		}
+
+		for (int i = 0; i < m_xfaces; ++i) {
+			for (int k = 0; k < m_zfaces; ++k) {
+				(*m_grid_vx)[i][m_yfaces-1][k] = 0;
+				(*m_grid_vy)[i][m_yfaces-1][k] = 0;
+				(*m_grid_vz)[i][m_yfaces-1][k] = 0;
+			}
+		}
+
+		for (int j = 0; j < m_yfaces; ++j) {
+			for (int k = 0; k < m_zfaces; ++k) {
+				(*m_grid_vx)[m_xfaces-1][j][k] = 0;
+				(*m_grid_vy)[m_xfaces-1][j][k] = 0;
+				(*m_grid_vz)[m_xfaces-1][k][k] = 0;
+			}
+
+		}
+
+		// initially set all other voxels as air
+		for (int i = 1; i < m_xvox-1; ++i) {
+			for (int j = 1; j < m_yvox-1; ++j) {
+				for (int k = 1; k < m_zvox-1; ++k) {
+					(*m_vox_type)[i][j][k] = EMPTY;	
+				}
+			}
+		}
+		
+	}
+
 	// tri-linear interpolation for different velcoity components
 
 	float voxel_grid::interpolate_vx(const k3d::point3& pos)
 	{
-		return interpolate_vx(pos[0], pos[1], pos[2]);
+		return interpolate(pos[0], pos[1], pos[2], VX);
 	}
 
 	float voxel_grid::interpolate_vy(const k3d::point3& pos)
 	{
-		return interpolate_vy(pos[0], pos[1], pos[2]);
+		return interpolate(pos[0], pos[1], pos[2], VY);
 	}
 
 	float voxel_grid::interpolate_vz(const k3d::point3& pos)
 	{
-		return interpolate_vz(pos[0], pos[1], pos[2]);
+		return interpolate(pos[0], pos[1], pos[2], VZ);
 	}
 
 	float voxel_grid::interpolate_vx(float x, float y, float z)
 	{
-		assert(x >= m_nx.value() && x <= m_px.value() && y >= m_ny.value() && y <= m_py.value() && z >= m_nz.value() && z <= m_pz.value());
-
-		float nx = m_nx.value();
-		float ny = m_ny.value();
-		float nz = m_nz.value();
-		float vox_width = m_vox_width.value();
-
-		float i_diff = x - nx;
-		float j_diff = y - ny + 0.5*vox_width;
-		float k_diff = z - nz + 0.5*vox_width;
-
-		int i = (int)(i_diff/vox_width);
-		int j = (int)(j_diff/vox_width);
-		int k = (int)(k_diff/vox_width);
-
-		std::cout << "i = " << i << ", j = " << j << ", k = " << k << std::endl;
-
-		// find the location of v000
-		float x0 = nx + i*vox_width;
-		float y0 = ny + (j + 0.5)*vox_width;
-		float z0 = nz + (k + 0.5)*vox_width;
-
-		std::cout << "(x0, y0, z0) = (" << x0 << ", " << y0 << ", " << z0 << ")" << std::endl;
-
-		float dx = (x - x0)/vox_width;
-		float dy = (y - y0)/vox_width;
-		float dz = (z - z0)/vox_width;
-
-
-		if (j_diff < 0 &&  k_diff < 0) { // interpolate over 2 points along i - (i,0,0) and (i+1,0,0)
-			std::cout << "j < 0, k < 0" << std::endl;
-
-			float v0 = (*m_grid_vx)[i][0][0];
-			float v1 = (*m_grid_vx)[i+1][0][0];
-
-			return v0*(1-dx) + v1*dx;
-		}
-		else if (j_diff < 0) {
-			std::cout << "j < 0" << std::endl;
-
-			float v00 = (*m_grid_vx)[i][0][k];
-			float v10 = (*m_grid_vx)[i+1][0][k];
-			float v11 = (*m_grid_vx)[i+1][0][k+1];
-			float v01 = (*m_grid_vx)[i][0][k+1];
-
-			return v00*(1-dx)*(1-dz) + v10*dx*(1-dz) + v11*dx*dz + v01*(1-dx)*dz;
-
-		}	
-		else if (k_diff < 0) {
-			std::cout << "k < 0" << std::endl;
-
-			float v00 = (*m_grid_vx)[i][j][0];
-			float v10 = (*m_grid_vx)[i+1][j][0];
-			float v01 = (*m_grid_vx)[i][j+1][0];
-			float v11 = (*m_grid_vx)[i+1][j+1][0]; // possibly wrong - check!!
-
-			return v00*(1-dx)*(1-dy) + v10*dx*(1-dy) + v01*(1-dx)*dy + v11*dx*dy;
-
-		}
-		else {
-			float v000 = (*m_grid_vx)[i][j][k];
-			float v001 = (*m_grid_vx)[i][j][k+1];
-			float v101 = (*m_grid_vx)[i+1][j][k+1];
-			float v100 = (*m_grid_vx)[i+1][j][k];
-
-			float v010 = (*m_grid_vx)[i][j+1][k];
-			float v011 = (*m_grid_vx)[i][j+1][k+1];
-			float v111 = (*m_grid_vx)[i+1][j+1][k+1];
-			float v110 = (*m_grid_vx)[i+1][j+1][k];
-
-
-			std::cout << v000 << " " << v001 << " " << v101 << " " << v100 << " " << v010 << " " <<
-				v011 << " " << v111 << " " << v110 << std::endl;
-
-			return v000*(1-dx)*(1-dy)*(1-dz) +
-				v100*dx*(1-dy)*(1-dz) +
-				v010*(1-dx)*dy*(1-dz) +
-				v001*(1-dx)*(1-dy)*dz +
-				v101*dx*(1-dy)*dz +
-				v011*(1-dx)*dy*dz +
-				v110*dx*dy*(1-dz) +
-				v111*dx*dy*dz;
-		}
-
+		return interpolate(x,y,z,VX);
 	}
 
 	float voxel_grid::interpolate_vy(float x, float y, float z)
 	{
-		//assert(x >= m_nx && x <= m_px && y >= m_ny && y <= m_py && z >= m_nz && z <= m_pz);
-		//
-		float nx = m_nx.value();
-		float ny = m_ny.value();
-		float nz = m_nz.value();
-		float vox_width = m_vox_width.value();
-
-
-		float i_diff = x - (nx + 0.5*vox_width);
-		float j_diff = y - ny;
-		float k_diff = z - (nz + 0.5*vox_width);
-
-		int i = (int)(i_diff/vox_width);
-		int j = (int)(j_diff/vox_width);
-		int k = (int)(k_diff/vox_width);
-
-		std::cout << "i = " << i << ", j = " << j << ", k = " << k << std::endl;
-
-		// find the location of v000
-		float x0 = nx + (i + 0.5)*vox_width;
-		float y0 = ny + j*vox_width;
-		float z0 = nz + (k + 0.5)*vox_width;
-
-		std::cout << "(x0, y0, z0) = (" << x0 << ", " << y0 << ", " << z0 << ")" << std::endl;
-
-		float dx = (x - x0)/vox_width;
-		float dy = (y - y0)/vox_width;
-		float dz = (z - z0)/vox_width;
-
-
-		if (i_diff < 0 &&  k_diff < 0) { // interpolate over 2 points along i - (i,0,0) and (i+1,0,0)
-			std::cout << "j < 0, k < 0" << std::endl;
-			float v0 = (*m_grid_vy)[0][j][0];
-			float v1 = (*m_grid_vy)[0][j+1][0];
-
-			return v0*(1-dy) + v1*dy;
-		}
-		else if (i_diff < 0) {
-			std::cout << "i < 0" << std::endl;
-
-			float v00 = (*m_grid_vy)[0][j][k];
-			float v10 = (*m_grid_vy)[0][j+1][k];
-			float v11 = (*m_grid_vy)[0][j+1][k+1];
-			float v01 = (*m_grid_vy)[0][j][k+1];
-
-			return v00*(1-dy)*(1-dz) + v10*dy*(1-dz) + v11*dy*dz + v01*(1-dy)*dz;
-
-		}	
-		else if (k_diff < 0) {
-			std::cout << "k < 0" << std::endl;
-
-			float v00 = (*m_grid_vy)[i][j][0];
-			float v10 = (*m_grid_vy)[i+1][j][0];
-			float v01 = (*m_grid_vy)[i][j+1][0];
-			float v11 = (*m_grid_vy)[i+1][j+1][0];
-
-			return v00*(1-dx)*(1-dy) + v10*dx*(1-dy) + v01*(1-dx)*dy + v11*dx*dy;
-
-		}
-		else {
-			float v000 = (*m_grid_vy)[i][j][k];
-			float v001 = (*m_grid_vy)[i][j][k+1];
-			float v101 = (*m_grid_vy)[i+1][j][k+1];
-			float v100 = (*m_grid_vy)[i+1][j][k];
-
-			float v010 = (*m_grid_vy)[i][j][k+1];
-			float v011 = (*m_grid_vy)[i][j+1][k+1];
-			float v111 = (*m_grid_vy)[i+1][j+1][k+1];
-			float v110 = (*m_grid_vy)[i+1][j+1][k];
-
-
-			std::cout << v000 << " " << v001 << " " << v101 << " " << v100 << " " << v010 << " " <<
-				v011 << " " << v111 << " " << v110 << std::endl;
-
-			return v000*(1-dx)*(1-dy)*(1-dz) +
-				v100*dx*(1-dy)*(1-dz) +
-				v010*(1-dx)*dy*(1-dz) +
-				v001*(1-dx)*(1-dy)*dz +
-				v101*dx*(1-dy)*dz +
-				v011*(1-dx)*dy*dz +
-				v110*dx*dy*(1-dz) +
-				v111*dx*dy*dz;
-		}
-
+		return interpolate(x,y,z,VY);
 	}
 
 	float voxel_grid::interpolate_vz(float x, float y, float z)
 	{
+		return interpolate(x,y,z,VZ);
+
+	}
+
+	float voxel_grid::interpolate(float x, float y, float z, velocity_type vtype)
+	{
 		//assert(x >= m_nx && x <= m_px && y >= m_ny && y <= m_py && z >= m_nz && z <= m_pz);
+
+		array3d_f* grid_v;
+		if (vtype == VX)
+			grid_v = m_grid_vx;
+		else if (vtype == VY)
+			grid_v = m_grid_vy;
+		else
+			grid_v = m_grid_vz;
 
 		float nx = m_nx.value();
 		float ny = m_ny.value();
@@ -353,78 +263,58 @@ namespace fluid_sim
 		float vox_width = m_vox_width.value();
 
 
-		float i_diff = x - (nx + 0.5*vox_width);
-		float j_diff = y - (ny + 0.5*vox_width);
+		float i_diff = x - nx;
+		float j_diff = y - ny;
 		float k_diff = z - nz;
 
 		int i = (int)(i_diff/vox_width);
 		int j = (int)(j_diff/vox_width);
 		int k = (int)(k_diff/vox_width);
 
-		std::cout << "i = " << i << ", j = " << j << ", k = " << k << std::endl;
 
 		// find the location of v000
-		float x0 = nx + (i + 0.5)*vox_width;
-		float y0 = ny + (j + 0.5)*vox_width;
-		float z0 = nz + k*vox_width; 
+		float x0, y0, z0;
+		if (vtype == VX) {
+			x0 = nx + i*vox_width;
+			y0 = ny + (j + 0.5)*vox_width;
+			z0 = nz + (k + 0.5)*vox_width;
+		}
+		else if (vtype == VY) {		
+			x0 = nx + (i + 0.5)*vox_width;
+			y0 = ny + j*vox_width;
+			z0 = nz + (k + 0.5)*vox_width;
+		}
+		else {
+			x0 = nx + (i + 0.5)*vox_width;
+			y0 = ny + (j + 0.5)*vox_width;
+			z0 = nz + k*vox_width; 
+		}
 
-		std::cout << "(x0, y0, z0) = (" << x0 << ", " << y0 << ", " << z0 << ")" << std::endl;
 
 		float dx = (x - x0)/vox_width;
 		float dy = (y - y0)/vox_width;
 		float dz = (z - z0)/vox_width;
 
 
-		if (i_diff < 0 &&  j_diff < 0) { // interpolate over 2 points along i - (i,0,0) and (i+1,0,0)
-			std::cout << "j < 0, k < 0" << std::endl;
-			float v0 = (*m_grid_vz)[0][0][k];
-			float v1 = (*m_grid_vz)[0][0][k+1];
+		float v000 = (*grid_v)[i][j][k];
+		float v001 = (*grid_v)[i][j][k+1];
+		float v101 = (*grid_v)[i+1][j][k+1];
+		float v100 = (*grid_v)[i+1][j][k];
 
-			return v0*(1-dz) + v1*dz;
-		}
-		else if (i_diff < 0) {
-			std::cout << "i < 0" << std::endl;
-			float v00 = (*m_grid_vz)[0][j][k];
-			float v10 = (*m_grid_vz)[0][j+1][k];
-			float v11 = (*m_grid_vz)[0][j+1][k+1];
-			float v01 = (*m_grid_vz)[0][j][k+1];
+		float v010 = (*grid_v)[i][j+1][k];
+		float v011 = (*grid_v)[i][j+1][k+1];
+		float v111 = (*grid_v)[i+1][j+1][k+1];
+		float v110 = (*grid_v)[i+1][j+1][k];
 
-			return v00*(1-dy)*(1-dz) + v10*dy*(1-dz) + v11*dy*dz + v01*(1-dy)*dz;
 
-		}	
-		else if (j_diff < 0) {
-			std::cout << "k < 0" << std::endl;
-			float v00 = (*m_grid_vz)[i][0][k];
-			float v10 = (*m_grid_vz)[i+1][0][k];
-			float v01 = (*m_grid_vz)[i][0][k+1];
-			float v11 = (*m_grid_vz)[i+1][0][k+1];
-
-			return v00*(1-dx)*(1-dz) + v10*dx*(1-dz) + v01*(1-dx)*dz + v11*dx*dz;
-
-		}
-		else {
-			float v000 = (*m_grid_vz)[i][j][k];
-			float v001 = (*m_grid_vz)[i][j][k+1];
-			float v101 = (*m_grid_vz)[i+1][j][k+1];
-			float v100 = (*m_grid_vz)[i+1][j][k];
-
-			float v010 = (*m_grid_vz)[i][j+1][k];
-			float v011 = (*m_grid_vz)[i][j+1][k+1];
-			float v111 = (*m_grid_vz)[i+1][j+1][k+1];
-			float v110 = (*m_grid_vz)[i+1][j+1][k];
-
-			std::cout << v000 << " " << v001 << " " << v101 << " " << v100 << " " << v010 << " " <<
-				v011 << " " << v111 << " " << v110 << std::endl;
-
-			return v000*(1-dx)*(1-dy)*(1-dz) +
-				v100*dx*(1-dy)*(1-dz) +
-				v010*(1-dx)*dy*(1-dz) +
-				v001*(1-dx)*(1-dy)*dz +
-				v101*dx*(1-dy)*dz +
-				v011*(1-dx)*dy*dz +
-				v110*dx*dy*(1-dz) +
-				v111*dx*dy*dz;
-		}
+		return v000*(1-dx)*(1-dy)*(1-dz) +
+			v100*dx*(1-dy)*(1-dz) +
+			v010*(1-dx)*dy*(1-dz) +
+			v001*(1-dx)*(1-dy)*dz +
+			v101*dx*(1-dy)*dz +
+			v011*(1-dx)*dy*dz +
+			v110*dx*dy*(1-dz) +
+			v111*dx*dy*dz;
 	}
 
 

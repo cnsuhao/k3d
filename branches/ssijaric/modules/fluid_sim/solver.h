@@ -44,6 +44,7 @@ protected:
 
 
 	sigc::slot<void, iunknown*> start_solver_slot();
+	void start_solver(k3d::iunknown* Hint);
 
 	void diffuse_velocities(voxel_grid& new_grid, const voxel_grid& old_grid);
 	void project(voxel_grid& new_grid, const voxel_grid& old_grid);
@@ -55,11 +56,8 @@ protected:
 
 	void update_surface_face_boundaries(voxel_grid& u);
 
-
-
-
-
-
+	void check_divergence();
+	float divergence(const voxel_grid& u, int i, int j, int k);
 };
 
 k3d::iplugin_factory& solver_factory();
