@@ -915,44 +915,93 @@ namespace detail {
 		
 		return;
 	}
+	void PGP::clean_edges(std::vector<new_edge2>& edges) {
+		std::cout << "m" << std::endl;
+		edge_t e_size = 0;
+		for(edge_t e = 0; e < edges.size(); ++e) {
+			if(edges[e].index >= 0) {
+				edges[e].index = e_size++;
+			}
+		}
+		std::cout << "ma" << std::endl;
+		for(edge_t e = 0; e < edges.size(); ++e) {
+			if(edges[e].index >= 0) {
+				edges[e].next = edges[edges[e].next].index;
+				if(edges[e].comp >= 0 ) edges[e].comp = edges[edges[e].comp].index;
+
+			}
+		}
+		std::cout << "n" << std::endl;
+		for(edge_t e = 0; e < edges.size(); ++e) {
+			if(edges[e].index >= 0) {
+				edges[edges[e].index] = edges[e];
+			}
+		}
+		k3d::log() << edges.size() << "->" << e_size << std::endl;
+		std::cout << edges.size() << "->" << e_size << std::endl;
+		edges.resize(e_size);
+	}
+
+	void PGP::clean_verts(std::vector<new_edge2>& edges, std::vector<new_vert2>& verts) {
+		std::cout << "o" << std::endl;
+		for(edge_t e = 0; e < edges.size(); ++e) {
+			if(verts[edges[e].vert].index < 0) {
+				verts[edges[e].vert].index = edges[e].vert;
+			}
+			edges[e].vert = verts[edges[e].vert].index;
+			
+		}
+		vert_t v_size=0;
+		std::cout << "p" << std::endl;
+		for(vert_t v = 0; v < verts.size(); ++v) {
+			if(v != verts[v].index || v < mesh->num_verts) {
+				verts[v].index = -1;
+			} else {
+				verts[v].index = v_size++;
+			}
+		}
+
+		std::cout << "q" << std::endl;
+		for(edge_t e = 0; e < edges.size(); ++e) {
+			edges[e].vert = verts[edges[e].vert].index;
+		}
+		std::cout << "r" << std::endl;
+		for(vert_t v = 0; v < verts.size(); ++v) {
+			if(verts[v].index >= 0)
+				verts[verts[v].index] = verts[v];
+		}
+		std::cout << "s" << std::endl;
+
+		//for(edge_t e = 0; e < edges.size(); ++e) {
+		//	edges[e].vert = verts[edges[e].vert].index;
+		//}
+		std::cout << "t" << std::endl;
+		verts.resize(v_size);
+
+	}
 
 	void PGP::zip(edge_t edge, std::vector<new_edge2>& edges, std::vector<new_face2>& faces, std::vector<new_vert2>& verts, std::vector<fake_edge>& fakes)
 	{
-//		std::cout << "Zip " << edge << std::endl;
 		std::vector<edge_t> stack;
 		edge_t fe = edge;
 		while(fe != mesh->edge_ccw[edge]) {
-			//fakes[fe].operator <<(std::cout);
 			stack.push_back(fe);
 			fe = fakes[fe].next;
 		}
-//		std::cout << "--- " << std::endl;
 
 		fe = mesh->edge_comp[edge];
 		while(fe != mesh->edge_ccw[ mesh->edge_comp[edge]]) {
-			//fakes[fe].operator <<(std::cout);
 			fe = fakes[fe].next;
 		}
-//		std::cout << "--- " << std::endl << std::endl;
 
 		fe = mesh->edge_comp[edge];
 		while(fe != mesh->edge_ccw[ mesh->edge_comp[edge]]) {
-//			std::cout << "Zipping " << fe << std::endl;
 			edge_t fe_c = stack.back();
 			stack.pop_back();
 
 			edge_t e = fakes[fe].comp;
 			edge_t ec = fakes[fe_c].comp;
 
-			//edges[e].operator <<(std::cout);
-			//std::cout << "e.n.v = " << edges[edges[e].next].vert << " (" << verts[edges[edges[e].next].vert].world[0] << ", " << verts[edges[edges[e].next].vert].world[1] << ", " << verts[edges[edges[e].next].vert].world[2] << ")\n";
-			//std::cout << "e.c.v = " << edges[ec].vert << " (" << verts[edges[ec].vert].world[0] << ", " <<verts[edges[ec].vert].world[1] << ", " << verts[edges[ec].vert].world[2]<< ")\n";
-			//edges[ec].operator <<(std::cout);
-			//std::cout << "e.c.n.v = " << edges[edges[ec].next].vert << " (" << verts[edges[edges[ec].next].vert].world[0] << ", " <<verts[edges[edges[ec].next].vert].world[1] << ", " << verts[edges[edges[ec].next].vert].world[2]<< ")\n";
-			//std::cout << "e.v = " << edges[e].vert << " (" << verts[edges[e].vert].world[0] << ", " <<verts[edges[e].vert].world[1] << ", " << verts[edges[e].vert].world[2]<< ")\n";
-			//std::cout << "------" << std::endl;
-			//
-			
 			edges[e].comp = edges[ec].index; // ec
 			edges[ec].comp = edges[e].index; // e
 
@@ -960,61 +1009,145 @@ namespace detail {
 			if(edges[edges[e].next].vert != edges[ec].vert) {
 				v = std::min(edges[ec].vert, edges[edges[e].next].vert);
 				verts[edges[edges[e].next].vert].index = verts[edges[ec].vert].index = v;
-			//	edges[edges[e].next].vert = edges[ec].vert = v;
 			}
 			if(edges[edges[ec].next].vert != edges[e].vert) {
 				v = std::min(edges[e].vert, edges[edges[ec].next].vert);
 				verts[edges[edges[ec].next].vert].index = verts[edges[e].vert].index = v;
-			//	edges[edges[ec].next].vert = edges[e].vert = v;
 			}
-
-			//edges[e].operator <<(std::cout);
-			//edges[ec].operator <<(std::cout);
-			//
-			//std::cout << std::endl;
 
 			fe = fakes[fe].next;
 		}
 	}
-	void PGP::unzip(edge_t e, std::vector<edge_t>& prev, std::vector<new_edge2>& edges, std::vector<new_face2>& faces, std::vector<new_vert2>& verts, std::vector<fake_edge>& fakes)
+	void PGP::unzip(edge_t e, std::vector<new_edge2>& edges, std::vector<new_face2>& faces, std::vector<new_vert2>& verts, std::vector<fake_edge>& fakes)
 	{
+		edge_t fe;
+
 		std::cout << "unzipping "<< e << std::endl;
-		face_t F = edges[e].face;
-		edge_t fe = e;
-		edge_t ec = mesh->edge_comp[e];
-		edge_t e_term;
-		edge_t ec_term;
-		edge_t e_prev;
-		edge_t ec_prev;
-		edge_t temp;
-		while(fakes[fakes[fe].next].edge == fakes[e].edge) {
-			temp = edges[edges[fakes[fe].comp].next].comp;
-			edges[temp].next = edges[temp].comp;
-			prev[edges[temp].comp] = temp;
 
-			edges[fakes[fe].comp].face = -1;
-
+		fe = e;
+		while(fe != mesh->edge_ccw[e]) {
+			fakes[fe].operator <<(std::cout);
+			std::cout << "   ";
+			edges[fakes[fe].comp].operator <<(std::cout);
 			fe = fakes[fe].next;
 		}
-		e_term = edges[fakes[fe].comp].next;
+		std::cout << "---------" << std::endl;
+		fe = mesh->edge_comp[e];
+		while(fe != mesh->edge_ccw[ mesh->edge_comp[e]]) {
+			fakes[fe].operator <<(std::cout);
+			std::cout << "   ";
+			edges[fakes[fe].comp].operator <<(std::cout);
+			fe = fakes[fe].next;
+		}
+		std::cout << "---------" << std::endl;
+
+		mesh_info::Edge mesh_edge = mesh->getEdge(e);
+		Vec3 start = mesh_edge.start();
+		Vec3 end = mesh_edge.end();
 		
-		fe = ec;
-		while(fakes[fakes[fe].next].edge == fakes[ec].edge) {
-			temp = edges[edges[fakes[fe].comp].next].comp;
-			edges[temp].next = edges[temp].comp;
-			prev[edges[temp].comp] = temp;
-			edges[fakes[fe].comp].face = -1;
 
+		std::vector<edge_t> stack;
+		fe = e;
+
+		while(fe != mesh->edge_ccw[e]) {
+
+
+			stack.push_back(fe);
 			fe = fakes[fe].next;
 		}
-		ec_term = edges[fakes[fe].comp].next;
+
+		fe = mesh->edge_comp[e];
+		while(fe != mesh->edge_ccw[ mesh->edge_comp[e]]) {
 
 
-		edges[prev[e]].next = ec_term;
-		edges[prev[ec]].next = e_term;
-		prev[ec_term] = prev[e];
-		prev[e_term] = prev[ec];
-		std::cout << "unzipped "<< e << std::endl;
+			edge_t p_edge = fakes[stack.back()].comp;
+			Vec3 p = verts[edges[p_edge].vert].world;
+			p -= end;
+			double p_len = p.Length();
+			
+			edge_t q_edge = fakes[fe].comp;
+			Vec3 q = verts[edges[fakes[fakes[fe].next].comp].vert].world;
+			q -= end;
+			double q_len = q.Length();
+			if(fakes[fe].next == mesh->edge_ccw[ mesh->edge_comp[e]] && p_edge == e) {
+				edges[p_edge].comp = edges[q_edge].index; // ec
+				edges[q_edge].comp = edges[p_edge].index; // e
+				break;
+			} 
+			if(q_len < p_len) {
+				new_edge2 p_new(edges.size(), 
+								edges[p_edge].next, 
+								q_edge, 
+								edges[p_edge].face, 
+								edges[fakes[fakes[fe].next].comp].vert, 
+								fakes.size());
+
+				fake_edge fe_new(p_new.fake, fakes[stack.back()].next, p_new.index, fakes[stack.back()].edge);
+
+				edges[q_edge].comp = p_new.index;
+				edges[p_edge].next = p_new.index;
+				fakes[stack.back()].next = fe_new.index;
+
+				edges.push_back(p_new);
+				fakes.push_back(fe_new);
+
+				fe = fakes[fe].next;
+			} else if(p_len < q_len) {
+				new_edge2 q_new(edges.size(),
+								edges[q_edge].next,
+								-1,
+								edges[q_edge].face,
+								edges[p_edge].vert,
+								fakes.size());
+
+				fake_edge fe_new(q_new.fake, fakes[fe].next, q_new.index, fakes[fe].edge);
+
+				edges[p_edge].comp = q_edge;
+				edges[q_edge].comp = p_edge;
+				edges[q_edge].next = q_new.index;
+				fakes[fe].next = fe_new.index;
+
+				edges.push_back(q_new);
+				fakes.push_back(fe_new);
+				
+				fe = q_new.fake;
+				stack.pop_back();
+			} else {
+				stack.pop_back();
+				fe = fakes[fe].next;
+				std::cout << "!!!!!" << std::endl;
+				edges[p_edge].comp = edges[q_edge].index; // ec
+				edges[q_edge].comp = edges[p_edge].index; // e
+
+				vert_t v;
+				if(edges[edges[p_edge].next].vert != edges[q_edge].vert) {
+					v = std::min(edges[q_edge].vert, edges[edges[p_edge].next].vert);
+					verts[edges[edges[p_edge].next].vert].index = verts[edges[q_edge].vert].index = v;
+				}
+				if(edges[edges[q_edge].next].vert != edges[p_edge].vert) {
+					v = std::min(edges[p_edge].vert, edges[edges[q_edge].next].vert);
+					verts[edges[edges[q_edge].next].vert].index = verts[edges[p_edge].vert].index = v;
+				}
+			}
+		}
+		
+		fe = e;
+		while(fe != mesh->edge_ccw[e]) {
+			fakes[fe].operator <<(std::cout);
+			std::cout << '\t';
+			edges[fakes[fe].comp].operator <<(std::cout);
+			fe = fakes[fe].next;
+		}
+		std::cout << "---------" << std::endl;
+
+		fe = mesh->edge_comp[e];
+		while(fe != mesh->edge_ccw[ mesh->edge_comp[e]]) {
+			fakes[fe].operator <<(std::cout);
+			std::cout << '\t';
+			edges[fakes[fe].comp].operator <<(std::cout);
+			fe = fakes[fe].next;
+		}
+		std::cout << "---------" << std::endl<< std::endl;
 
 	}
 
@@ -1088,7 +1221,6 @@ std::cout << "Done" << std::endl;
 
 
 
-
 //		print(edges, faces, verts, fakes);
 std::cout << '1' << std::flush;
 //		validate(edges, faces, verts, fakes);
@@ -1101,8 +1233,8 @@ std::cout << '1' << std::flush;
 				vec2 b = edges[ec].param-edges[mesh->edge_ccw[ec]].param;
 				
 				if(std::abs(a*a - b*b) > 1.0e-8) {
-					//std::cout << " Singlular edge " << e << std::endl;
-					//unzip(e, prev, edges, faces, verts, fakes);
+					std::cout << " Singlular edge " << e << std::endl;
+					unzip(e, edges, faces, verts, fakes);
 				} else {
 					int c1 = 0, c2 = 0;
 					edge_t fe = e;
@@ -1139,7 +1271,7 @@ std::cout << '1' << std::flush;
 						std::cout << std::endl << std::endl;
 
 						
-						//unzip(e, prev, edges, faces, verts, fakes);
+						unzip(e, edges, faces, verts, fakes);
 					}
 				}
 			}
@@ -1152,68 +1284,31 @@ std::cout << '1' << std::flush;
 		}
 
 		for(edge_t fe = 0; fe < fakes.size(); ++fe) {
-			edge_t e = fakes[fe].comp;
+			int e = fakes[fe].comp;
 			
-			if(e < mesh->num_edges && edges[e].comp >= 0) {
-				edges[e].index = -2;
-				verts[edges[e].vert].index = -1;
-			} else if(0 <= edges[e].comp && edges[e].comp < mesh->num_edges && edges[prev[e]].comp > 0) {
-				edge_t ec = edges[e].comp;
-				edge_t ecn = edges[ec].next;
+			if(edges[e].comp < 0) {
+				std::cout << "what???????" << std::endl;
+				break;
+			}
+			int ec = edges[e].comp;
 
+			if(e < ec) {
 				assert_error(edges[prev[e]].next == e);
+				assert_error(edges[prev[ec]].next == ec);
 
-				edges[prev[e]].next = ecn;
-				prev[ecn] = prev[e];
+				edges[prev[e]].next = edges[ec].next;
+				edges[prev[ec]].next = edges[e].next;
 
-				edges[e].index = -3;
-			} else if(edges[e].comp == -1) {
-				edge_t pe = prev[e];
-				edge_t pec = edges[pe].comp;
+				prev[edges[ec].next] = prev[e];
+				prev[edges[e].next] = prev[ec];
 				
-				assert_error(edges[pe].next == e);
-				
-				edges[pe].next = pec;
-				prev[pec] = pe;
 				edges[e].index = -1;
-			} else if(e < edges[e].comp) {
-				edge_t _e = fakes[fe].comp;
-				edge_t _ec = edges[_e].comp;
-				assert_error(edges[prev[_e]].next == _e);
-				assert_error(edges[prev[_ec]].next == _ec);
-
-				edges[prev[_e]].next = edges[_ec].next;
-				edges[prev[_ec]].next = edges[_e].next;
-				prev[edges[_ec].next] = prev[_e];
-				prev[edges[_e].next] = prev[_ec];
-				edges[_e].index = -1;
-				edges[_ec].index = -1;
+				edges[ec].index = -1;
 			}
 		}
 
-		std::cout << "m" << std::endl;
-		edge_t e_size = 0;
-		for(edge_t e = 0; e < edges.size(); ++e) {
-			if(edges[e].index >= 0) {
-				edges[e].index = e_size++;
-			}
-		}
-		for(edge_t e = 0; e < edges.size(); ++e) {
-			if(edges[e].index >= 0) {
-				edges[e].next = edges[edges[e].next].index;
-				if(edges[e].comp >= 0 ) edges[e].comp = edges[edges[e].comp].index;
-
-			}
-		}
-		std::cout << "n" << std::endl;
-		for(edge_t e = 0; e < edges.size(); ++e) {
-			if(edges[e].index >= 0) {
-				edges[edges[e].index] = edges[e];
-			}
-		}
-		k3d::log() << edges.size() << "->" << e_size << std::endl;
-		std::cout << edges.size() << "->" << e_size << std::endl;
-		edges.resize(e_size);
+		clean_edges(edges);
+		
 
 		for(edge_t e = 0; e < edges.size(); e++) {
 			prev[edges[e].next] = e;
@@ -1243,48 +1338,11 @@ std::cout << '1' << std::flush;
 				edges[e].comp = ec;
 			}
 		}
-		std::cout << "na" << std::endl;
-		e_size = 0;
-		for(edge_t e = 0; e < edges.size(); ++e) {
-			if(edges[e].index >= 0) {
-				edges[e].index = e_size++;
-			}
+		
+		clean_edges(edges);
+		for(edge_t e = 0; e < edges.size(); e++) {
+			prev[edges[e].next] = e;
 		}
-		std::cout << "nb" << std::endl;
-		for(edge_t e = 0; e < edges.size(); ++e) {
-			if(edges[e].index >= 0) {
-				edges[e].operator <<(std::cout);
-				edges[e].next = edges[edges[e].next].index;
-				if(edges[e].comp >= 0 ) edges[e].comp = edges[edges[e].comp].index;
-			}
-		}
-		std::cout << "n" << std::endl;
-		for(edge_t e = 0; e < edges.size(); ++e) {
-			if(edges[e].index >= 0) {
-				edges[edges[e].index] = edges[e];
-			}
-		}
-		k3d::log() << edges.size() << "->" << e_size << std::endl;
-		std::cout << edges.size() << "->" << e_size << std::endl;
-		edges.resize(e_size);
-
-std::cout << "remove hanging\n" << std::flush;
-		//for(edge_t e = 0; e < edges.size(); e++) {
-		//	if(edges[e].index < 0)
-		//		continue;
-		//	edge_t en = edges[e].next;
-		//	edge_t enn = edges[en].next;
-		//	edge_t ennn = edges[enn].next;
-	
-		//	if(edges[en].index >= 0 && edges[en].vert == edges[ennn].vert) {
-		//		edges[e].next = ennn;
-		//		//verts[edges[en].vert].index = -1;
-
-		//		edges[en].index = -1;
-		//		edges[enn].index = -1;
-		//	}
-		//}
-
 std::cout << "remove faces with 2 edges\n" << std::flush;
 		for(edge_t e = 0; e < edges.size(); e++) {
 			if(edges[e].index < 0) 
@@ -1299,72 +1357,65 @@ std::cout << "remove faces with 2 edges\n" << std::flush;
 				edges[edges[en].comp].comp = edges[e].comp;
 			}
 		}
+std::cout << "remove hanging\n" << std::flush;
+		for(edge_t e = 0; e < edges.size(); e++) {
+			if(edges[e].index < 0)
+				continue;
+			edge_t en = edges[e].next;
+			edge_t enn = edges[en].next;
+			edge_t ennn = edges[enn].next;
+	
+			if(edges[en].index >= 0 && edges[en].vert == edges[ennn].vert) {
+				std::cout << "e:    "; edges[e].operator <<(std::cout);
+				std::cout << "en:   "; edges[en].operator <<(std::cout);
+				std::cout << "enn:  "; edges[enn].operator <<(std::cout);
+				std::cout << "ennn: "; edges[ennn].operator <<(std::cout);
+				std::cout << "----------------" << std::endl;
+				edges[e].next = ennn;
+				verts[edges[enn].vert].index = -1;
+				edges[en].index = -1;
+				edges[enn].index = -1;
+			}
+		}
+		clean_edges(edges);
+		for(edge_t e = 0; e < edges.size(); e++) {
+			prev[edges[e].next] = e;
+		}
+
+		for(edge_t e = 0; e < edges.size(); e++) {
+			if(edges[e].comp < 0 || edges[edges[e].next].comp < 0) {
+				continue;
+			}
+			if(edges[e].comp == edges[edges[edges[e].next].comp].next && edges[e].comp != edges[e].next) {
+				edges[edges[e].next].index = -4;
+				verts[edges[edges[e].next].vert].index = -10;
+				edges[edges[e].comp].index = -5;
+			}
+		}
 		
-		e_size = 0;
-		for(edge_t e = 0; e < edges.size(); ++e) {
-			if(edges[e].index >= 0) {
-				edges[e].index = e_size++;
+		for(edge_t e = 0; e < edges.size(); e++) {
+			if(edges[e].index >= 0 && edges[e].comp >= 0) {
+				edge_t en = edges[e].next;
+				edge_t ec = edges[e].comp;
+				while(edges[en].index < 0) {
+					ec = edges[en].comp;
+					en = edges[en].next;
+				}
+
+				edges[e].next = en;
+				edges[e].comp = ec;
 			}
 		}
-		for(edge_t e = 0; e < edges.size(); ++e) {
-			if(edges[e].index >= 0) {
-				edges[e].next = edges[edges[e].next].index;
-				if(edges[e].comp >= 0 ) edges[e].comp = edges[edges[e].comp].index;
-			}
-		}
-		std::cout << "n" << std::endl;
-		for(edge_t e = 0; e < edges.size(); ++e) {
-			if(edges[e].index >= 0) {
-				edges[edges[e].index] = edges[e];
-			}
-		}
-		k3d::log() << edges.size() << "->" << e_size << std::endl;
-		std::cout << edges.size() << "->" << e_size << std::endl;
-		edges.resize(e_size);
-
-
-
-		std::cout << "o" << std::endl;
-		for(edge_t e = 0; e < edges.size(); ++e) {
-			edges[e].vert = verts[edges[e].vert].index;
-		}
-		vert_t v_size = 0;
-
-		std::cout << "p" << std::endl;
-		for(vert_t v = 0; v < verts.size(); ++v) {
-			if(v != verts[v].index){ //  || v < mesh->num_verts) {
-				verts[v].index = -1;
-			} else {
-				verts[v].index = v_size++;
-			}
-		}
-
-		std::cout << "q" << std::endl;
-		for(edge_t e = 0; e < edges.size(); ++e) {
-			edges[e].vert = verts[edges[e].vert].index;
-		}
-		std::cout << "r" << std::endl;
-		for(vert_t v = 0; v < verts.size(); ++v) {
-			if(verts[v].index >= 0)
-				verts[verts[v].index] = verts[v];
-		}
-		std::cout << "s" << std::endl;
-
-		for(edge_t e = 0; e < edges.size(); ++e) {
-			edges[e].vert = verts[edges[e].vert].index;
-		}
-		std::cout << "t" << std::endl;
-//
-//
-//
+		
+		clean_edges(edges);
+	
+		clean_verts(edges, verts);
 		for(edge_t e = 0; e < edges.size(); ++e) {
 			edges[e].face = -1;
 		}
 		std::cout << "u" << std::endl;
 
-		k3d::log() << "213" << std::endl;
 		faces.clear();
-		k3d::log() << "123 " << edges.size() << std::endl;
 		for(edge_t e = 0; e < edges.size(); ++e) {
 			bool p = false;
 			int c = 0;
@@ -1376,19 +1427,17 @@ std::cout << "remove faces with 2 edges\n" << std::flush;
 				
 				while(edges[temp].face < 0) {
 					edges[temp].face = faces.back().index;
-					//edges[temp].operator <<(std::cout);
 					faces.back().edge = temp;
 					temp = edges[temp].next;
 					c++;
-					p = p || edges[temp].vert == 193 || edges[temp].comp < 0;
+					if(edges[temp].comp == edges[temp].next) std::cout << '!';
+					p = p || edges[temp].comp < 0;
 				} 
-				p = p || temp != e || c < 3 || c > 4;
+				p = p || temp != e;// || c < 3 || c > 4;
 			}
 			if(p) {
 				do {
-					//edges[e].face = faces.back().index;
 					edges[e].operator <<(std::cout);
-					//faces.back().edge = temp;
 					e = edges[e].next;
 				} while(e != temp);				
 				std::cout << std::endl <<  std::endl;
@@ -1396,8 +1445,7 @@ std::cout << "remove faces with 2 edges\n" << std::flush;
 		}
 		std::cout << "v" << std::endl;
 
-		k3d::log() << k3d::error << v_size << ' ' << verts.size();
-		verts.resize(v_size);
+		//k3d::log() << k3d::error << v_size << ' ' << verts.size();
 
 std::cout << 'e' << std::flush;
 		k3d::mesh::polyhedra_t* poly = new k3d::mesh::polyhedra_t();
