@@ -62,6 +62,61 @@ namespace fluid_sim
 		setup_outer_voxel_layer();
 	}
 
+	voxel_grid::voxel_grid(const voxel_grid& grid) : k3d::node((const_cast<voxel_grid&>(grid)).factory(), (const_cast<voxel_grid&>(grid)).document()),
+		m_nx(init_owner(*this) + init_name("nx") + init_label(_("Nx")) + init_description(_("Nx")) + init_value(-5) + init_step_increment(1) + init_units(typeid(k3d::measurement::scalar))),
+		m_ny(init_owner(*this) + init_name("ny") + init_label(_("Ny")) + init_description(_("Ny")) + init_value(-5) + init_step_increment(1) + init_units(typeid(k3d::measurement::scalar))),
+		m_nz(init_owner(*this) + init_name("nz") + init_label(_("Nz")) + init_description(_("Nz")) + init_value(-5) + init_step_increment(1) + init_units(typeid(k3d::measurement::scalar))),
+		m_px(init_owner(*this) + init_name("px") + init_label(_("Px")) + init_description(_("Px")) + init_value(5) + init_step_increment(1) + init_units(typeid(k3d::measurement::scalar))),
+		m_py(init_owner(*this) + init_name("py") + init_label(_("Py")) + init_description(_("Py")) + init_value(5) + init_step_increment(1) + init_units(typeid(k3d::measurement::scalar))),
+		m_pz(init_owner(*this) + init_name("pz") + init_label(_("Pz")) + init_description(_("Pz")) + init_value(5) + init_step_increment(1) + init_units(typeid(k3d::measurement::scalar))),
+		m_vox_width(init_owner(*this) + init_name("voxel_width") + init_label(_("Voxel Side Length")) + init_description(_("Voxel Width")) + init_value(0.5) + init_step_increment(1) + init_units(typeid(k3d::measurement::distance))),
+		m_rows(init_owner(*this) + init_name("rows") + init_label(_("Rows")) + init_description(_("Rows")) + init_value(20) + init_step_increment(1) + init_units(typeid(k3d::measurement::scalar))),
+		m_cols(init_owner(*this) + init_name("cols") + init_label(_("Cols")) + init_description(_("Cols")) + init_value(20) + init_step_increment(1) + init_units(typeid(k3d::measurement::scalar))),
+		m_slices(init_owner(*this) + init_name("slices") + init_label(_("Slices")) + init_description(_("Slices")) + init_value(20) + init_step_increment(1) + init_units(typeid(k3d::measurement::scalar)))
+
+
+
+	{
+		m_vox_width.changed_signal().connect(vgrid_modified_slot());
+
+		m_orig_nx = m_nx.value();
+		m_orig_ny = m_ny.value();
+		m_orig_nz = m_nz.value();
+
+		m_orig_px = m_px.value();
+		m_orig_py = m_py.value();
+		m_orig_pz = m_pz.value();
+
+		m_norigin[0] = m_nx.value();
+		m_norigin[1] = m_ny.value();
+		m_norigin[2] = m_nz.value();
+
+		m_porigin[0] = m_px.value();
+		m_porigin[1] = m_py.value();
+		m_porigin[2] = m_pz.value();
+
+
+		// number of faces in each direction	
+		m_xfaces = m_cols.value() + 1;
+		m_yfaces = m_slices.value() + 1 ;
+		m_zfaces = m_rows.value() + 1;
+
+		m_xvox = m_cols.value();
+		m_yvox = m_slices.value();
+		m_zvox = m_rows.value();
+
+		m_grid_vx = new array3d_f(boost::extents[m_xfaces][m_yfaces][m_zfaces]);
+		m_grid_vy = new array3d_f(boost::extents[m_xfaces][m_yfaces][m_zfaces]);
+		m_grid_vz = new array3d_f(boost::extents[m_xfaces][m_yfaces][m_zfaces]);
+		m_density = new array3d_f(boost::extents[m_xvox][m_yvox][m_zvox]);
+		m_vox_type = new array3d_type(boost::extents[m_xvox][m_yvox][m_zvox]);
+		m_voxel_width = m_vox_width.value();
+
+		setup_outer_voxel_layer();
+
+	}
+
+
 	k3d::iplugin_factory& voxel_grid::get_factory()
  	{
 		static k3d::document_plugin_factory<voxel_grid, k3d::interface_list<k3d::inode> > factory(
@@ -159,18 +214,21 @@ namespace fluid_sim
 		for (int i = 0; i < m_xvox; ++i) {
 			for (int j = 0; j < m_yvox; ++j) {
 				(*m_vox_type)[i][j][m_zvox-1] = OBSTACLE;
+				(*m_vox_type)[i][j][0] = OBSTACLE;
 			}
 		}
 
 		for (int i = 0; i < m_xvox; ++i) {
 			for (int k = 0; k < m_zvox; ++k) {
 				(*m_vox_type)[i][m_yvox-1][k] = OBSTACLE;
+				(*m_vox_type)[i][0][k] = OBSTACLE;
 			}
 		}
 
 		for (int j = 0; j < m_yvox; ++j) {
 			for (int k = 0; k < m_zvox; ++k) {
 				(*m_vox_type)[m_xvox-1][j][k] = OBSTACLE;
+				(*m_vox_type)[0][j][k] = OBSTACLE;
 			}
 		}
 

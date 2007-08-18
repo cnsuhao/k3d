@@ -48,7 +48,7 @@ protected:
 
 	void diffuse_velocities(voxel_grid& new_grid, const voxel_grid& old_grid);
 	void project(voxel_grid& new_grid, const voxel_grid& old_grid);
-	void add_force(voxel_grid& u, const array3d_i& forcesx, const array3d_i& forcesy, const array3d_i& forcesz);
+	void add_force(voxel_grid& u, const array3d_f& forcesx, const array3d_f& forcesy, const array3d_f& forcesz);
 	k3d::point3 trace_particle(const k3d::point3& p, float dt);
 
 	void setup_diffusion_velocity_bc(array3d_i& faces);
@@ -58,6 +58,29 @@ protected:
 
 	void check_divergence();
 	float divergence(const voxel_grid& u, int i, int j, int k);
+
+	voxel_grid* m_grid_u0;
+	//voxel_grid* m_grid_u1;
+
+	array3d_f* m_forces_x;
+	array3d_f* m_forces_y;
+	array3d_f* m_forces_z;
+
+	void setup_fluid(voxel_grid& grid);
+
+	void swap(voxel_grid* grid0, voxel_grid* grid1) 
+	{
+		voxel_grid* temp = grid1;
+		grid1 = grid0;
+		grid0 = temp;
+	}
+
+	void run_simulation(voxel_grid* grid0, voxel_grid* grid1);
+	void vstep(voxel_grid& new_grid, voxel_grid& old_grid);
+	void transport_velocities(voxel_grid& new_grid, voxel_grid& old_grid);
+
+
+
 };
 
 k3d::iplugin_factory& solver_factory();
