@@ -12,7 +12,7 @@ namespace fluid_sim
 		k3d::node(Factory, Document),
 		m_voxel_grid(init_owner(*this) + init_name("voxel_grid") + init_label(_("Voxel Grid")) + init_description(_("Voxel Grid")) + init_value<voxel_grid*>(0)),
 		m_timestep(init_owner(*this) + init_name("timestep") + init_label(_("Timestep")) + init_description(_("Timestep")) + init_value(0.1) + init_step_increment(0.1) + init_units(typeid(k3d::measurement::scalar))),
-		m_steps(init_owner(*this) + init_name("steps") + init_label(_("Steps")) + init_description(_("Steps")) + init_value(2) + init_step_increment(1) + init_units(typeid(k3d::measurement::scalar))),
+		m_steps(init_owner(*this) + init_name("steps") + init_label(_("Steps")) + init_description(_("Steps")) + init_value(5) + init_step_increment(1) + init_units(typeid(k3d::measurement::scalar))),
 		m_viscosity(init_owner(*this) + init_name("timestep") + init_label(_("Timestep")) + init_description(_("Timestep")) + init_value(0.1) + init_step_increment(0.1) + init_units(typeid(k3d::measurement::scalar)))
 
 
@@ -38,7 +38,30 @@ namespace fluid_sim
 			std::cout << "zvox: " << grid->zvoxels() << std::endl;
 
 			// set up a small test case
+			/*
 			assert(grid->xvoxels() >= 6 && grid->yvoxels() >= 6 && grid->zvoxels() >= 6);
+
+			grid->vox_type(3,3,3) = voxel_grid::FLUID;
+			grid->vox_type(4,3,3) = voxel_grid::FLUID;
+
+			grid->vox_type(6,6,6) = voxel_grid::FLUID;
+			grid->vox_type(7,6,6) = voxel_grid::FLUID;
+
+			*/
+			
+			m_forces_x = new array3d_f(boost::extents[grid->xfaces()][grid->yfaces()][grid->zfaces()]);
+			m_forces_y = new array3d_f(boost::extents[grid->xfaces()][grid->yfaces()][grid->zfaces()]);
+			m_forces_z = new array3d_f(boost::extents[grid->xfaces()][grid->yfaces()][grid->zfaces()]);
+			setup_fluid(*grid);
+			std::cout << "setup finished\n";
+
+			m_grid_u0 = grid;
+			//m_grid_u1 = new voxel_grid(*m_grid_u0);
+			voxel_grid m_grid_u1(*m_grid_u0);
+
+			run_simulation(m_grid_u0, &m_grid_u1);
+
+			/**
 
 			// test: a voxel with 4 surface faces - orignally, divergence(3,3,3) = -4
 			grid->vox_type(3,3,3) = voxel_grid::FLUID;
@@ -62,11 +85,95 @@ namespace fluid_sim
 			update_surface_face_boundaries(*grid);
 
 			std::cout << "div (3,3,3) now: " << divergence(*grid,3,3,3) << std::endl;
+			*/
+
+			//diffuse_velocities(*m_grid_u0, *grid);
 
 		}
 	}
 
+	// originally, grid0 contains the initial grid
+	void solver::run_simulation(voxel_grid* grid0, voxel_grid* grid1)
+	{
+		for (int i = 0; i < m_steps.value(); ++i) {
+			std::cout << "iteration " << i << std::endl;
+			swap(grid1,grid0);	
+			vstep(*grid1,*grid0);
+			//sstep(*grid1,*grid0);
+		}
+	}
 
+	void solver::vstep(voxel_grid& new_grid, voxel_grid& old_grid)
+	{
+		voxel_grid& u0 = old_grid;
+		voxel_grid& u1 = new_grid;
+
+		add_force(u0,*m_forces_x,*m_forces_y,*m_forces_z);
+		transport_velocities(new_grid,old_grid);
+		std::cout << "diffuse() " << std::endl;
+		diffuse_velocities(u0,u1);
+		std::cout << "project() " << std::endl;
+		project(u1,u0);
+
+	}
+
+	void solver::transport_velocities(voxel_grid& new_grid, voxel_grid& old_grid)
+	{
+		voxel_grid& u0 = old_grid;
+		voxel_grid& u1 = new_grid;
+
+		float dt = m_timestep.value();
+
+		// transport x -velocities
+		for (int i = 1; i < u0.xfaces()-1; ++i) {
+			for (int j = 1; j < u0.yfaces()-1; ++j) {
+				for (int k = 1; k < u0.zfaces()-1; ++k) {
+					k3d::point3 iloc = trace_particle(u0.loc_vx(i,j,k), -dt);
+					u1.vx(i,j,k) = u0.interpolate_vx(iloc);
+					u1.vy(i,j,k) = u0.interpolate_vy(iloc);
+					u1.vz(i,j,k) = u0.interpolate_vz(iloc);
+				}
+			}
+		}
+	}
+
+	// grid aligned fluid 
+	void solver::setup_fluid(voxel_grid& grid)
+	{
+		assert(grid.xvoxels() >= 6 && grid.yvoxels() >= 6 && grid.zvoxels() >= 6);
+
+		for (int i = 0; i < grid.xfaces(); ++i) {
+			for (int j = 0; j < grid.yfaces(); ++j) {
+				for (int k = 0; k < grid.zfaces(); ++k) {
+					grid.vx(i,j,k) = 0;
+					grid.vy(i,j,k) = 0;
+					grid.vz(i,j,k) = 0;
+					(*m_forces_x)[i][j][k] = 0;
+					(*m_forces_y)[i][j][k] = 0;
+					(*m_forces_z)[i][j][k] = 0;
+
+				}
+			}
+		}
+
+
+
+		for (int i = 6; i <= 15; ++i) {
+			for (int j = 6; j <= 15; ++j) {
+				for (int k = 6; k <= 15; ++k) {
+					grid.vox_type(i,j,k) = voxel_grid::FLUID;	
+				}
+			}
+		}
+		// the forces vector contains the force of gravity only at the top, g = 9.8m/s^2
+		for (int i = 6; i <= 15; ++i) {
+			for (int k = 6; k <= 15; ++k) {
+				(*m_forces_x)[i][16][k] = -9.8;
+				(*m_forces_y)[i][16][k] = -9.8;
+				(*m_forces_z)[i][16][k] = -9.8;
+			}
+		}
+	}
 
 	k3d::iplugin_factory& solver::get_factory()
  	{
@@ -84,7 +191,7 @@ namespace fluid_sim
 	}
 
 
-	void setup_diffusion_velocity_bc(array3d_i& faces) {
+	void solver::setup_diffusion_velocity_bc(array3d_i& faces) {
 		const boost::multi_array_types::size_type* st = faces.shape();	
 		int xfaces = st[0];
 		int yfaces = st[1];
@@ -155,14 +262,18 @@ namespace fluid_sim
 			}
 		}
 
+
 		int size = fluid_voxels.size();
+		std::cout << "FLUID voxels: " << size << std::endl;
 		gmm::row_matrix< gmm::wsvector<float> > A(size, size);
 		std::vector<float> b(size);
+		std::vector<float> x(size);
 		row = 0;
 		for (std::list<idx>::iterator it = fluid_voxels.begin(); it != fluid_voxels.end(); ++it) {
 			int i = (*it).i;
 			int j = (*it).j;
 			int k = (*it).k;
+
 
 			b[row] = -(vox_width*w.density(i,j,k)/m_timestep.value())*(w.vx(i+1,j,k) - w.vx(i,j,k) +
 				   w.vy(i,j+1,k) - w.vy(i,j,k) +
@@ -223,8 +334,22 @@ namespace fluid_sim
 
 		}
 
+		//std::cout << A << std::endl;
+
 
 		// now we have Ax = b, which is sparse, symmetric and positive definite...solve using CG
+		if (size > 0) {
+			//std::cout << gmm::mat_row(A,0) << std::endl;
+			//std::cout << gmm::sub_matrix(A, gmm::sub_interval(0, size)) << std::endl;
+
+			gmm::iteration iter(2.0E-10);
+			gmm::identity_matrix PS;   // Optional scalar product for cg
+			gmm::identity_matrix PR;
+			gmm::cg(A, x, b, PS, PR, iter);
+			//std::cout << x << std::endl;
+		}
+
+
 
 	}
 
@@ -260,6 +385,7 @@ namespace fluid_sim
 				}
 			}
 		}
+		std::cout << "Fluid faces x: " << fluid_faces.size() << std::endl;
 		setup_and_solve_diffusion(fluid_faces, fluid_faces_r, u, w, voxel_grid::VX);
 
 
@@ -279,6 +405,8 @@ namespace fluid_sim
 				}
 			}
 		}
+
+		std::cout << "Fluid faces y: " << fluid_faces.size() << std::endl;
 		setup_and_solve_diffusion(fluid_faces, fluid_faces_r, u, w, voxel_grid::VY);
 
 
@@ -299,6 +427,7 @@ namespace fluid_sim
 				}
 			}
 		}
+		std::cout << "Fluid faces z: " << fluid_faces.size() << std::endl;
 		setup_and_solve_diffusion(fluid_faces, fluid_faces_r, u, w, voxel_grid::VZ);
 
 
@@ -309,7 +438,9 @@ namespace fluid_sim
 		int size = faces.size();
 		gmm::row_matrix< gmm::wsvector<float> > A(size, size);
 		std::vector<float> b(size);
-		float beta = m_viscosity.value()*m_timestep.value()/(m_vox_width*m_vox_width);
+		std::vector<float> x(size);
+		float beta = m_viscosity.value()*m_timestep.value()/(w.voxel_width()*w.voxel_width());
+		//std::cout << "beta: " << beta << std::endl;
 
 		
 		int row = 0;
@@ -399,10 +530,25 @@ namespace fluid_sim
 
 		}
 
+		std::cout << "diffuson step...\n";
+		//std::cout << A << std::endl;
+		if (size > 0) {
+			//std::cout << gmm::mat_row(A,0) << std::endl;
+			//std::cout << gmm::sub_matrix(A, gmm::sub_interval(0, size)) << std::endl;
+
+			gmm::iteration iter(2.0E-10);
+			gmm::identity_matrix PS;   // Optional scalar product for cg
+			gmm::identity_matrix PR;
+			gmm::cg(A, x, b, PS, PR, iter);
+			//std::cout << x << std::endl;
+		}
+
+
+
 	}
 
 	
-	void solver::add_force(voxel_grid& u, const array3d_i& forcesx, const array3d_i& forcesy, const array3d_i& forcesz)
+	void solver::add_force(voxel_grid& u, const array3d_f& forcesx, const array3d_f& forcesy, const array3d_f& forcesz)
 	{
 		float timestep = m_timestep.value();
 		for (int i = 0; i < u.xvoxels(); ++i) {

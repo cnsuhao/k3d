@@ -24,6 +24,7 @@ class voxel_grid : public k3d::node
 {
 public:
 	voxel_grid(k3d::iplugin_factory& Factory, k3d::idocument& Document); 
+	voxel_grid(const voxel_grid& grid);
 	static k3d::iplugin_factory& get_factory();
 	sigc::signal1<void, k3d::iunknown*> voxel_grid_changed_signal; 
 	void vgrid_modified_x(k3d::iunknown* Hint);
@@ -74,6 +75,19 @@ public:
 
 	k3d::point3 lower_voxel_corner(int i, int j, int k) { return k3d::point3(m_nx.value() + m_voxel_width*i, m_ny.value() + m_voxel_width*j,
 									     m_nz.value() + m_voxel_width*k); }
+
+	k3d::point3 loc_vx(int i, int j, int k) { return k3d::point3(m_nx.value() + m_voxel_width*i, m_ny.value() + m_voxel_width*(j+0.5),
+			                                            m_nz.value() + m_voxel_width*(k+0.5)); }
+
+	k3d::point3 loc_vy(int i, int j, int k) { return k3d::point3(m_nx.value() + m_voxel_width*(i+0.5), m_ny.value() + m_voxel_width*j,
+			                                             m_nz.value() + m_voxel_width*(k+0.5)); }
+
+	k3d::point3 loc_vz(int i, int j, int k) { return k3d::point3(m_nx.value() + m_voxel_width*(i+0.5), m_ny.value() + m_voxel_width*(j + 0.5),
+			                                             m_nz.value() + m_voxel_width*k); }
+
+
+
+
 
 	void make_obstacle(int i, int j, int k) {
 		(*m_vox_type)[i][j][k] = OBSTACLE;
