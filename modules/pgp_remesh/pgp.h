@@ -183,7 +183,7 @@ namespace detail {
 			int next;
 
 			int face;
-			vert_t vert;
+			int vert;
 
 			vec2 local;
 			vec2 param;
@@ -305,12 +305,12 @@ namespace detail {
 						std::vector<new_vert2>& verts, 
 						std::vector<fake_edge>& fakes);
 		void unzip(edge_t e,
-						std::vector<edge_t>& prev, 
 						std::vector<new_edge2>& edges, 
 						std::vector<new_face2>& faces, 
 						std::vector<new_vert2>& verts, 
 						std::vector<fake_edge>& fakes);
-
+		void clean_edges(std::vector<new_edge2>& edges);
+		void clean_verts(std::vector<new_edge2>& edges, std::vector<new_vert2>& verts);
 		int num_faces;
 		std::vector<per_face> face_data;
 		std::vector<per_vert> vert_data;
