@@ -28,6 +28,7 @@
 #include <k3dsdk/material_client.h>
 #include <k3dsdk/measurement.h>
 #include <k3dsdk/mesh_modifier.h>
+#include <k3dsdk/legacy_mesh.h>
 #include <k3dsdk/mesh_operations.h>
 #include <k3dsdk/node.h>
 #include <k3dsdk/persistent.h>
@@ -40,6 +41,29 @@
 
 namespace libk3dquadremesh
 {
+namespace detail
+{
+
+	struct do_triangulate
+	{
+		bool operator()(k3d::legacy::face* Face)
+		{
+			k3d::legacy::split_edge* edge = Face->first_edge;
+
+			int edges = 0;
+			do
+			{
+				++edges;
+				edge = edge->face_clockwise;
+			}
+			while(edge != Face->first_edge);
+
+			return edges > 4;
+		}
+	};
+
+} // namespace detail
+
 	class pgp_remesh :
 		public k3d::mesh_modifier<k3d::persistent<k3d::node> > 
 	{
@@ -48,11 +72,12 @@ namespace libk3dquadremesh
 		pgp_remesh(k3d::iplugin_factory& Factory, k3d::idocument& Document) :
 			base_t(Factory, Document),
 			m_smooth(init_owner(*this) + init_name("use_smooth") + init_label(_("Smooth Curvature")) + init_description(_("Smooth Curvature")) + init_value(true)),
-			m_symmetry(init_owner(*this) + init_name("smooth_4") + init_label(_("Smooth as 4-symmetry")) + init_description(_("Smooth as 4-symmetry")) + init_value(false)),
+			//m_symmetry(init_owner(*this) + init_name("smooth_4") + init_label(_("Smooth as 4-symmetry")) + init_description(_("Smooth as 4-symmetry")) + init_value(false)),
 			m_steps(init_owner(*this) + init_name("steps") + init_label(_("Smoothing steps")) + init_description(_("Smoothing steps")) + init_value(0) + init_constraint(constraint::minimum(0))),
 			m_h(init_owner(*this) + init_name("h") + init_label(_("Smoothing timestep")) + init_description(_("Smoothing timesteps")) + init_value(1500.0) + init_constraint(constraint::minimum(0.0001))),
 			m_omega(init_owner(*this) + init_name("omega") + init_label(_("Omega parameter")) + init_description(_("Omega parameter")) + init_value(5.0) + init_constraint(constraint::minimum(0.1))),
 			m_divides(init_owner(*this) + init_name("div") + init_label(_("Iso line divisions")) + init_description(_("Iso line divisions")) + init_value(1) + init_constraint(constraint::minimum(1))),
+			m_triang(init_owner(*this) + init_name("triangulate") + init_label(_("Triangulate Non-Quads")) + init_description(_("Triangulates faces with more than 4 edges")) + init_value(true)),
 			prev_steps(0),
 			smoothed(false)
 		{
@@ -62,7 +87,7 @@ namespace libk3dquadremesh
 			m_smooth.changed_signal().connect(make_reset_mesh_slot());
 			m_steps.changed_signal().connect(make_reset_mesh_slot());
 			m_h.changed_signal().connect(make_reset_mesh_slot());
-			m_symmetry.changed_signal().connect(make_reset_mesh_slot());
+			//m_symmetry.changed_signal().connect(make_reset_mesh_slot());
 			m_omega.changed_signal().connect(make_reset_mesh_slot());
 			m_divides.changed_signal().connect(make_reset_mesh_slot());
 			std::cout << "end \n";
@@ -109,7 +134,7 @@ namespace libk3dquadremesh
 			base_t::document().pipeline_profiler().finish_execution(*this, "Calc Diff Geom");
 
 			base_t::document().pipeline_profiler().start_execution(*this, "Smooth");
-			geom.smooth(m_h.pipeline_value(), m_steps.pipeline_value(), m_symmetry.pipeline_value());
+			geom.smooth(m_h.pipeline_value(), m_steps.pipeline_value(), false); //m_symmetry.pipeline_value());
 			base_t::document().pipeline_profiler().finish_execution(*this, "Smooth");
 
 			//base_t::document().pipeline_profiler().start_execution(*this, "Output");
@@ -158,6 +183,32 @@ namespace libk3dquadremesh
 				k3d::log() << error << "internal error: produced invalid mesh" << std::endl;
 				return;
 			}
+			
+			if(m_triang.pipeline_value()) {
+				k3d::legacy::mesh LegMesh;
+				LegMesh = OutputMesh;
+				k3d::legacy::polyhedron& polyhedron = *LegMesh.polyhedra[0];
+
+				// Triangulate faces that are not quads
+				k3d::legacy::polyhedron::faces_t selected_faces;
+				k3d::copy_if(polyhedron.faces.begin(), polyhedron.faces.end(), std::inserter(selected_faces, selected_faces.end()), detail::do_triangulate());
+
+				// For each face ...
+				for(k3d::legacy::polyhedron::faces_t::iterator face = selected_faces.begin(); face != selected_faces.end(); ++face)
+				{
+					k3d::legacy::polyhedron::faces_t faces;
+					faces.push_back(*face);
+
+					k3d::legacy::triangulate(faces, polyhedron.faces, LegMesh.points);
+
+					polyhedron.faces.erase(std::remove(polyhedron.faces.begin(), polyhedron.faces.end(), *face), polyhedron.faces.end());
+					delete *face;
+				}
+
+				// Set companions
+				k3d::legacy::set_companions(polyhedron);
+				OutputMesh = LegMesh;
+			}
 		}
 
 		static k3d::iplugin_factory& get_factory()
@@ -176,11 +227,12 @@ namespace libk3dquadremesh
 		}
 	private:
 		k3d_data(bool,   immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, with_serialization) m_smooth;
-		k3d_data(bool,   immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, with_serialization) m_symmetry;
+		//k3d_data(bool,   immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, with_serialization) m_symmetry;
 		k3d_data(int,    immutable_name, change_signal, with_undo, local_storage, with_constraint, writable_property, with_serialization) m_steps;
 		k3d_data(double, immutable_name, change_signal, with_undo, local_storage, with_constraint, writable_property, with_serialization) m_h;
 		k3d_data(double, immutable_name, change_signal, with_undo, local_storage, with_constraint, writable_property, with_serialization) m_omega;
 		k3d_data(int,    immutable_name, change_signal, with_undo, local_storage, with_constraint, writable_property, with_serialization) m_divides;
+		k3d_data(bool,   immutable_name, change_signal, with_undo, local_storage, no_constraint, writable_property, with_serialization) m_triang;
 		int prev_steps;
 		bool smoothed;
 		detail::mesh_info info;
