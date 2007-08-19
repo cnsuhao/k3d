@@ -5,14 +5,14 @@ import testing
 
 document = k3d.new_document()
 
-setup = testing.setup_mesh_reader_test("PLYMeshReader", "mesh.modifier.PGPRemesh.torus.ply")
+setup = testing.setup_mesh_reader_test("PLYMeshReader", "mesh.modifier.PGPRemesh.bunny.ply")
 
 modifier = setup.document.new_node("PGPRemesh")
 modifier.use_smooth = True
-modifier.steps = 15
-modifier.h = 1000
+modifier.steps = 1
+modifier.h = 100000
 modifier.omega = 10
-modifier.div = 4
+modifier.div = 10
 modifier.triangulate = True
 document.set_dependency(modifier.get_property("input_mesh"), setup.reader.get_property("output_mesh"))
 

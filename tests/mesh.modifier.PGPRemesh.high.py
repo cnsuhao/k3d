@@ -14,8 +14,8 @@ document.set_dependency(triangles.get_property("input_mesh"), source.get_propert
 modifier = document.new_node("PGPRemesh")
 modifier.use_smooth = False
 modifier.steps = 0
-modifier.omega = 1
-modifier.div = 2
+modifier.omega = 5
+modifier.div = 20
 modifier.triangulate = True
 document.set_dependency(modifier.get_property("input_mesh"), triangles.get_property("output_mesh"))
 
