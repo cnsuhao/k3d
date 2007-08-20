@@ -1368,14 +1368,6 @@ namespace detail {
 		}
 
 		k3d::mesh::point_groups_t* pg = new k3d::mesh::point_groups_t();
-		k3d::mesh::indices_t* pg_first = NULL; //new k3d::mesh::indices_t();
-		k3d::mesh::materials_t* pg_mat = NULL; //new k3d::mesh::materials_t();
-		k3d::mesh::indices_t* pg_points = NULL; //new k3d::mesh::indices_t();
-		k3d::mesh::counts_t* pg_counts = NULL; //new k3d::mesh::indices_t();
-		//pg->first_points =  boost::shared_ptr<k3d::mesh::indices_t>(pg_first);
-		//pg->materials =  boost::shared_ptr<k3d::mesh::materials_t>(pg_mat);		
-		//pg->point_counts =  boost::shared_ptr<k3d::mesh::counts_t>(pg_counts);
-		//pg->points =  boost::shared_ptr<k3d::mesh::indices_t>(pg_points);
 		
 		OutputMesh.points = boost::shared_ptr<k3d::mesh::points_t>(points);
 		OutputMesh.polyhedra = boost::shared_ptr<k3d::mesh::polyhedra_t>(poly);
