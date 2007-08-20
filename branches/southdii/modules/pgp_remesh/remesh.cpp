@@ -73,10 +73,10 @@ namespace detail
 			base_t(Factory, Document),
 			m_smooth(init_owner(*this) + init_name("use_smooth") + init_label(_("Smooth Curvature")) + init_description(_("Smooth Curvature")) + init_value(true)),
 			//m_symmetry(init_owner(*this) + init_name("smooth_4") + init_label(_("Smooth as 4-symmetry")) + init_description(_("Smooth as 4-symmetry")) + init_value(false)),
-			m_steps(init_owner(*this) + init_name("steps") + init_label(_("Smoothing steps")) + init_description(_("Smoothing steps")) + init_value(0) + init_constraint(constraint::minimum(0))),
+			m_steps(init_owner(*this) + init_name("steps") + init_label(_("Smoothing steps")) + init_description(_("Smoothing steps")) + init_value(3) + init_constraint(constraint::minimum(0))),
 			m_h(init_owner(*this) + init_name("h") + init_label(_("Smoothing timestep")) + init_description(_("Smoothing timesteps")) + init_value(1500.0) + init_constraint(constraint::minimum(0.0001))),
-			m_omega(init_owner(*this) + init_name("omega") + init_label(_("Omega parameter")) + init_description(_("Omega parameter")) + init_value(5.0) + init_constraint(constraint::minimum(0.1))),
-			m_divides(init_owner(*this) + init_name("div") + init_label(_("Iso line divisions")) + init_description(_("Iso line divisions")) + init_value(1) + init_constraint(constraint::minimum(1))),
+			m_omega(init_owner(*this) + init_name("omega") + init_label(_("Omega parameter")) + init_description(_("Omega parameter")) + init_value(1.0) + init_constraint(constraint::minimum(0.1))),
+			m_divides(init_owner(*this) + init_name("div") + init_label(_("Iso line divisions")) + init_description(_("Iso line divisions")) + init_value(2) + init_constraint(constraint::minimum(1))),
 			m_triang(init_owner(*this) + init_name("triangulate") + init_label(_("Triangulate Non-Quads")) + init_description(_("Triangulates faces with more than 4 edges")) + init_value(true)),
 			prev_steps(0),
 			smoothed(false)
@@ -116,6 +116,13 @@ namespace detail
 		}
 		void on_update_mesh(const k3d::mesh& InputMesh, k3d::mesh& OutputMesh)		  
 		{
+			if(!k3d::is_solid(InputMesh))
+			{
+				OutputMesh = k3d::mesh();
+				k3d::log() << error << name() << " requires a closed mesh (no holes)" << std::endl;
+				return;
+			}
+
 			// If our input isn't triangles, bail-out ...
 			if(!k3d::is_triangles(InputMesh))
 			{
@@ -133,14 +140,11 @@ namespace detail
 			geom.initialize();
 			base_t::document().pipeline_profiler().finish_execution(*this, "Calc Diff Geom");
 
-			base_t::document().pipeline_profiler().start_execution(*this, "Smooth");
-			geom.smooth(m_h.pipeline_value(), m_steps.pipeline_value(), false); //m_symmetry.pipeline_value());
-			base_t::document().pipeline_profiler().finish_execution(*this, "Smooth");
-
-			//base_t::document().pipeline_profiler().start_execution(*this, "Output");
-			//OutputMesh = InputMesh;
-			//geom.dump_draw_data(OutputMesh);
-			//base_t::document().pipeline_profiler().finish_execution(*this, "Output");
+			if(m_smooth.pipeline_value()) {
+				base_t::document().pipeline_profiler().start_execution(*this, "Smooth");
+				geom.smooth(m_h.pipeline_value(), m_steps.pipeline_value(), false); //m_symmetry.pipeline_value());
+				base_t::document().pipeline_profiler().finish_execution(*this, "Smooth");
+			}
 
 			pgp = detail::PGP(&info, &geom);
 
@@ -148,10 +152,11 @@ namespace detail
 			pgp.setup_vf(true);
 			base_t::document().pipeline_profiler().finish_execution(*this, "PGP Setup VF");
 			
-/*			base_t::document().pipeline_profiler().start_execution(*this, "PGP Curl Correction");
-			pgp.curl_correction();
-			base_t::document().pipeline_profiler().finish_execution(*this, "PGP Curl Correction");
-	*/	
+			//base_t::document().pipeline_profiler().start_execution(*this, "PGP Curl Correction");
+			//pgp.curl_correction();
+			//base_t::document().pipeline_profiler().finish_execution(*this, "PGP Curl Correction");
+
+
 			base_t::document().pipeline_profiler().start_execution(*this, "PGP Setup");
 			pgp.setup(m_omega.pipeline_value());
 			base_t::document().pipeline_profiler().finish_execution(*this, "PGP Setup");

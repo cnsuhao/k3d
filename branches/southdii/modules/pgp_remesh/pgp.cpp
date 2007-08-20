@@ -142,17 +142,33 @@ namespace detail {
 
 			area = 0.5*(1.0/sqrt(area));
 			
-			G(2*f + 0, pf.vert[0]) = -1.0*area*pf.e[0].second;
-			G(2*f + 1, pf.vert[0]) = area*pf.e[0].first;
+			double angleDiff[3];
+			angleDiff[0] = pf.angle[2] - pf.angle[1];
+            angleDiff[1] = pf.angle[0] - pf.angle[2];
+            angleDiff[2] = pf.angle[1] - pf.angle[2];			
+			if(angleDiff[0] > k3d::pi())      angleDiff[0] -= k3d::pi_times_2();
+			if(angleDiff[0] < -1.0*k3d::pi()) angleDiff[0] += k3d::pi_times_2();			
+			if(angleDiff[1] > k3d::pi())      angleDiff[1] -= k3d::pi_times_2();
+			if(angleDiff[1] < -1.0*k3d::pi()) angleDiff[1] += k3d::pi_times_2();			
+			if(angleDiff[2] > k3d::pi())      angleDiff[2] -= k3d::pi_times_2();
+			if(angleDiff[2] < -1.0*k3d::pi()) angleDiff[2] += k3d::pi_times_2();			
 
-			G(2*f + 0, pf.vert[1]) = -1.0*area*pf.e[1].second;
-			G(2*f + 1, pf.vert[1]) = area*pf.e[1].first;
+			G(2*f + 0, pf.vert[0]) = area*(pf.v[1].second - pf.v[2].second);
+			G(2*f + 1, pf.vert[0]) = area*(pf.v[2].first - pf.v[1].first);
 
-			G(2*f + 0, pf.vert[2]) = -1.0*area*pf.e[2].second;
-			G(2*f + 1, pf.vert[2]) = area*pf.e[2].first;
+			G(2*f + 0, pf.vert[1]) = area*(pf.v[2].second - pf.v[0].second);
+			G(2*f + 1, pf.vert[1]) = area*(pf.v[0].first - pf.v[2].first);
 
-			B[2*f + 0] = area*(pf.e[0].first*pf.angle[0] + pf.e[1].first*pf.angle[1] + pf.e[2].first*pf.angle[2]);
-			B[2*f + 1] = area*(pf.e[0].second*pf.angle[0] + pf.e[1].second*pf.angle[1] + pf.e[2].second*pf.angle[2]);
+			G(2*f + 0, pf.vert[2]) = area*(pf.v[0].second - pf.v[1].second);
+			G(2*f + 1, pf.vert[2]) = area*(pf.v[1].first - pf.v[0].first);
+
+			B[2*f + 0] = -1.0*area*(  (pf.v[2].first - pf.v[1].first)*angleDiff[0] 
+								    + (pf.v[0].first - pf.v[2].first)*angleDiff[1] 
+								    + (pf.v[1].first - pf.v[0].first)*angleDiff[2]);
+
+			B[2*f + 1] = area*(  (pf.v[1].second - pf.v[2].second)*angleDiff[0] 
+			                   + (pf.v[2].second - pf.v[0].second)*angleDiff[1] 
+							   + (pf.v[0].second - pf.v[1].second)*angleDiff[2]);
 		}
 
 		gmm::row_matrix< gmm::wsvector<double> > G2(mesh->num_verts, mesh->num_verts);
@@ -175,7 +191,7 @@ namespace detail {
 			X[v] = exp(X[v]);
 			if(X[v] > max) max = X[v];
 		}
-		std::cout << " Max " << max;
+		//std::cout << " Max " << max;
 		for(face_t f = 0; f < mesh->num_faces; ++f) {
 			mesh_info::Face face = mesh->getFace(f);
 			per_face &pf = face_data[f];
@@ -280,10 +296,10 @@ namespace detail {
 		gmm::mult(M[0], M[0], M[1]);
 		gmm::mult(M[0], M[1], M[2]);
 		
-		std::cout << D << std::endl;			
-		std::cout << M[0] << std::endl;			
-		std::cout << M[1] << std::endl;			
-		std::cout << M[2] << std::endl;			
+		//std::cout << D << std::endl;			
+		//std::cout << M[0] << std::endl;			
+		//std::cout << M[1] << std::endl;			
+		//std::cout << M[2] << std::endl;			
 		
 		std::vector<int> mapping(mesh->num_verts, 0);
 		
@@ -401,9 +417,9 @@ namespace detail {
 					//k3d::log() << "mult 4" <<std::endl;
 					gmm::mult(M[r1-1], Temp1, Temp2);
 				}
-				if(f == 0) {
-					std::cout << Temp2 << std::endl;
-				}
+				//if(f == 0) {
+				//	std::cout << Temp2 << std::endl;
+				//}
 
 				if(constrain0 && !constrain1) {
 					//std::cout << "con0 |";
@@ -629,7 +645,7 @@ namespace detail {
 				double x0 = get(e.param, i);
 				double x1 = get(en.param, i);
 				if(x0 == X) { // Unlikely case, but should check for it
-					std::cout << "!!! ";
+					//std::cout << "!!! ";
 					return -1;
 				}
 				else if((x0 < X && X < x1) || (x1 < X && X < x0) ) {
@@ -832,7 +848,7 @@ namespace detail {
 			double x0 = get(e.param, i);
 			double x1 = get(en.param, i);
 			if(x0 == X) { // Unlikely case, but shoud check for it
-				std::cout << "!!! ";
+				//std::cout << "!!! ";
 					return;
 			}
 			else if((x0 < X && X < x1) || (x1 < X && X < x0)) {
@@ -1044,7 +1060,7 @@ namespace detail {
 			} else {
 				stack.pop_back();
 				fe = fakes[fe].next;
-				std::cout << "!!!!!" << std::endl;
+				//std::cout << "!!!!!" << std::endl;
 				edges[p_edge].comp = edges[q_edge].index; // ec
 				edges[q_edge].comp = edges[p_edge].index; // e
 
