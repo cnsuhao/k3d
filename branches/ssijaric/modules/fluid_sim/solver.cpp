@@ -24,9 +24,10 @@ namespace fluid_sim
 
 	sigc::slot<void, k3d::iunknown*> solver::start_solver_slot()		
 	{
-		
 		return sigc::mem_fun(*this, &solver::start_solver);
 	}
+
+
 
 	void solver::start_solver(k3d::iunknown* Hint)
 	{
@@ -55,8 +56,8 @@ namespace fluid_sim
 			setup_fluid(*grid);
 			std::cout << "setup finished\n";
 
+			// create a second grid
 			m_grid_u0 = grid;
-			//m_grid_u1 = new voxel_grid(*m_grid_u0);
 			voxel_grid m_grid_u1(*m_grid_u0);
 
 			run_simulation(m_grid_u0, &m_grid_u1);
@@ -92,14 +93,37 @@ namespace fluid_sim
 		}
 	}
 
+	void solver::add_particle(voxel_grid& grid, int i, int j, int k)
+	{
+		grid.vox_type(i,j,k) = voxel_grid::FLUID;	
+		m_particle_list.push_back(grid.random_location_in_cell(i,j,k));
+	}
+
 	// originally, grid0 contains the initial grid
 	void solver::run_simulation(voxel_grid* grid0, voxel_grid* grid1)
 	{
+		float dt = m_timestep.value();
 		for (int i = 0; i < m_steps.value(); ++i) {
-			std::cout << "iteration " << i << std::endl;
+			std::cout << "itegration " << i << std::endl;
 			swap(grid1,grid0);	
 			vstep(*grid1,*grid0);
-			//sstep(*grid1,*grid0);
+
+			// at this point, we move the particles
+			// must be careful to update the cells - for example, if a cell has only one particle, but the
+			// particle moves to another cell, the current cell has to be set to be empty
+
+			for (std::list<k3d::point3>::iterator it = m_particle_list.begin(); it != m_particle_list.end(); ++it) {
+				trace_massless_particle(*it, dt);
+			}
+			// first traverse the cells to set the fluid filled cells to empty, then update the cells that have
+			// fluid in them
+			grid1->fluid_to_empty();
+			
+			for (std::list<k3d::point3>::iterator it = m_particle_list.begin(); it != m_particle_list.end(); ++it) {
+				grid1->mark_cell_as_fluid(*it);	
+			}
+
+
 		}
 	}
 
@@ -562,7 +586,8 @@ namespace fluid_sim
 		}
 	}
 
-	k3d::point3 solver::trace_particle(const k3d::point3& p, float dt) {
+	k3d::point3 solver::trace_particle(const k3d::point3& p, float dt)
+	{
 		k3d::point3 v, v2;
 
 		v[0] = m_voxel_grid.value()->interpolate_vx(p);
@@ -585,8 +610,27 @@ namespace fluid_sim
 		v[2] = p[2] + dt*v2[2];
 
 		return v;	
+	}
 
-		
+	void solver::trace_massless_particle(k3d::point3& p, float dt) 
+	{
+		k3d::point3 v, v2;
+
+		v[0] = m_voxel_grid.value()->interpolate_vx(p);
+		v[1] = m_voxel_grid.value()->interpolate_vy(p);
+		v[2] = m_voxel_grid.value()->interpolate_vz(p);
+
+		v[0] = p[0] + 0.5*dt*v[0];
+		v[1] = p[1] + 0.5*dt*v[1];
+		v[2] = p[2] + 0.5*dt*v[2];
+
+		v2[0] = m_voxel_grid.value()->interpolate_vx(v);
+		v2[1] = m_voxel_grid.value()->interpolate_vy(v);
+		v2[2] = m_voxel_grid.value()->interpolate_vz(v);
+
+		p[0] = p[0] + dt*v2[0];
+		p[1] = p[1] + dt*v2[1];
+		p[2] = p[2] + dt*v2[2];
 	}
 
 	// function to check divergence of surface cells - surface cells must be divergence free

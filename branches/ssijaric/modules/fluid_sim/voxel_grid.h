@@ -11,6 +11,14 @@
 
 #include <boost/multi_array.hpp>
 
+#include <boost/random/linear_congruential.hpp>
+#include <boost/random/uniform_int.hpp>
+#include <boost/random/uniform_real.hpp>
+#include <boost/random/variate_generator.hpp>
+
+#include <boost/generator_iterator.hpp>
+
+
 #include "types.h"
 
 
@@ -18,6 +26,8 @@ namespace fluid_sim
 {
 	typedef boost::multi_array<float, 3> array3d_f; // float
 	typedef boost::multi_array<int, 3> array3d_i;
+	typedef boost::minstd_rand base_generator_type;
+
 
 // the voxel grid is specifed in similar fashion as the k3d bounding box - with (nx, ny, nz) and (px, py, pz)
 class voxel_grid : public k3d::node
@@ -96,6 +106,8 @@ public:
 		(*m_grid_vz)[i][j][k] = 0;
 	}
 
+	k3d::point3 random_location_in_cell(int i, int j, int k);	
+	void add_particle(int i, int j, int k);
 
 	// interpolate different velocity components
 	
@@ -107,8 +119,10 @@ public:
 	float interpolate_vy(float x, float y, float z);
 	float interpolate_vz(float x, float y, float z);
 
-		
 	void setup_outer_voxel_layer();
+
+	void mark_cell_as_fluid(const k3d::point3& p);
+	void fluid_to_empty();
 
 
 	float voxel_width() const { return m_voxel_width; }
