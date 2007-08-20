@@ -253,32 +253,6 @@ namespace detail {
 			edge_t edge;
 		};
 
-		//ostream& operator<<(ostream& out, const new_face2& f)
-		//{
-		//	out << "(" << c.myReal << "," << c.myImag << ")";
-		//	return out;
-		//}
-		//ostream& operator<<(ostream& out, const new_vert2& v)
-		//{
-		//	out << "(" << c.myReal << "," << c.myImag << ")";
-		//	return out;
-		//}
-		//ostream& operator<<(ostream& out, const fake_edge& e)
-		//{
-		//	out << "(" << c.myReal << "," << c.myImag << ")";
-		//	return out;
-		//}
-
-
-		struct new_vert {
-			//new_vert(int i, bool k) : index(i), keep(k) {}
-			Vec3 world;
-			vec2 local;
-			//----------
-			//int index;
-			//bool keep;
-		};
-
 		void validate(std::vector<new_edge2>& edges, 
 						std::vector<new_face2>& faces, 
 						std::vector<new_vert2>& verts, 
@@ -315,9 +289,6 @@ namespace detail {
 		std::vector<per_face> face_data;
 		std::vector<per_vert> vert_data;
 		std::vector<per_edge> edge_data;
-
-		std::vector<new_edge> new_edges;
-		std::vector<new_vert> new_verts;
 
 		gmm::dense_matrix<double> M[3];
 	};

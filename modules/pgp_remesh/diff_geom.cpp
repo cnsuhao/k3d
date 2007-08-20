@@ -198,7 +198,7 @@ namespace detail {
 			} while(e() != first);		
 		}
 
-		gmm::csr_matrix<double> M; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! pre compute this!@!!!
+		gmm::csr_matrix<double> M; // pre compute this?
 		gmm::clean(M1, 1E-8);
 		gmm::copy(M1, M);
 
@@ -236,7 +236,6 @@ namespace detail {
 
 			
 		}
-		std::cout << i << "/" << steps << std::endl;
 
 		for(vert_t v = 0; v < mesh->num_verts; v++) {
 			double angle = (1.0/n)*atan2(B[2*v+1], B[2*v]);
