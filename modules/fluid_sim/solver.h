@@ -23,6 +23,7 @@
 namespace fluid_sim
 {
 
+
 class solver : public k3d::node
 {
 public:
@@ -50,6 +51,7 @@ protected:
 	void project(voxel_grid& new_grid, const voxel_grid& old_grid);
 	void add_force(voxel_grid& u, const array3d_f& forcesx, const array3d_f& forcesy, const array3d_f& forcesz);
 	k3d::point3 trace_particle(const k3d::point3& p, float dt);
+	void trace_massless_particle(k3d::point3& p, float dt);
 
 	void setup_diffusion_velocity_bc(array3d_i& faces);
 	void setup_and_solve_diffusion(const std::list<idx>& faces, array3d_i& faces_r, voxel_grid& u, const voxel_grid& w, voxel_grid::velocity_type vtype);
@@ -60,11 +62,12 @@ protected:
 	float divergence(const voxel_grid& u, int i, int j, int k);
 
 	voxel_grid* m_grid_u0;
-	//voxel_grid* m_grid_u1;
 
 	array3d_f* m_forces_x;
 	array3d_f* m_forces_y;
 	array3d_f* m_forces_z;
+
+	std::list<k3d::point3> m_particle_list;
 
 	void setup_fluid(voxel_grid& grid);
 
@@ -78,6 +81,9 @@ protected:
 	void run_simulation(voxel_grid* grid0, voxel_grid* grid1);
 	void vstep(voxel_grid& new_grid, voxel_grid& old_grid);
 	void transport_velocities(voxel_grid& new_grid, voxel_grid& old_grid);
+
+	void add_particle(voxel_grid& grid, int i, int i, int j);
+
 
 
 

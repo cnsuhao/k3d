@@ -270,6 +270,53 @@ namespace fluid_sim
 		
 	}
 
+	k3d::point3 voxel_grid::random_location_in_cell(int i, int j, int k)
+	{
+		base_generator_type generator(42u);
+		boost::uniform_real<> uni_dist(0,1);
+		boost::variate_generator<base_generator_type&, boost::uniform_real<> > uni(generator, uni_dist);
+
+		// generate three random numbers, one for each coordinate
+		float x = uni();
+		float y = uni();
+		float z = uni();
+
+		return lower_voxel_corner(i,j,k) + k3d::point3(x,y,z)*m_voxel_width;
+	}
+
+	// set all fluid cell to air (not the obstacles, however)
+	void voxel_grid::fluid_to_empty()
+	{
+		for (int i = 0; i < m_xvox; ++i) {
+			for (int j = 0; j < m_yvox; ++j) {
+				for (int k = 0; k < m_zvox; ++k) {
+					if ((*m_vox_type)[i][j][k] == FLUID) 
+						(*m_vox_type)[i][j][k] = EMPTY;
+				}
+			}
+		}
+
+	}
+
+	void voxel_grid::mark_cell_as_fluid(const k3d::point3& p)
+	{
+		float nx = m_nx.value();
+		float ny = m_ny.value();
+		float nz = m_nz.value();
+		float vox_width = m_vox_width.value();
+
+		float i_diff = p[0] - nx;
+		float j_diff = p[1] - ny;
+		float k_diff = p[2] - nz;
+
+		int i = (int)(i_diff/vox_width);
+		int j = (int)(j_diff/vox_width);
+		int k = (int)(k_diff/vox_width);
+
+		(*m_vox_type)[i][j][k] = FLUID;
+	}
+
+
 	// tri-linear interpolation for different velcoity components
 
 	float voxel_grid::interpolate_vx(const k3d::point3& pos)
