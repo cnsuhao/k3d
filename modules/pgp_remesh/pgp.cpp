@@ -1316,7 +1316,6 @@ namespace detail {
 
 		k3d::mesh::polyhedra_t* poly = new k3d::mesh::polyhedra_t();
 		k3d::mesh::selection_t* points_sel = new k3d::mesh::selection_t();
-		k3d::mesh::point_groups_t* points_group = new k3d::mesh::point_groups_t();
 		k3d::mesh::points_t* points = new k3d::mesh::points_t();
 		k3d::mesh::indices_t* clockwise_edges = new k3d::mesh::indices_t();
 		k3d::mesh::indices_t* edge_points = new k3d::mesh::indices_t();
@@ -1367,12 +1366,10 @@ namespace detail {
 			//clockwise_edges->at(i) = edges[i].next;
 		}
 
-		k3d::mesh::point_groups_t* pg = new k3d::mesh::point_groups_t();
 		
 		OutputMesh.points = boost::shared_ptr<k3d::mesh::points_t>(points);
 		OutputMesh.polyhedra = boost::shared_ptr<k3d::mesh::polyhedra_t>(poly);
 		OutputMesh.point_selection = boost::shared_ptr<k3d::mesh::selection_t>(points_sel);
-		OutputMesh.point_groups = boost::shared_ptr<k3d::mesh::point_groups_t>(pg);
 
 		poly->clockwise_edges = boost::shared_ptr<k3d::mesh::indices_t>(clockwise_edges);
 		poly->edge_points = boost::shared_ptr<k3d::mesh::indices_t>(edge_points);
