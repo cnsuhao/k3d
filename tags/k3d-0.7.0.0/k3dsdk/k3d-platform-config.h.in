@@ -1,0 +1,26 @@
+#ifndef K3DSDK_PLATFORM_CONFIG_H
+#define K3DSDK_PLATFORM_CONFIG_H
+
+// Generated file, do not edit!  Make changes to k3d-platform-config.h.in instead.
+
+#cmakedefine K3D_API_WIN32
+#cmakedefine K3D_API_DARWIN
+
+#cmakedefine K3D_COMPILER_GCC
+#cmakedefine K3D_COMPILER_MSVC
+
+#cmakedefine K3D_SYMBOL_VISIBILITY
+
+#cmakedefine K3D_UINT_T_32_BITS
+#cmakedefine K3D_UINT_T_64_BITS
+
+#if defined K3D_COMPILER_GCC
+	#define K3D_COMPILER_NAME __VERSION__
+#elif defined K3D_COMPILER_MSVC
+	#define K3D_COMPILER_NAME "Visual Studio " _MSC_VER
+#else
+	#error("Unknown compiler")
+#endif
+
+#endif // !K3DSDK_PLATFORM_CONFIG_H
+
