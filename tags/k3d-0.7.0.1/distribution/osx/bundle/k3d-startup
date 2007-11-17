@@ -1,0 +1,54 @@
+#!/bin/sh
+#
+# Author: Aaron Voisine <aaron@voisine.org>
+# Inkscape Modifications: Michael Wybrow <mjwybrow@users.sourceforge.net>
+# K-3D Modifications: Timothy M. Shead <tshead@k-3d.com>
+
+K3D_BUNDLE="`echo "$0" | sed -e 's/\/Contents\/MacOS\/K-3D//'`"
+K3D_RESOURCES="$K3D_BUNDLE/Contents/Resources"
+K3D_TEMP="/tmp/k3d/$UID"
+K3D_ETC="$K3D_TEMP/etc"
+K3D_PANGO_RC_FILE="$K3D_ETC/pango/pangorc"
+
+echo "running $0"
+echo "K3D_BUNDLE: $K3D_BUNDLE"
+
+# If X11 isn't running, fire it up!
+ps -wx -ocommand | grep -e '[X]11' > /dev/null
+if [ "$?" != "0" -a ! -f ~/.xinitrc ]; then
+    echo "rm -f ~/.xinitrc" > ~/.xinitrc
+    sed 's/xterm/# xterm/' /usr/X11R6/lib/X11/xinit/xinitrc >> ~/.xinitrc
+fi
+
+cp -f "$K3D_RESOURCES/bin/getdisplay.sh" /tmp/
+rm -f /tmp/display.$UID
+open-x11 /tmp/getdisplay.sh || \
+open -a XDarwin /tmp/getdisplay.sh || \
+echo ":0" > /tmp/display.$UID
+
+while [ "$?" == "0" -a ! -f /tmp/display.$UID ]; do
+    sleep 1
+done
+export DISPLAY="`cat /tmp/display.$UID`"
+
+ps -wx -ocommand | grep -e '[X]11' > /dev/null || exit 11
+
+# Setup temporary runtime files
+rm -rf "$K3D_TEMP"
+
+# Because the bundle could be located anywhere at runtime, we have to
+# create temporary copies of the Pango configuration files that
+# reflect our current location
+mkdir -p "$K3D_ETC/pango"
+sed -e 's|/opt/local/etc|'"$K3D_ETC|g" "$K3D_RESOURCES/etc/pango/pangorc" > "$K3D_ETC/pango/pangorc"
+sed -e 's|/opt/local|\"'"$K3D_RESOURCES|g" -e "s/\.so/.so\"/g" "$K3D_RESOURCES/etc/pango/pango.modules" > "$K3D_ETC/pango/pango.modules"
+cp -f "$K3D_RESOURCES/etc/pango/pangox.aliases" "$K3D_ETC/pango/pangox.aliases"
+
+export "DYLD_LIBRARY_PATH=$K3D_RESOURCES/lib"
+export "FONTCONFIG_PATH=$K3D_RESOURCES/etc/fonts"
+export "PANGO_RC_FILE=$K3D_PANGO_RC_FILE"
+export "PATH=$K3D_RESOURCES/bin:$PATH"
+
+export
+exec "$K3D_RESOURCES/bin/k3d" "--log-level=debug" "--plugins=$K3D_RESOURCES/lib/k3d/plugins" "--share=$K3D_RESOURCES/share" "--ui=$K3D_RESOURCES/lib/k3d/uiplugins/k3d-ngui.module"
+
