@@ -1,3 +1,0 @@
-FILE(GLOB GLSL_FILES *.glsl)
-INSTALL(FILES ${GLSL_FILES} DESTINATION share/k3d/shaders/glsl)
-
