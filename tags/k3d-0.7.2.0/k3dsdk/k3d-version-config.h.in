@@ -1,0 +1,12 @@
+#ifndef K3DSDK_VERSION_CONFIG_H
+#define K3DSDK_VERSION_CONFIG_H
+
+// Generated file, do not edit!  Make changes to k3d-version-config.h.in instead.
+
+#define K3D_PACKAGE "@K3D_PACKAGE@"
+#define K3D_COPYRIGHT "@K3D_COPYRIGHT@"
+#define K3D_VERSION "@K3D_VERSION@"
+#define K3D_HOST "@K3D_HOST@"
+
+#endif // !K3DSDK_VERSION_CONFIG_H
+
