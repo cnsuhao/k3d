@@ -1,0 +1,16 @@
+<?xml version="1.0" ?>
+<k3dml>
+	<application>
+		<aspectratios>
+			<aspectratio name="NTSC" description="" value="1.33"/>
+			<aspectratio name="Square" description="" value="1"/>
+			<aspectratio name="Full Camera Aperture" description="" value="1.33"/>
+			<aspectratio name="Academy Full Frame" description="" value="1.37"/>
+			<aspectratio name="Academy Projection" description="" value="1.66"/>
+			<aspectratio name="Academy Projection" description="" value="1.85"/>
+			<aspectratio name="Anamorphic Squeezed" description="" value="1.18"/>
+			<aspectratio name="Anamorphic Unsqueezed" description="" value="2.35"/>
+		</aspectratios>
+	</application>
+</k3dml>
+
